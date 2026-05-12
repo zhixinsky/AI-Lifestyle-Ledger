@@ -21,8 +21,10 @@ COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
 COPY --from=builder /app/prisma ./prisma
 
+RUN mkdir -p /app/uploads
+
 ENV PORT=80
 ENV MYSQL_DATABASE=moona
 EXPOSE 80
 
-CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && npx prisma migrate deploy || echo 'Migration failed, starting anyway...' && node dist/main.js"]
+CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && echo 'Running migrations...' && npx prisma migrate deploy && echo 'Migrations done.' || echo 'Migration failed, continuing...' ; echo 'Starting server...' && exec node dist/main.js"]

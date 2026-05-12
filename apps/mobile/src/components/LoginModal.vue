@@ -28,25 +28,10 @@
         <view class="divider-line" />
       </view>
 
-      <!-- 手机号登录 -->
-      <view class="phone-form">
-        <view class="input-wrap">
-          <text class="input-label">手机号</text>
-          <input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" />
-        </view>
-        <view class="input-wrap">
-          <text class="input-label">验证码</text>
-          <view class="code-row">
-            <input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" class="code-input" />
-            <view class="code-btn" @tap.stop="sendCode">
-              <text>{{ codeBtnText }}</text>
-            </view>
-          </view>
-        </view>
-        <button class="submit-btn" :disabled="loading" @tap.stop="phoneLogin">
-          {{ loading ? '登录中...' : '登录 / 注册' }}
-        </button>
-      </view>
+      <!-- 手机号登录跳转 -->
+      <button class="phone-btn" @tap="goPhoneLogin">
+        <text>手机号登录</text>
+      </button>
 
       <text class="legal">登录即同意《用户协议》和《隐私政策》</text>
     </view>
@@ -54,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { authApi } from '@/api/auth';
 import { makeSvgIcon } from '@/utils/icons';
@@ -67,11 +52,6 @@ const emit = defineEmits<{
 
 const authStore = useAuthStore();
 const loading = ref(false);
-const showPhone = ref(false);
-const phone = ref('');
-const code = ref('');
-const countdown = ref(0);
-let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const safeBottom = (() => {
   try {
@@ -85,52 +65,13 @@ const wxIconSrc = makeSvgIcon(
   '#ffffff', '0'
 );
 
-const codeBtnText = computed(() => countdown.value > 0 ? `${countdown.value}s` : '获取验证码');
-
 function onMaskTap() {
   if (!loading.value) emit('close');
 }
 
-function switchToPhone() {
-  showPhone.value = true;
-}
-
-async function sendCode() {
-  if (countdown.value > 0) return;
-  if (!phone.value || phone.value.length !== 11) {
-    uni.showToast({ title: '请输入正确手机号', icon: 'none' });
-    return;
-  }
-  try {
-    await authApi.sendCode(phone.value);
-    uni.showToast({ title: '验证码已发送', icon: 'success' });
-    countdown.value = 60;
-    countdownTimer = setInterval(() => {
-      countdown.value--;
-      if (countdown.value <= 0 && countdownTimer) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
-      }
-    }, 1000);
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '发送失败', icon: 'none' });
-  }
-}
-
-async function phoneLogin() {
-  if (!phone.value || !code.value) {
-    uni.showToast({ title: '请填写完整', icon: 'none' });
-    return;
-  }
-  loading.value = true;
-  try {
-    await authStore.login(phone.value, code.value);
-    emit('success');
-  } catch (e: any) {
-    uni.showToast({ title: e?.message || '登录失败', icon: 'none' });
-  } finally {
-    loading.value = false;
-  }
+function goPhoneLogin() {
+  emit('close');
+  uni.navigateTo({ url: '/pages/login/index' });
 }
 
 async function wxLogin() {
@@ -258,92 +199,22 @@ async function wxLogin() {
   color: #98a2b3;
 }
 
-.phone-toggle {
-  padding: 24rpx 0;
-  text-align: center;
-}
-
-.phone-toggle-text {
-  font-size: 28rpx;
-  color: #00a99f;
-  font-weight: 500;
-}
-
-.phone-form {
-  display: flex;
-  flex-direction: column;
-}
-
-.input-wrap {
-  margin-bottom: 24rpx;
-}
-
-.input-label {
-  display: block;
-  margin-bottom: 12rpx;
-  font-size: 24rpx;
-  font-weight: 600;
-  color: #344054;
-}
-
-.input-wrap input {
+.phone-btn {
   width: 100%;
-  height: 88rpx;
-  padding: 0 28rpx;
-  border-radius: 20rpx;
-  background: #f7f8fa;
-  font-size: 30rpx;
+  height: 96rpx;
+  border: 2rpx solid #e8e8e8;
+  border-radius: 48rpx;
+  background: #fff;
   color: #1e1e1e;
-  box-sizing: border-box;
-}
-
-.code-row {
-  display: flex;
-  gap: 16rpx;
-}
-
-.code-input {
-  flex: 1;
-}
-
-.code-btn {
-  flex-shrink: 0;
-  height: 88rpx;
-  padding: 0 28rpx;
-  border-radius: 20rpx;
-  background: rgba(0, 212, 200, 0.1);
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.code-btn text {
-  font-size: 26rpx;
-  color: #00a99f;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.submit-btn {
-  width: 100%;
-  height: 92rpx;
-  margin-top: 16rpx;
-  border: none;
-  border-radius: 46rpx;
-  background: linear-gradient(135deg, #00d4c8, #34d399);
-  color: #fff;
-  font-size: 32rpx;
-  font-weight: 700;
-  line-height: 92rpx;
-  letter-spacing: 2rpx;
-  box-shadow: 0 12rpx 36rpx rgba(0, 212, 200, 0.3);
-}
-
-.submit-btn[disabled] {
-  opacity: 0.6;
-}
-
-.submit-btn::after {
+.phone-btn::after {
   border: none;
 }
 

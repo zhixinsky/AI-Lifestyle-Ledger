@@ -375,7 +375,8 @@ function handleLogout() {
     success(res) {
       if (res.confirm) {
         authStore.logout();
-        uni.reLaunch({ url: '/pages/login/index' });
+        uni.switchTab({ url: '/pages/index/index' });
+        setTimeout(() => uni.$emit('show-login'), 300);
       }
     }
   });

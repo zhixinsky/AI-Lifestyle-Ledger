@@ -27,7 +27,12 @@
         </view>
         <view class="input-wrap">
           <text class="input-label">验证码</text>
-          <input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" />
+          <view class="code-row">
+            <input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" class="code-input" />
+            <view class="code-btn" @tap="sendCode">
+              <text>{{ codeBtnText }}</text>
+            </view>
+          </view>
         </view>
 
         <button class="submit-btn" :disabled="loading" @tap="submit">
@@ -41,13 +46,40 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth';
+import { authApi } from '@/api/auth';
 
 const auth = useAuthStore();
 const phone = ref('');
 const code = ref('');
 const loading = ref(false);
+const countdown = ref(0);
+let countdownTimer: ReturnType<typeof setInterval> | null = null;
+
+const codeBtnText = computed(() => countdown.value > 0 ? `${countdown.value}s` : '获取验证码');
+
+async function sendCode() {
+  if (countdown.value > 0) return;
+  if (!phone.value || phone.value.length !== 11) {
+    uni.showToast({ title: '请输入正确手机号', icon: 'none' });
+    return;
+  }
+  try {
+    await authApi.sendCode(phone.value);
+    uni.showToast({ title: '验证码已发送', icon: 'success' });
+    countdown.value = 60;
+    countdownTimer = setInterval(() => {
+      countdown.value--;
+      if (countdown.value <= 0 && countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+    }, 1000);
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '发送失败', icon: 'none' });
+  }
+}
 
 async function submit() {
   if (!phone.value || !code.value) {
@@ -210,6 +242,38 @@ async function submit() {
   font-size: 30rpx;
   color: #1e1e1e;
   box-sizing: border-box;
+}
+
+.code-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.code-row .code-input {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+}
+
+.code-btn {
+  flex-shrink: 0;
+  min-width: 180rpx;
+  height: 88rpx;
+  padding: 0 28rpx;
+  border-radius: 20rpx;
+  background: rgba(0, 212, 200, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.code-btn text {
+  font-size: 26rpx;
+  color: #00a99f;
+  font-weight: 600;
+  white-space: nowrap;
 }
 
 .submit-btn {
