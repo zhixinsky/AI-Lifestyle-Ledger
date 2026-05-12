@@ -13,7 +13,7 @@ export interface TransactionPayload {
 
 export const transactionApi = {
   list(params?: { month?: string; keyword?: string; categoryId?: string }) {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
+    const query = params ? Object.entries(params).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&') : '';
     return request<Transaction[]>(`/transactions${query ? `?${query}` : ''}`);
   },
   create(payload: TransactionPayload) {
@@ -38,7 +38,7 @@ export const transactionApi = {
     return request<DashboardSummary>('/statistics/dashboard');
   },
   statistics(params?: { month?: string; period?: 'week' | 'month' | 'year'; type?: 'expense' | 'income' }) {
-    const query = new URLSearchParams(params as Record<string, string>).toString();
+    const query = params ? Object.entries(params).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&') : '';
     return request<StatSummary>(`/statistics${query ? `?${query}` : ''}`);
   }
 };

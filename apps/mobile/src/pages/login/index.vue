@@ -4,22 +4,16 @@
     <view class="glow glow-b" />
 
     <view class="body">
-      <!-- 吉祥物 -->
-      <view class="mascot-wrap">
-        <view class="mascot">
-          <view class="eye left" />
-          <view class="eye right" />
-          <view class="mouth" />
-        </view>
+      <!-- Logo -->
+      <view class="logo-wrap">
+        <image class="logo-img" src="/static/images/logo.png" mode="aspectFit" />
       </view>
-      <text class="brand">你的财务</text>
-      <text class="brand">AI 好友</text>
+      <text class="brand">AI生活账本</text>
       <text class="slogan">懂你的每一笔花费</text>
 
       <!-- 表单 -->
       <view class="form">
         <text class="greeting">欢迎回来</text>
-        <text class="form-sub">AI 财务生活助手</text>
 
         <view class="input-wrap">
           <text class="input-label">手机号</text>
@@ -39,6 +33,19 @@
           {{ loading ? '登录中...' : '登录' }}
         </button>
       </view>
+
+      <!-- #ifdef MP-WEIXIN -->
+      <view class="wx-section">
+        <view class="divider">
+          <view class="divider-line" />
+          <text class="divider-text">或</text>
+          <view class="divider-line" />
+        </view>
+        <button class="wx-quick-btn" :disabled="loading" @tap="wxLogin">
+          <text>微信快捷登录</text>
+        </button>
+      </view>
+      <!-- #endif -->
 
       <text class="legal">登录即同意《用户协议》和《隐私政策》</text>
     </view>
@@ -78,6 +85,25 @@ async function sendCode() {
     }, 1000);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '发送失败', icon: 'none' });
+  }
+}
+
+async function wxLogin() {
+  loading.value = true;
+  try {
+    const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+      uni.login({ provider: 'weixin', success: resolve, fail: reject });
+    });
+    if (!loginRes.code) throw new Error('获取微信code失败');
+    const result = await authApi.wxLogin(loginRes.code);
+    auth.token = result.accessToken;
+    auth.user = result.user;
+    uni.setStorageSync('token', result.accessToken);
+    uni.switchTab({ url: '/pages/index/index' });
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '微信登录失败', icon: 'none' });
+  } finally {
+    loading.value = false;
   }
 }
 
@@ -137,48 +163,16 @@ async function submit() {
   flex-direction: column;
   align-items: center;
   padding: 0 48rpx;
-  padding-top: calc(env(safe-area-inset-top, 44px) + 60rpx);
+  padding-top: calc(env(safe-area-inset-top, 44px) + 160rpx);
 }
 
-.mascot-wrap {
+.logo-wrap {
   margin-bottom: 24rpx;
 }
 
-.mascot {
-  position: relative;
-  width: 160rpx;
-  height: 160rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00d4c8, #7cbcff);
-  box-shadow: 0 20rpx 60rpx rgba(0, 212, 200, 0.3);
-}
-
-.eye {
-  position: absolute;
-  top: 52rpx;
-  width: 24rpx;
-  height: 32rpx;
-  border-radius: 50%;
-  background: #1e1e1e;
-}
-
-.eye.left {
-  left: 44rpx;
-}
-
-.eye.right {
-  right: 44rpx;
-}
-
-.mouth {
-  position: absolute;
-  left: 50%;
-  top: 98rpx;
-  width: 36rpx;
-  height: 18rpx;
-  margin-left: -18rpx;
-  border-radius: 0 0 18rpx 18rpx;
-  background: #1e1e1e;
+.logo-img {
+  width: 180rpx;
+  height: 180rpx;
 }
 
 .brand {
@@ -293,6 +287,50 @@ async function submit() {
 
 .submit-btn[disabled] {
   opacity: 0.6;
+}
+
+.wx-section {
+  width: 100%;
+  margin-top: 40rpx;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32rpx;
+}
+
+.divider-line {
+  flex: 1;
+  height: 1rpx;
+  background: #e8e8e8;
+}
+
+.divider-text {
+  padding: 0 24rpx;
+  font-size: 24rpx;
+  color: #98a2b3;
+}
+
+.wx-quick-btn {
+  width: 60%;
+  margin: 0 auto;
+  height: 68rpx;
+  border: 2rpx solid #07c160;
+  border-radius: 34rpx;
+  background: transparent;
+  color: #07c160;
+  font-size: 26rpx;
+  font-weight: 600;
+  line-height: 68rpx;
+}
+
+.wx-quick-btn[disabled] {
+  opacity: 0.6;
+}
+
+.wx-quick-btn::after {
+  border: none;
 }
 
 .legal {

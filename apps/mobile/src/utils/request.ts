@@ -118,12 +118,16 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
             resolve(res.data as T);
             return;
           }
+          const msg = (res.data as { message?: string })?.message;
           if (res.statusCode === 401) {
-            triggerLogin();
-            reject(new Error('请先登录'));
+            const isAuthEndpoint = reqPath.includes('/auth/');
+            if (!isAuthEndpoint) {
+              triggerLogin();
+            }
+            reject(new Error(msg || '请先登录'));
             return;
           }
-          reject(new Error((res.data as { message?: string })?.message || '请求失败'));
+          reject(new Error(msg || '请求失败'));
         },
         fail: (err: any) => {
           console.error('[callContainer] fail', reqPath, err);
@@ -150,12 +154,15 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
           resolve(res.data as T);
           return;
         }
+        const msg = (res.data as { message?: string })?.message;
         if (res.statusCode === 401) {
-          triggerLogin();
-          reject(new Error('请先登录'));
+          if (!url.includes('/auth/')) {
+            triggerLogin();
+          }
+          reject(new Error(msg || '请先登录'));
           return;
         }
-        reject(new Error((res.data as { message?: string })?.message || '请求失败'));
+        reject(new Error(msg || '请求失败'));
       },
       fail: reject
     });

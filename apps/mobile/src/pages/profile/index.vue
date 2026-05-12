@@ -130,12 +130,14 @@ import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
 import { useAuthStore } from '@/stores/auth';
+import { useFinanceStore } from '@/stores/finance';
 import { authApi } from '@/api/auth';
 import { membershipApi } from '@/api/membership';
 import { uploadFile, getApiBase } from '@/utils/request';
 import type { MembershipStatus } from '@/types/domain';
 
 const authStore = useAuthStore();
+const financeStore = useFinanceStore();
 const userName = computed(() => authStore.user?.nickname || '用户');
 const streakDays = computed(() => authStore.user?.streakDays || 0);
 const avatarUrl = computed(() => {
@@ -360,9 +362,15 @@ const menuGroups = [
   ],
 ];
 
+const tabBarPages = ['/pages/index/index', '/pages/ai/index', '/pages/bills/index', '/pages/discover/index', '/pages/profile/index'];
+
 function onMenuTap(item: { label: string; url: string }) {
   if (item.url) {
-    uni.navigateTo({ url: item.url });
+    if (tabBarPages.includes(item.url)) {
+      uni.switchTab({ url: item.url });
+    } else {
+      uni.navigateTo({ url: item.url });
+    }
   } else {
     uni.showToast({ title: `${item.label} 即将上线`, icon: 'none' });
   }
@@ -375,6 +383,7 @@ function handleLogout() {
     success(res) {
       if (res.confirm) {
         authStore.logout();
+        financeStore.reset();
         uni.switchTab({ url: '/pages/index/index' });
         setTimeout(() => uni.$emit('show-login'), 300);
       }

@@ -34,6 +34,12 @@ export const useFinanceStore = defineStore('finance', {
     },
     async loadStatistics(params?: { month?: string; period?: 'week' | 'month' | 'year'; type?: 'expense' | 'income' }) {
       this.statistics = await transactionApi.statistics(params);
+    },
+    reset() {
+      this.categories = [];
+      this.transactions = [];
+      this.dashboard = null;
+      this.statistics = null;
     }
   }
 });
