@@ -25,4 +25,4 @@ ENV PORT=80
 ENV MYSQL_DATABASE=moona
 EXPOSE 80
 
-CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && npx prisma migrate deploy && node dist/main.js"]
+CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && npx prisma migrate deploy || echo 'Migration failed, starting anyway...' && node dist/main.js"]
