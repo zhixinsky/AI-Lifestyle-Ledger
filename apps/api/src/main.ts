@@ -15,9 +15,12 @@ async function bootstrap() {
     forbidNonWhitelisted: true
   }));
 
-  const port = process.env.PORT || 80;
-  await app.listen(port);
+  const port = Number(process.env.PORT || 80);
+  await app.listen(port, '0.0.0.0');
   console.log(`Server running on port ${port}`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Bootstrap failed:', err);
+  process.exit(1);
+});

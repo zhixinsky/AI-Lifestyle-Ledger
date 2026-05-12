@@ -2,7 +2,7 @@
 CREATE TABLE `User` (
     `id` VARCHAR(191) NOT NULL,
     `phone` VARCHAR(191) NOT NULL,
-    `nickname` VARCHAR(191) NOT NULL DEFAULT '小满',
+    `nickname` VARCHAR(191) NOT NULL DEFAULT '',
     `avatarUrl` VARCHAR(191) NULL,
     `passwordHash` VARCHAR(191) NULL,
     `streakDays` INTEGER NOT NULL DEFAULT 0,
