@@ -1,7 +1,6 @@
 import {
   Controller,
   Post,
-  Body,
   UseGuards,
   UseInterceptors,
   UploadedFile,
@@ -12,7 +11,6 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { join } from 'path';
 import { randomUUID } from 'crypto';
-import { writeFileSync } from 'fs';
 
 const storage = diskStorage({
   destination: join(process.cwd(), 'uploads'),
@@ -41,15 +39,5 @@ export class UploadController {
   uploadImage(@UploadedFile() file: Express.Multer.File) {
     if (!file) throw new BadRequestException('请选择文件');
     return { url: `/uploads/${file.filename}` };
-  }
-
-  @Post('avatar')
-  uploadAvatar(@Body() body: { avatar: string }) {
-    if (!body.avatar) throw new BadRequestException('请选择头像');
-    const buffer = Buffer.from(body.avatar, 'base64');
-    const filename = `${randomUUID()}.png`;
-    const filepath = join(process.cwd(), 'uploads', filename);
-    writeFileSync(filepath, buffer);
-    return { url: `/uploads/${filename}` };
   }
 }

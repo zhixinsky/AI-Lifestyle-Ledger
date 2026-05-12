@@ -33,59 +33,53 @@ export function getApiBase() {
   return '/api';
 }
 
+/** 小程序文件上传走 HTTPS 公网（callContainer 不支持 multipart，且 JSON 体有 ~100KiB 限制，头像 base64 会超限） */
+function resolveUploadBaseUrl(): string {
+  const fromEnv = import.meta.env.VITE_UPLOAD_BASE_URL as string | undefined;
+  if (fromEnv) return fromEnv.replace(/\/$/, '');
+  // #ifdef MP-WEIXIN
+  return 'https://express-z4u4-257003-7-1432436662.sh.run.tcloudbase.com/api';
+  // #endif
+  return 'http://localhost:3000/api';
+}
+
+function parseUploadErrorMessage(data: unknown): string {
+  if (typeof data !== 'string') return '上传失败';
+  try {
+    const j = JSON.parse(data) as { message?: string };
+    return j?.message || '上传失败';
+  } catch {
+    return '上传失败';
+  }
+}
+
 export async function uploadFile(url: string, filePath: string): Promise<{ url: string }> {
   const token = uni.getStorageSync('token');
-
-  // #ifdef MP-WEIXIN
-  if (cloudReady) {
-    return new Promise((resolve, reject) => {
-      // @ts-ignore
-      wx.cloud.callContainer({
-        config: {
-          env: CLOUD_ENV
-        },
-        path: `/api${url}`,
-        method: 'POST',
-        header: {
-          'X-WX-SERVICE': CLOUD_SERVICE,
-          'content-type': 'multipart/form-data',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        filePath,
-        name: 'file',
-        success: (res: any) => {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            resolve(typeof res.data === 'string' ? JSON.parse(res.data) : res.data);
-          } else if (res.statusCode === 401) {
-            triggerLogin();
-            reject(new Error('请先登录'));
-          } else {
-            reject(new Error('上传失败'));
-          }
-        },
-        fail: reject,
-      });
-    });
-  }
-  // #endif
+  const base = resolveUploadBaseUrl();
 
   return new Promise((resolve, reject) => {
     uni.uploadFile({
-      url: `http://localhost:3000/api${url}`,
+      url: `${base}${url}`,
       filePath,
       name: 'file',
       header: token ? { Authorization: `Bearer ${token}` } : {},
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
-          resolve(JSON.parse(res.data));
-        } else if (res.statusCode === 401) {
+          try {
+            resolve(JSON.parse(res.data as string) as { url: string });
+          } catch {
+            reject(new Error('上传失败'));
+          }
+          return;
+        }
+        if (res.statusCode === 401) {
           triggerLogin();
           reject(new Error('请先登录'));
-        } else {
-          reject(new Error('上传失败'));
+          return;
         }
+        reject(new Error(parseUploadErrorMessage(res.data)));
       },
-      fail: reject,
+      fail: (err) => reject(err || new Error('上传失败')),
     });
   });
 }

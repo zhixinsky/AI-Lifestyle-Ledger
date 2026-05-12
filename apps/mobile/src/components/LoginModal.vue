@@ -45,7 +45,7 @@
           <text class="sheet-sub">设置你的头像和昵称</text>
         </view>
 
-        <view class="profile-form">
+        <form class="profile-form" @submit.prevent="saveProfile">
           <view class="avatar-row">
             <text class="avatar-label">头像</text>
             <button class="avatar-btn" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
@@ -64,11 +64,11 @@
               @blur="onNicknameBlur"
             />
           </view>
-        </view>
 
-        <button class="save-btn" :disabled="saving" @tap="saveProfile">
-          {{ saving ? '保存中...' : '进入应用' }}
-        </button>
+          <button class="save-btn" form-type="submit" :disabled="saving">
+            {{ saving ? '保存中...' : '进入应用' }}
+          </button>
+        </form>
 
         <view class="skip-wrap" @tap="skipProfile">
           <text class="skip-text">跳过，稍后设置</text>
@@ -83,6 +83,7 @@
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { authApi } from '@/api/auth';
+import { uploadFile } from '@/utils/request';
 import { makeSvgIcon } from '@/utils/icons';
 
 const props = defineProps<{ visible: boolean }>();
@@ -154,25 +155,26 @@ async function saveProfile() {
   saving.value = true;
   try {
     const updateData: { nickname?: string; avatarUrl?: string } = {};
-    if (tempNickname.value) updateData.nickname = tempNickname.value;
+    const nick = tempNickname.value?.trim();
+    if (nick) updateData.nickname = nick;
 
-    if (tempAvatar.value) {
+    if (tempAvatar.value && !tempAvatar.value.startsWith('http')) {
+      let filePath = tempAvatar.value;
       try {
-        const fileData = await new Promise<string>((resolve, reject) => {
-          // @ts-ignore
-          const fs = wx.getFileSystemManager();
-          fs.readFile({
-            filePath: tempAvatar.value,
-            encoding: 'base64',
-            success: (res: any) => resolve(res.data),
+        const cr = await new Promise<{ tempFilePath: string }>((resolve, reject) => {
+          uni.compressImage({
+            src: filePath,
+            quality: 68,
+            success: resolve,
             fail: reject,
           });
         });
-        const res = await authApi.uploadAvatar(fileData);
-        if (res.url) updateData.avatarUrl = res.url;
-      } catch (e) {
-        console.warn('Avatar upload failed, skipping:', e);
+        filePath = cr.tempFilePath;
+      } catch {
+        // 使用原临时文件
       }
+      const { url } = await uploadFile('/upload/image', filePath);
+      if (url) updateData.avatarUrl = url;
     }
 
     if (Object.keys(updateData).length > 0) {
