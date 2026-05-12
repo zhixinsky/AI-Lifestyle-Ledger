@@ -11,8 +11,8 @@ export class SmsService {
 
   constructor(private readonly configService: ConfigService) {
     this.appId = this.configService.get<string>('SMS_APP_ID', '');
-    const keyHex = this.configService.get<string>('SMS_SECRET_KEY', '');
-    this.secretKey = Buffer.from(keyHex, 'hex');
+    const key = this.configService.get<string>('SMS_SECRET_KEY', '');
+    this.secretKey = Buffer.from(key, 'utf-8');
     this.baseUrl = this.configService.get<string>('SMS_BASE_URL', '');
   }
 
@@ -59,9 +59,10 @@ export class SmsService {
     return { result: 'SUCCESS', data: parsed };
   }
 
-  async createTemplate(content: string): Promise<string | null> {
-    const body = {
+  async createTemplate(content: string, templateType = 2): Promise<string | null> {
+    const body: Record<string, unknown> = {
       templateContent: content,
+      templateType,
       requestTime: Date.now(),
       requestValidPeriod: 60,
     };
@@ -92,14 +93,34 @@ export class SmsService {
     return false;
   }
 
+  async sendTemplateVariableSms(
+    mobile: string,
+    templateId: string,
+    variables: Record<string, string>,
+  ): Promise<boolean> {
+    const body = {
+      smses: [{ mobile, customSmsId: `moona_${Date.now()}`, content: variables }],
+      templateId,
+      requestTime: Date.now(),
+      requestValidPeriod: 60,
+    };
+
+    const { result, data } = await this.post('/inter/sendTemplateVariableSMS', body);
+    if (result === 'SUCCESS') {
+      this.logger.log(`Variable SMS sent to ${mobile}, response: ${JSON.stringify(data)}`);
+      return true;
+    }
+    this.logger.warn(`Variable SMS send failed to ${mobile}, result: ${result}`);
+    return false;
+  }
+
   async sendVerificationCode(mobile: string, code: string): Promise<boolean> {
-    const content = `【Moona】您的验证码为${code}，5分钟内有效，请勿泄露。`;
-    const templateId = await this.createTemplate(content);
+    const templateId = this.configService.get<string>('SMS_TEMPLATE_ID', '');
     if (!templateId) {
-      this.logger.error(`Failed to create SMS template for ${mobile}`);
+      this.logger.error('SMS_TEMPLATE_ID not configured');
       return false;
     }
-    return this.sendTemplateSms(mobile, templateId);
+    return this.sendTemplateVariableSms(mobile, templateId, { code });
   }
 
   generateCode(): string {
