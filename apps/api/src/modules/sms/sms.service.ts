@@ -42,7 +42,7 @@ export class SmsService {
         appId: this.appId,
         'Content-Type': 'application/octet-stream',
       },
-      body: encrypted,
+      body: new Uint8Array(encrypted),
     });
 
     const resultCode = res.headers.get('result') || '';
