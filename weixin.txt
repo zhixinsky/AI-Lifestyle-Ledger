@@ -1,0 +1,200 @@
+微信同声传译
+微信同声传译插件是微信自研的语音输入，文本翻译等功能的插件封装，用于提供给第三方小程序调用。
+微信面对面翻译小程序完全使用此小程序插件实现。开源地址：https://github.com/Tencent/Face2FaceTranslator
+小程序码
+链接
+
+语音输入
+提供语音的实时流式识别能力。
+通过获取全局唯一的语音识别管理器recordRecoManager实现
+
+recordRecoManager
+recordRecoManager 对象的方法列表：
+
+方法	参数	说明
+start	options	开始识别
+stop		结束识别
+onStart	callback	正常开始录音识别时会调用此事件
+onStop	callback	识别结束事件
+onError	callback	识别错误事件
+start(options)说明：
+
+属性	类型	必填	默认值	说明
+duration	Number	否	60000	指定录音的时长，单位ms，最大为60000。如果传入了合法的 duration ，在到达指定的 duration 后会自动停止录音
+lang	String	否	zh_CN	识别的语言，目前支持 zh_CN(中国大陆) en_US(英语) sichuanhua(四川话) yue(粤语)
+onStart(callback)回调结果说明：
+
+属性	类型	说明
+msg	String	默认Ok
+onStop(callback)回调结果说明：
+
+属性	类型	说明
+tempFilePath	String	录音临时文件地址
+duration	Number	录音总时长，单位: ms
+fileSize	Number	文件大小，单位: B
+result	String	最终识别结果
+onError(callback)回调结果说明：
+
+属性	类型	说明
+retcode	Int	错误码
+msg	String	错误信息
+onError错误码说明：
+
+错误码	说明
+-30001	录音接口出错
+-30002	录音暂停接口被调用，录音终止，识别终止
+-30003	录音帧数据未产生或者发送失败导致的数据传输失败
+-30004	因网络或者其他非正常状态导致的未查询识别结果
+-30005	语音识别服务内部错误
+-30006	语音识别服务未在限定时间内识别完成
+-30007	start启动参数错误
+-30008	查询请求时网络失败
+-30009	创建鉴权内部失败
+-30010	发送鉴权时网络失败
+-30011	试图在识别正在进行中是再次调用start，返回错误，正在进行的识别任务正常进行
+-30012	当前无识别任务进行时调用stop错误
+-30013	其他未知错误
+-40001	达到接口调用频率限制
+示例代码:
+
+//app.json
+{
+  ...
+    "plugins": {
+        ...
+        "WechatSI": {
+            "version": "0.3.1",
+            "provider": "wx069ba97219f66d99"
+        }
+    }
+}
+
+//index.js
+var plugin = requirePlugin("WechatSI")
+let manager = plugin.getRecordRecognitionManager()
+
+manager.onStop = function(res) {
+    console.log("record file path", res.tempFilePath)
+    console.log("result", res.result)
+}
+manager.onStart = function(res) {
+    console.log("成功开始录音识别", res)
+}
+manager.onError = function(res) {
+    console.error("error msg", res.msg)
+}
+manager.start({duration:30000, lang: "zh_CN"})
+文本翻译
+文本翻译目前支持的语言有 zh_CN（中国大陆） en_US（英语） yue(粤语)
+
+translate(OBJECT)
+translate(object)说明：
+
+参数名	类型	必填	说明
+lfrom	String	是	文本语言 zh_CN（中国大陆） en_US（英语） yue(粤语)
+lto	String	是	目标语言 zh_CN（中国大陆） en_US（英语）yue(粤语)
+content	String	是	需要被翻译的文本内容，后台限制200字节大小
+tts	Boolean	否	是否对翻译结果进行语音合成，默认为false，不进行语音合成
+success	Function	否	调用成功时触发的callback
+fail	Function	否	调用失败时触发的callback
+complete	Function	否	接口调用结束的回调函数（调用成功、失败都会执行）
+success(callback)回调结果说明
+
+属性	类型	说明
+retcode	Int	retcode == 0 时翻译成功
+origin	String	原始文本
+result	String	翻译结果
+filename	String	语音合成返回的语音地址，仅支持合成中文语音
+expired_time	Int	语音合成链接超时时间戳 如1525930552超时后无法播放，可使用时间为3小时
+success返回码说明：
+翻译成功，合成失败时调用success回调
+
+状态码	说明
+0	翻译合成成功
+-10006	翻译成功，合成内部错误
+-10007	翻译成功，传入了不支持的语音合成语言
+-10008	翻译成功，语音合成达到频率限制
+fail(callback)回调结果说明
+
+属性	类型	说明
+retcode	Int	错误码
+msg	String	错误信息
+fail错误码说明：
+
+错误码	说明
+-10001	语言检查错误
+-10002	输入的待翻译内容格式不正确
+-10003	传入过长的待翻译文本内容
+-10004	翻译内部逻辑错误
+-10005	请求发送失败，请检查网络
+-40001	接口调用频率达到限制，请联系插件开发者
+示例代码
+
+plugin.translate({
+    lfrom:"en_US",
+    lto:"zh_CN",
+    content:"hello, this is the first time to test？",
+    success: function(res) {
+        if(res.retcode == 0) {
+            console.log("result", res.result)
+        } else {
+            console.warn("翻译失败", res)
+        }
+    },
+    fail: function(res) {
+        console.log("网络失败",res)
+    }
+})
+语音合成
+语音合成支持的语言有 zh_CN（中国大陆），en_US(英文)
+
+textToSpeech(OBJECT)
+textToSpeech(object)说明：
+
+参数名	类型	必填	说明
+lang	String	是	文本语言 zh_CN（中国大陆）en_US(英文)
+content	String	是	需要被合成的文本内容，后台限制长度在50个字符内
+success	Function		调用成功时触发的callback
+fail	Function		调用失败时触发的callback
+success(callback)回调结果说明
+
+属性	类型	说明
+retcode	Int	retcode == 0 时请求成功
+origin	String	原始文本
+filename	String	语音合成返回的语音地址，可自行下载使用
+expired_time	Int	语音合成链接超时时间戳 如1525930552，超时后无法播放，可使用时间为3小时
+success返回码说明：
+
+状态码	说明
+0	语音合成成功
+fail(callback)回调结果说明
+
+属性	类型	说明
+retcode	Int	错误码
+msg	String	错误信息
+fail错误码说明：
+
+错误码	说明
+-20001	语音合成语言格式出错
+-20002	输入的待合成格式不正确
+-20003	语音合成内部错误
+-20005	网络错误
+-40001	接口调用频率达到限制，请联系插件开发者
+示例代码
+
+plugin.textToSpeech({
+    lang: "zh_CN",
+    tts: true,
+    content: "一个常见的需求",
+    success: function(res) {
+        console.log("succ tts", res.filename)   
+    },
+    fail: function(res) {
+        console.log("fail tts", res)
+    }
+})
+版本要求
+基础库版本 >= 1.9.94
+
+使用插件，需要基础库版本 >= 1.9.6
+插件内调用wx.getRecorderManager接口，需要基础库版本 >= 1.9.94

@@ -1,0 +1,10 @@
+{
+    "mp-weixin" : {
+        "appid" : "wx7813e423c1038e4e"
+    },
+    "appid" : "__UNI__7E22740",
+    "name" : "AI生活账本",
+    "description" : "AI生活账本是一款智能 AI 记账工具，支持快速记账、消费分析、预算管理与财富成长规划，帮你轻松看懂每一笔消费。",
+    "versionName" : "0.1.0",
+    "versionCode" : 1
+}

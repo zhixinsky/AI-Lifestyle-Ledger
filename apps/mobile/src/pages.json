@@ -1,0 +1,144 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationBarTitleText": "Moona",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/ai/index",
+      "style": {
+        "navigationBarTitleText": "AI 财务助手",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/ai-confirm/index",
+      "style": {
+        "navigationBarTitleText": "AI 识别结果",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/bills/index",
+      "style": {
+        "navigationBarTitleText": "账单",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/profile/index",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/login/index",
+      "style": {
+        "navigationBarTitleText": "登录",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/category-settings/index",
+      "style": {
+        "navigationBarTitleText": "类别设置",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/budget/index",
+      "style": {
+        "navigationBarTitleText": "预算管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/saving-goals/index",
+      "style": {
+        "navigationBarTitleText": "财富成长",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/membership/index",
+      "style": {
+        "navigationBarTitleText": "会员中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/shared-book/index",
+      "style": {
+        "navigationBarTitleText": "共享账本",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/shared-book/detail",
+      "style": {
+        "navigationBarTitleText": "账本详情",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/growth/index",
+      "style": {
+        "navigationBarTitleText": "成长中心",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/discover/index",
+      "style": {
+        "navigationBarTitleText": "发现",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/discover/article",
+      "style": {
+        "navigationBarTitleText": "文章详情",
+        "navigationStyle": "custom"
+      }
+    }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "Moona",
+    "navigationBarBackgroundColor": "#F7F8FA",
+    "backgroundColor": "#F7F8FA"
+  },
+  "tabBar": {
+    "custom": true,
+    "color": "#88909B",
+    "selectedColor": "#00D4C8",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/ai/index",
+        "text": "AI"
+      },
+      {
+        "pagePath": "pages/bills/index",
+        "text": "账单"
+      },
+      {
+        "pagePath": "pages/discover/index",
+        "text": "发现"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  }
+}

@@ -1,0 +1,321 @@
+<template>
+  <PageShell>
+    <view class="nav">
+      <view class="nav-back" @tap="goBack">
+        <view class="back-glass" />
+        <image class="back-icon" :src="backIcon" />
+      </view>
+      <text class="nav-title">会员中心</text>
+      <view class="nav-placeholder" />
+    </view>
+
+    <!-- 当前等级卡片 -->
+    <view :class="['level-card', `level-${status?.level || 'free'}`]">
+      <view class="level-top">
+        <text class="level-icon">{{ levelIcon }}</text>
+        <view class="level-info">
+          <text class="level-name">{{ levelName }}</text>
+          <text class="level-expire" v-if="status?.expireAt">有效期至 {{ formatDate(status.expireAt) }}</text>
+          <text class="level-expire" v-else>免费版</text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 会员权益 -->
+    <view class="section-title">会员权益</view>
+    <MoonaCard class="benefits-card">
+      <view v-for="b in benefits" :key="b.label" class="benefit-row">
+        <text class="benefit-icon">{{ b.icon }}</text>
+        <view class="benefit-text">
+          <text class="benefit-label">{{ b.label }}</text>
+          <text class="benefit-desc">{{ b.desc }}</text>
+        </view>
+        <text :class="['benefit-status', { active: b.level <= currentLevelNum }]">
+          {{ b.level <= currentLevelNum ? '✓' : levelNames[b.level] }}
+        </text>
+      </view>
+    </MoonaCard>
+
+    <!-- 订阅方案 -->
+    <view class="section-title">订阅方案</view>
+    <view class="plan-grid">
+      <view v-for="p in plans" :key="p.id" :class="['plan-card', { selected: selectedPlan === p.id }]" @tap="selectedPlan = p.id">
+        <text v-if="p.tag" class="plan-tag">{{ p.tag }}</text>
+        <text class="plan-name">{{ p.name }}</text>
+        <text class="plan-price">¥{{ p.price }}</text>
+        <text class="plan-unit">{{ p.unit }}</text>
+      </view>
+    </view>
+
+    <button class="subscribe-btn" @tap="handleSubscribe">
+      {{ status?.isPro ? '续费会员' : '立即开通' }}
+    </button>
+
+    <view class="spacer" />
+  </PageShell>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue';
+import { backIcon } from '@/utils/icons';
+import PageShell from '@/components/PageShell.vue';
+import MoonaCard from '@/components/MoonaCard.vue';
+import { membershipApi } from '@/api/membership';
+import type { MembershipStatus } from '@/types/domain';
+
+const status = ref<MembershipStatus | null>(null);
+const selectedPlan = ref('monthly_pro');
+
+const levelNames = ['免费版', 'Pro', 'Premium'];
+const currentLevelNum = computed(() => {
+  if (!status.value) return 0;
+  return status.value.level === 'premium' ? 2 : status.value.level === 'pro' ? 1 : 0;
+});
+
+const levelIcon = computed(() => ['🌱', '⭐', '💎'][currentLevelNum.value]);
+const levelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][currentLevelNum.value]);
+
+const benefits = [
+  { icon: '🤖', label: 'AI 智能对话', desc: '无限次 AI 财务对话', level: 0 },
+  { icon: '📊', label: '高级分析报告', desc: '月度/年度深度财务分析', level: 1 },
+  { icon: '👨‍👩‍👧', label: '共享账本', desc: '家庭/情侣多人记账', level: 1 },
+  { icon: '🏆', label: '成长体系', desc: '勋章和挑战系统', level: 0 },
+  { icon: '📈', label: 'AI 财富建议', desc: '个性化存钱与理财建议', level: 1 },
+  { icon: '🔮', label: 'AI 预测', desc: '消费趋势与目标预测', level: 2 },
+  { icon: '☁️', label: '云端备份', desc: '数据多端同步', level: 2 },
+];
+
+const plans = [
+  { id: 'monthly_pro', name: 'Pro 月卡', price: 28, unit: '/月', tag: '' },
+  { id: 'quarterly_pro', name: 'Pro 季卡', price: 68, unit: '/3月', tag: '省16元' },
+  { id: 'yearly_pro', name: 'Pro 年卡', price: 198, unit: '/年', tag: '最划算' },
+  { id: 'yearly_premium', name: 'Premium', price: 298, unit: '/年', tag: '尊享' },
+];
+
+function formatDate(iso: string) {
+  return iso.substring(0, 10);
+}
+
+function goBack() {
+  const pages = getCurrentPages();
+  if (pages.length > 1) {
+    uni.navigateBack();
+  } else {
+    uni.switchTab({ url: '/pages/profile/index' });
+  }
+}
+
+async function handleSubscribe() {
+  const plan = plans.find((p) => p.id === selectedPlan.value);
+  if (!plan) return;
+
+  try {
+    const res = await membershipApi.createOrder({
+      type: 'subscription',
+      amount: plan.price,
+      description: plan.name,
+    });
+    if (res.mock) {
+      // 模拟支付
+      uni.showModal({
+        title: '模拟支付',
+        content: `确认支付 ¥${plan.price}？（测试模式）`,
+        async success(r) {
+          if (r.confirm) {
+            await membershipApi.mockPay(res.orderId);
+            uni.showToast({ title: '开通成功！', icon: 'success' });
+            loadStatus();
+          }
+        },
+      });
+    }
+  } catch {
+    uni.showToast({ title: '创建订单失败', icon: 'none' });
+  }
+}
+
+async function loadStatus() {
+  try {
+    status.value = await membershipApi.getStatus();
+  } catch {}
+}
+
+onMounted(loadStatus);
+</script>
+
+<style scoped>
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 16rpx;
+}
+.nav-back {
+  position: relative;
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.back-glass {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+}
+.back-icon {
+  position: relative;
+  z-index: 1;
+  width: 36rpx;
+  height: 36rpx;
+  margin-left: -4rpx;
+}
+.nav-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: #1e1e1e;
+}
+.nav-placeholder { width: 60rpx; }
+
+.level-card {
+  padding: 40rpx 32rpx;
+  margin-top: 20rpx;
+  border-radius: 24rpx;
+  background: linear-gradient(135deg, #1e1e1e 0%, #2d3748 100%);
+  box-shadow: 0 8rpx 32rpx rgba(30, 30, 30, 0.15);
+}
+.level-card.level-pro {
+  background: linear-gradient(135deg, #2d3748, #4a5568);
+}
+.level-card.level-premium {
+  background: linear-gradient(135deg, #44337a, #6b46c1);
+}
+.level-top {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+}
+.level-icon { font-size: 56rpx; }
+.level-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+.level-name {
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #ffd700;
+}
+.level-expire {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.section-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: #1e1e1e;
+  margin: 32rpx 0 12rpx 8rpx;
+}
+
+.benefits-card { padding: 16rpx 28rpx !important; }
+.benefit-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid #f0f1f3;
+}
+.benefit-row:last-child { border-bottom: none; }
+.benefit-icon { font-size: 36rpx; }
+.benefit-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2rpx;
+}
+.benefit-label {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+.benefit-desc {
+  font-size: 22rpx;
+  color: #88909b;
+}
+.benefit-status {
+  font-size: 24rpx;
+  color: #c0c4cc;
+  font-weight: 600;
+}
+.benefit-status.active { color: #00d4c8; }
+
+.plan-grid {
+  display: flex;
+  gap: 16rpx;
+  flex-wrap: wrap;
+}
+.plan-card {
+  position: relative;
+  flex: 1;
+  min-width: 140rpx;
+  padding: 24rpx 16rpx;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 2rpx solid rgba(0, 0, 0, 0.06);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+.plan-card.selected {
+  border-color: #00d4c8;
+  background: rgba(0, 212, 200, 0.06);
+}
+.plan-tag {
+  position: absolute;
+  top: -12rpx;
+  right: 8rpx;
+  padding: 2rpx 12rpx;
+  border-radius: 10rpx;
+  background: linear-gradient(135deg, #ff6b6b, #ff9a76);
+  color: #fff;
+  font-size: 18rpx;
+  font-weight: 600;
+}
+.plan-name {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #1e1e1e;
+}
+.plan-price {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: #00d4c8;
+}
+.plan-unit {
+  font-size: 22rpx;
+  color: #88909b;
+}
+
+.subscribe-btn {
+  margin-top: 32rpx;
+  width: 100%;
+  height: 88rpx;
+  border-radius: 44rpx;
+  background: linear-gradient(135deg, #00d4c8, #00b8a9);
+  color: #fff;
+  font-size: 32rpx;
+  font-weight: 700;
+  line-height: 88rpx;
+}
+
+.spacer { height: 60rpx; }
+</style>

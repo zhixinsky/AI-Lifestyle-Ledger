@@ -1,0 +1,385 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum TransactionType {
+  expense
+  income
+}
+
+model User {
+  id           String        @id @default(cuid())
+  phone        String        @unique
+  nickname     String        @default("小满")
+  avatarUrl    String?
+  passwordHash String?
+  streakDays   Int           @default(0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions     Transaction[]
+  tags             Tag[]
+  aiLogs           AiLog[]
+  aiReports        AiReport[]
+  profile          UserProfile?
+  budgets          Budget[]
+  savingGoals      SavingGoal[]
+  wealthSnapshots  WealthSnapshot[]
+  goalProgresses   GoalProgress[]
+  membership       Membership?
+  orders           Order[]
+  bookMembers      BookMember[]
+  userBadges       UserBadge[]
+  userChallenges   UserChallenge[]
+}
+
+model Category {
+  id           String          @id @default(cuid())
+  name         String
+  icon         String
+  color        String
+  type         TransactionType
+  sort         Int             @default(0)
+  isSystem     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  transactions Transaction[]
+  budgets      Budget[]
+
+  @@unique([name, type])
+}
+
+model Transaction {
+  id         String          @id @default(cuid())
+  userId     String
+  categoryId String
+  bookId     String?
+  type       TransactionType
+  amount     Decimal         @db.Decimal(12, 2)
+  occurredAt DateTime
+  remark     String?
+  voucherUrl String?
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category        @relation(fields: [categoryId], references: [id])
+  book       SharedBook?     @relation(fields: [bookId], references: [id])
+  tags       TransactionTag[]
+
+  @@index([userId, occurredAt])
+  @@index([categoryId])
+  @@index([bookId])
+}
+
+model Tag {
+  id           String           @id @default(cuid())
+  userId       String
+  name         String
+  color        String           @default("#EEF2F6")
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions TransactionTag[]
+
+  @@unique([userId, name])
+}
+
+model TransactionTag {
+  transactionId String
+  tagId         String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
+}
+
+model AiLog {
+  id           String   @id @default(cuid())
+  userId       String
+  rawInput     String   @db.Text
+  aiResponse   Json
+  finalResult  Json?
+  userModified Boolean  @default(false)
+  confirmed    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+enum ReportType {
+  daily
+  monthly
+}
+
+model AiReport {
+  id        String     @id @default(cuid())
+  userId    String
+  type      ReportType
+  period    String
+  content   Json
+  summary   String     @db.Text
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, period])
+  @@index([userId, createdAt])
+}
+
+enum BudgetPeriod {
+  weekly
+  monthly
+}
+
+model Budget {
+  id         String          @id @default(cuid())
+  userId     String
+  categoryId String?
+  period     BudgetPeriod    @default(monthly)
+  amount     Decimal         @db.Decimal(12, 2)
+  month      String
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+  user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   Category?       @relation(fields: [categoryId], references: [id])
+
+  @@unique([userId, categoryId, month, period])
+  @@index([userId, month])
+}
+
+model SavingGoal {
+  id            String          @id @default(cuid())
+  userId        String
+  name          String
+  targetAmount  Decimal         @db.Decimal(12, 2)
+  currentAmount Decimal         @db.Decimal(12, 2) @default(0)
+  deadline      DateTime?
+  icon          String          @default("🎯")
+  color         String          @default("#00d4c8")
+  allocPercent  Int             @default(100)
+  priority      Int             @default(0)
+  completed     Boolean         @default(false)
+  completedAt   DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  progresses    GoalProgress[]
+
+  @@index([userId])
+}
+
+model WealthSnapshot {
+  id                String   @id @default(cuid())
+  userId            String
+  month             String
+  income            Decimal  @db.Decimal(12, 2) @default(0)
+  expense           Decimal  @db.Decimal(12, 2) @default(0)
+  surplus           Decimal  @db.Decimal(12, 2) @default(0)
+  cumulativeSurplus Decimal  @db.Decimal(12, 2) @default(0)
+  wealthScore       Int      @default(0)
+  adviceJson        Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, month])
+  @@index([userId])
+}
+
+model GoalProgress {
+  id         String     @id @default(cuid())
+  userId     String
+  goalId     String
+  month      String
+  allocated  Decimal    @db.Decimal(12, 2) @default(0)
+  cumulative Decimal    @db.Decimal(12, 2) @default(0)
+  percent    Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal       SavingGoal @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, goalId, month])
+  @@index([userId])
+}
+
+model UserProfile {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  persona        String   @default("")
+  traits         Json?
+  lastAnalyzedAt DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ===== 会员系统 =====
+
+enum MemberLevel {
+  free
+  pro
+  premium
+}
+
+enum OrderStatus {
+  pending
+  paid
+  failed
+  refunded
+}
+
+enum OrderType {
+  subscription
+  one_time
+}
+
+model Membership {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  level     MemberLevel @default(free)
+  expireAt  DateTime?
+  autoRenew Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  userId       String
+  type         OrderType   @default(subscription)
+  amount       Decimal     @db.Decimal(12, 2)
+  status       OrderStatus @default(pending)
+  wxPayOrderId String?
+  description  String?
+  paidAt       DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  user         User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([wxPayOrderId])
+}
+
+// ===== 共享账本 =====
+
+enum BookType {
+  family
+  couple
+}
+
+enum BookRole {
+  owner
+  admin
+  member
+}
+
+model SharedBook {
+  id           String        @id @default(cuid())
+  name         String
+  type         BookType      @default(family)
+  inviteCode   String        @unique
+  createdBy    String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  members      BookMember[]
+  transactions Transaction[]
+}
+
+model BookMember {
+  id       String   @id @default(cuid())
+  bookId   String
+  userId   String
+  role     BookRole @default(member)
+  joinedAt DateTime @default(now())
+  book     SharedBook @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([bookId, userId])
+  @@index([userId])
+}
+
+// ===== 成长体系 =====
+
+model Badge {
+  id          String      @id @default(cuid())
+  key         String      @unique
+  name        String
+  icon        String
+  description String
+  condition   Json
+  createdAt   DateTime    @default(now())
+  userBadges  UserBadge[]
+}
+
+model UserBadge {
+  id       String   @id @default(cuid())
+  userId   String
+  badgeId  String
+  earnedAt DateTime @default(now())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge    Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@index([userId])
+}
+
+enum ChallengeType {
+  streak
+  saving
+  budget
+}
+
+model Challenge {
+  id             String          @id @default(cuid())
+  name           String
+  description    String
+  type           ChallengeType
+  targetValue    Int
+  duration       Int             @default(7)
+  icon           String          @default("🏆")
+  createdAt      DateTime        @default(now())
+  userChallenges UserChallenge[]
+}
+
+model UserChallenge {
+  id          String    @id @default(cuid())
+  userId      String
+  challengeId String
+  startedAt   DateTime  @default(now())
+  progress    Int       @default(0)
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, challengeId])
+  @@index([userId])
+}
+
+// ===== 发现页 =====
+
+enum ArticleCategory {
+  tip
+  knowledge
+  challenge
+}
+
+model Article {
+  id        String          @id @default(cuid())
+  title     String
+  summary   String
+  content   String          @db.Text
+  coverUrl  String?
+  category  ArticleCategory @default(tip)
+  published Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+}

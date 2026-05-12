@@ -1,0 +1,27 @@
+{
+    "name" : "Moona",
+    "appid" : "__UNI__MOONA",
+    "description" : "AI 财务生活助手",
+    "versionName" : "0.1.0",
+    "versionCode" : "100",
+    "mp-weixin" : {
+        "appid" : "wx7813e423c1038e4e",
+        "setting" : {
+            "urlCheck" : false,
+            "minified" : true
+        },
+        "usingComponents" : true,
+        "lazyCodeLoading" : "requiredComponents",
+        "plugins" : {
+            "WechatSI" : {
+                "version" : "0.3.6",
+                "provider" : "wx069ba97219f66d99"
+            }
+        }
+    },
+    "h5" : {
+        "router" : {
+            "mode" : "hash"
+        }
+    }
+}
