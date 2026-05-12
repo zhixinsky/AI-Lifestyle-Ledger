@@ -10,13 +10,13 @@ import { AuthGuard } from '@nestjs/passport';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
-import { v4 as uuid } from 'uuid';
+import { randomUUID } from 'crypto';
 
 const storage = diskStorage({
   destination: join(process.cwd(), 'uploads'),
   filename: (_req, file, cb) => {
     const ext = extname(file.originalname) || '.jpg';
-    cb(null, `${uuid()}${ext}`);
+    cb(null, `${randomUUID()}${ext}`);
   },
 });
 
