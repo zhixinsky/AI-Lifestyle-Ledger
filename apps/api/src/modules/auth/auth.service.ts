@@ -67,39 +67,49 @@ export class AuthService {
   }
 
   async wxLogin(dto: WxLoginDto) {
-    const appId = this.configService.get<string>('WX_APPID');
-    const appSecret = this.configService.get<string>('WX_APP_SECRET');
+    try {
+      const appId = this.configService.get<string>('WX_APPID');
+      const appSecret = this.configService.get<string>('WX_APP_SECRET');
 
-    if (!appId || !appSecret) {
-      throw new UnauthorizedException('微信登录未配置');
+      this.logger.log(`wxLogin called, appId=${appId ? appId.slice(0, 6) + '...' : 'MISSING'}`);
+
+      if (!appId || !appSecret) {
+        throw new UnauthorizedException('微信登录未配置');
+      }
+
+      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${dto.code}&grant_type=authorization_code`;
+
+      this.logger.log('Calling WeChat jscode2session...');
+      const res = await fetch(url);
+      const data = await res.json();
+      this.logger.log(`WeChat response: errcode=${data.errcode}, openid=${data.openid ? 'OK' : 'MISSING'}`);
+
+      if (data.errcode) {
+        throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
+      }
+
+      const openid = data.openid as string;
+
+      let user = await this.prisma.user.findUnique({ where: { openid } });
+
+      if (!user) {
+        const randomPhone = `wx_${openid.slice(-8)}`;
+        user = await this.prisma.user.create({
+          data: {
+            phone: randomPhone,
+            openid,
+            nickname: '微信用户',
+            streakDays: 0,
+          },
+        });
+        this.logger.log(`New user created for openid`);
+      }
+
+      return this.buildResult(user);
+    } catch (error) {
+      this.logger.error(`wxLogin error: ${error.message}`, error.stack);
+      throw error;
     }
-
-    const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${dto.code}&grant_type=authorization_code`;
-
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (data.errcode) {
-      throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
-    }
-
-    const openid = data.openid as string;
-
-    let user = await this.prisma.user.findUnique({ where: { openid } });
-
-    if (!user) {
-      const randomPhone = `wx_${openid.slice(-8)}`;
-      user = await this.prisma.user.create({
-        data: {
-          phone: randomPhone,
-          openid,
-          nickname: '微信用户',
-          streakDays: 0,
-        },
-      });
-    }
-
-    return this.buildResult(user);
   }
 
   private async buildResult(user: { id: string; phone: string; nickname: string; avatarUrl: string | null; streakDays: number }) {
