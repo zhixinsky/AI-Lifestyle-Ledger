@@ -8,3 +8,4 @@ uploads/
 .vite/
 .vue-global-types/
 *.tsbuildinfo
+*.txt
