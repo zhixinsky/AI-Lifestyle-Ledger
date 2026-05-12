@@ -1,7 +1,6 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Headers } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { WxLoginDto } from './dto/wx-login.dto';
 import { SendCodeDto } from './dto/send-code.dto';
 
 @Controller('auth')
@@ -19,7 +18,10 @@ export class AuthController {
   }
 
   @Post('wx-login')
-  wxLogin(@Body() dto: WxLoginDto) {
-    return this.authService.wxLogin(dto);
+  wxLogin(
+    @Headers('x-wx-openid') openid: string,
+    @Body() body: { code?: string },
+  ) {
+    return this.authService.wxLogin(openid, body.code);
   }
 }

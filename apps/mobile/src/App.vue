@@ -1,8 +1,12 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app';
+import { initCloudContainer } from '@/utils/request';
 
 onLaunch(() => {
   console.log('Moona launched');
+  // #ifdef MP-WEIXIN
+  initCloudContainer();
+  // #endif
 });
 </script>
 

@@ -4,7 +4,6 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import { LoginDto } from './dto/login.dto';
-import { WxLoginDto } from './dto/wx-login.dto';
 import { SendCodeDto } from './dto/send-code.dto';
 
 interface CodeEntry {
@@ -66,29 +65,31 @@ export class AuthService {
     return this.buildResult(user);
   }
 
-  async wxLogin(dto: WxLoginDto) {
+  async wxLogin(headerOpenid?: string, code?: string) {
     try {
-      const appId = this.configService.get<string>('WX_APPID');
-      const appSecret = this.configService.get<string>('WX_APP_SECRET');
+      let openid = headerOpenid;
 
-      this.logger.log(`wxLogin called, appId=${appId ? appId.slice(0, 6) + '...' : 'MISSING'}`);
+      this.logger.log(`wxLogin called, headerOpenid=${openid ? 'YES' : 'NO'}, code=${code ? 'YES' : 'NO'}`);
 
-      if (!appId || !appSecret) {
-        throw new UnauthorizedException('微信登录未配置');
+      if (!openid && code) {
+        const appId = this.configService.get<string>('WX_APPID');
+        const appSecret = this.configService.get<string>('WX_APP_SECRET');
+        if (!appId || !appSecret) {
+          throw new UnauthorizedException('微信登录未配置');
+        }
+        const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
+        const res = await fetch(url);
+        const data = await res.json();
+        this.logger.log(`WeChat response: errcode=${data.errcode}`);
+        if (data.errcode) {
+          throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
+        }
+        openid = data.openid;
       }
 
-      const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${dto.code}&grant_type=authorization_code`;
-
-      this.logger.log('Calling WeChat jscode2session...');
-      const res = await fetch(url);
-      const data = await res.json();
-      this.logger.log(`WeChat response: errcode=${data.errcode}, openid=${data.openid ? 'OK' : 'MISSING'}`);
-
-      if (data.errcode) {
-        throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
+      if (!openid) {
+        throw new UnauthorizedException('无法获取openid');
       }
-
-      const openid = data.openid as string;
 
       let user = await this.prisma.user.findUnique({ where: { openid } });
 
@@ -102,7 +103,7 @@ export class AuthService {
             streakDays: 0,
           },
         });
-        this.logger.log(`New user created for openid`);
+        this.logger.log('New user created for openid');
       }
 
       return this.buildResult(user);
