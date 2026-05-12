@@ -3,12 +3,13 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 COPY package.json ./
-RUN npm install
+RUN npm install --include=dev
 
 COPY prisma ./prisma
 RUN npx prisma generate
 
-COPY . .
+COPY tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY src ./src
 RUN npm run build
 
 FROM node:18-alpine
