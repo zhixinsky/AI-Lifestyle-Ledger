@@ -59,10 +59,11 @@ export class SmsService {
     return { result: 'SUCCESS', data: parsed };
   }
 
-  async createTemplate(content: string, templateType = 2): Promise<string | null> {
+  async createTemplate(content: string, templateType = 2, templateFlag = 1): Promise<string | null> {
     const body: Record<string, unknown> = {
       templateContent: content,
       templateType,
+      templateFlag,
       requestTime: Date.now(),
       requestValidPeriod: 60,
     };

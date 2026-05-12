@@ -22,6 +22,7 @@ async function testCreateTemplate() {
   const body = {
     templateContent: '【育文游】您的验证码为{#code#}，5分钟内有效，请勿泄露。',
     templateType: 2,
+    templateFlag: 1,
     requestTime: Date.now(),
     requestValidPeriod: 60,
   };
@@ -109,17 +110,52 @@ async function testSendSms(templateId, mobile) {
   }
 }
 
-async function main() {
-  const templateId = await testCreateTemplate();
-  if (templateId) {
-    const phone = process.argv[2];
-    if (phone) {
-      await testSendSms(templateId, phone);
+async function testSendVariableSms(templateId, mobile, variables) {
+  const body = {
+    smses: [{ mobile, customSmsId: `test_${Date.now()}`, content: variables }],
+    templateId,
+    requestTime: Date.now(),
+    requestValidPeriod: 60,
+  };
+
+  const json = JSON.stringify(body);
+  console.log('\n--- Send Variable SMS ---');
+  console.log('Request JSON:', json);
+
+  const encrypted = aesEncrypt(Buffer.from(json, 'utf-8'));
+  const url = `${SMS_BASE_URL}/inter/sendTemplateVariableSMS`;
+
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        appId: SMS_APP_ID,
+        'Content-Type': 'application/octet-stream',
+      },
+      body: encrypted,
+    });
+
+    console.log('HTTP Status:', res.status);
+    const resultCode = res.headers.get('result');
+    console.log('Result header:', resultCode);
+
+    if (resultCode === 'SUCCESS') {
+      const resBuffer = Buffer.from(await res.arrayBuffer());
+      const decrypted = aesDecrypt(resBuffer);
+      const parsed = JSON.parse(decrypted.toString('utf-8'));
+      console.log('Response:', JSON.stringify(parsed, null, 2));
     } else {
-      console.log('\nTemplate created OK! To send test SMS run:');
-      console.log(`  node test-sms.js <your_phone_number>`);
+      console.log('All response headers:');
+      res.headers.forEach((v, k) => console.log(`  ${k}: ${v}`));
     }
+  } catch (e) {
+    console.error('Error:', e.message);
   }
 }
 
-main();
+const phone = process.argv[2];
+if (phone) {
+  testSendVariableSms('176241034709600334', phone, { code: '999888' });
+} else {
+  console.log('Usage: node test-sms.js <phone_number>');
+}
