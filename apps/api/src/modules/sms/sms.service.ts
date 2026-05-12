@@ -92,6 +92,16 @@ export class SmsService {
     return false;
   }
 
+  async sendVerificationCode(mobile: string, code: string): Promise<boolean> {
+    const content = `【Moona】您的验证码为${code}，5分钟内有效，请勿泄露。`;
+    const templateId = await this.createTemplate(content);
+    if (!templateId) {
+      this.logger.error(`Failed to create SMS template for ${mobile}`);
+      return false;
+    }
+    return this.sendTemplateSms(mobile, templateId);
+  }
+
   generateCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }

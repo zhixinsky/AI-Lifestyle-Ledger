@@ -16,16 +16,13 @@ interface CodeEntry {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly codeStore = new Map<string, CodeEntry>();
-  private readonly smsTemplateId: string;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly smsService: SmsService,
-  ) {
-    this.smsTemplateId = this.configService.get<string>('SMS_TEMPLATE_ID', '');
-  }
+  ) {}
 
   async sendCode(dto: SendCodeDto) {
     const existing = this.codeStore.get(dto.phone);
@@ -34,15 +31,9 @@ export class AuthService {
     }
 
     const code = this.smsService.generateCode();
-    const templateId = this.smsTemplateId;
-
-    if (!templateId) {
-      this.logger.warn(`SMS_TEMPLATE_ID not configured, fallback code: ${code}`);
-    } else {
-      const sent = await this.smsService.sendTemplateSms(dto.phone, templateId);
-      if (!sent) {
-        throw new BadRequestException('短信发送失败，请稍后重试');
-      }
+    const sent = await this.smsService.sendVerificationCode(dto.phone, code);
+    if (!sent) {
+      throw new BadRequestException('短信发送失败，请稍后重试');
     }
 
     this.codeStore.set(dto.phone, {
@@ -50,7 +41,7 @@ export class AuthService {
       expiresAt: Date.now() + 5 * 60 * 1000,
     });
 
-    this.logger.log(`Verification code for ${dto.phone}: ${code}`);
+    this.logger.log(`Verification code sent to ${dto.phone}`);
 
     return { success: true };
   }
