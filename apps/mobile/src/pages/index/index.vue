@@ -366,7 +366,7 @@ function goSavingGoals() {
 }
 
 function goBills() {
-  uni.navigateTo({ url: '/pages/bills/index' });
+  uni.switchTab({ url: '/pages/bills/index' });
 }
 
 function goGrowth() {

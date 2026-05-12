@@ -29,7 +29,7 @@
       </view>
 
       <!-- 手机号登录 -->
-      <view v-if="showPhone" class="phone-form">
+      <view class="phone-form">
         <view class="input-wrap">
           <text class="input-label">手机号</text>
           <input v-model="phone" type="number" maxlength="11" placeholder="请输入手机号" />
@@ -38,17 +38,14 @@
           <text class="input-label">验证码</text>
           <view class="code-row">
             <input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" class="code-input" />
-            <view class="code-btn" @tap="sendCode">
+            <view class="code-btn" @tap.stop="sendCode">
               <text>{{ codeBtnText }}</text>
             </view>
           </view>
         </view>
-        <button class="submit-btn" :disabled="loading" @tap="phoneLogin">
+        <button class="submit-btn" :disabled="loading" @tap.stop="phoneLogin">
           {{ loading ? '登录中...' : '登录 / 注册' }}
         </button>
-      </view>
-      <view v-else class="phone-toggle" @tap="switchToPhone">
-        <text class="phone-toggle-text">使用手机号登录</text>
       </view>
 
       <text class="legal">登录即同意《用户协议》和《隐私政策》</text>

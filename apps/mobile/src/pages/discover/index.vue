@@ -74,7 +74,7 @@ const tabs = [
 
 function goGrowth() { uni.navigateTo({ url: '/pages/growth/index' }); }
 function goWealth() { uni.navigateTo({ url: '/pages/saving-goals/index' }); }
-function goBills() { uni.navigateTo({ url: '/pages/bills/index' }); }
+function goBills() { uni.switchTab({ url: '/pages/bills/index' }); }
 function goArticle(id: string) { uni.navigateTo({ url: `/pages/discover/article?id=${id}` }); }
 
 function catLabel(cat: string) {

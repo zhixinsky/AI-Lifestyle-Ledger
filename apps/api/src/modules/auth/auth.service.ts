@@ -47,15 +47,11 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    if (dto.code === '123456') {
-      // MVP fallback
-    } else {
-      const entry = this.codeStore.get(dto.phone);
-      if (!entry || entry.code !== dto.code || Date.now() > entry.expiresAt) {
-        throw new UnauthorizedException('验证码错误或已过期');
-      }
-      this.codeStore.delete(dto.phone);
+    const entry = this.codeStore.get(dto.phone);
+    if (!entry || entry.code !== dto.code || Date.now() > entry.expiresAt) {
+      throw new UnauthorizedException('验证码错误或已过期');
     }
+    this.codeStore.delete(dto.phone);
 
     const user = await this.prisma.user.upsert({
       where: { phone: dto.phone },

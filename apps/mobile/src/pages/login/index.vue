@@ -45,8 +45,8 @@ import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
-const phone = ref('13800000000');
-const code = ref('123456');
+const phone = ref('');
+const code = ref('');
 const loading = ref(false);
 
 async function submit() {
