@@ -107,8 +107,8 @@ export class AuthService {
       }
 
       return this.buildResult(user);
-    } catch (error) {
-      this.logger.error(`wxLogin error: ${error.message}`, error.stack);
+    } catch (error: any) {
+      this.logger.error(`wxLogin error: ${error?.message}`, error?.stack);
       throw error;
     }
   }
