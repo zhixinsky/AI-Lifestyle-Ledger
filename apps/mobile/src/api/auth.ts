@@ -27,4 +27,7 @@ export const authApi = {
   updateProfile(data: { nickname?: string; avatarUrl?: string }) {
     return request<User>('/users/me', { method: 'PATCH', data });
   },
+  uploadAvatar(base64Data: string) {
+    return request<{ url: string }>('/upload/avatar', { method: 'POST', data: { avatar: base64Data } });
+  },
 };

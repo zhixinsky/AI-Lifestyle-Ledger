@@ -83,7 +83,6 @@
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { authApi } from '@/api/auth';
-import { uploadFile } from '@/utils/request';
 import { makeSvgIcon } from '@/utils/icons';
 
 const props = defineProps<{ visible: boolean }>();
@@ -154,14 +153,27 @@ function onNicknameBlur(e: any) {
 async function saveProfile() {
   saving.value = true;
   try {
-    let avatarUrl = '';
-    if (tempAvatar.value) {
-      const res = await uploadFile('/upload/image', tempAvatar.value);
-      avatarUrl = res.url;
-    }
     const updateData: { nickname?: string; avatarUrl?: string } = {};
     if (tempNickname.value) updateData.nickname = tempNickname.value;
-    if (avatarUrl) updateData.avatarUrl = avatarUrl;
+
+    if (tempAvatar.value) {
+      try {
+        const fileData = await new Promise<string>((resolve, reject) => {
+          // @ts-ignore
+          const fs = wx.getFileSystemManager();
+          fs.readFile({
+            filePath: tempAvatar.value,
+            encoding: 'base64',
+            success: (res: any) => resolve(res.data),
+            fail: reject,
+          });
+        });
+        const res = await authApi.uploadAvatar(fileData);
+        if (res.url) updateData.avatarUrl = res.url;
+      } catch (e) {
+        console.warn('Avatar upload failed, skipping:', e);
+      }
+    }
 
     if (Object.keys(updateData).length > 0) {
       const updated = await authApi.updateProfile(updateData);
