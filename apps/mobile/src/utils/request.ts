@@ -2,7 +2,7 @@ function resolveBaseUrl(): string {
   const envUrl = import.meta.env.VITE_API_BASE_URL;
   if (envUrl) return envUrl;
   // #ifdef MP-WEIXIN
-  return 'http://localhost:3000/api';
+  return 'https://express-z4u4-257003-7-1432436662.sh.run.tcloudbase.com/api';
   // #endif
   return '/api';
 }
