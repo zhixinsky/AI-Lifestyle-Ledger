@@ -1,5 +1,5 @@
 -- AlterTable
-ALTER TABLE `savinggoal` MODIFY `icon` VARCHAR(191) NOT NULL DEFAULT '🎯';
+ALTER TABLE `SavingGoal` MODIFY `icon` VARCHAR(191) NOT NULL DEFAULT '🎯';
 
 -- AlterTable
-ALTER TABLE `wealthsnapshot` ADD COLUMN `adviceJson` JSON NULL;
+ALTER TABLE `WealthSnapshot` ADD COLUMN `adviceJson` JSON NULL;

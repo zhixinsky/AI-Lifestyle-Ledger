@@ -1,8 +1,8 @@
 -- AlterTable
-ALTER TABLE `savinggoal` MODIFY `icon` VARCHAR(191) NOT NULL DEFAULT '🎯';
+ALTER TABLE `SavingGoal` MODIFY `icon` VARCHAR(191) NOT NULL DEFAULT '🎯';
 
 -- AlterTable
-ALTER TABLE `transaction` ADD COLUMN `bookId` VARCHAR(191) NULL;
+ALTER TABLE `Transaction` ADD COLUMN `bookId` VARCHAR(191) NULL;
 
 -- CreateTable
 CREATE TABLE `Membership` (
