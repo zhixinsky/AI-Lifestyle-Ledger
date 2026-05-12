@@ -136,7 +136,7 @@ import { uploadFile, getApiBase } from '@/utils/request';
 import type { MembershipStatus } from '@/types/domain';
 
 const authStore = useAuthStore();
-const userName = computed(() => authStore.user?.nickname || '小满');
+const userName = computed(() => authStore.user?.nickname || '用户');
 const streakDays = computed(() => authStore.user?.streakDays || 0);
 const avatarUrl = computed(() => {
   const url = authStore.user?.avatarUrl;

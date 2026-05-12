@@ -290,7 +290,7 @@ const badges = ref<Badge[]>([]);
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
 const badgeTotal = computed(() => badges.value.length);
 
-const userName = computed(() => authStore.user?.nickname || '小满');
+const userName = computed(() => authStore.user?.nickname || '用户');
 const aiGreeting = ref('今天过得怎么样？');
 const userAvatar = computed(() => {
   const url = authStore.user?.avatarUrl;

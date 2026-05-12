@@ -57,7 +57,7 @@ export class AuthService {
       update: {},
       create: {
         phone: dto.phone,
-        nickname: '小满',
+        nickname: '',
         streakDays: 0
       }
     });
@@ -99,7 +99,7 @@ export class AuthService {
           data: {
             phone: randomPhone,
             openid,
-            nickname: '微信用户',
+            nickname: '',
             streakDays: 0,
           },
         });
