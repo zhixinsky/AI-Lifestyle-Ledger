@@ -98,21 +98,26 @@ function switchToPhone() {
   showPhone.value = true;
 }
 
-function sendCode() {
+async function sendCode() {
   if (countdown.value > 0) return;
   if (!phone.value || phone.value.length !== 11) {
     uni.showToast({ title: '请输入正确手机号', icon: 'none' });
     return;
   }
-  uni.showToast({ title: 'MVP阶段验证码为123456', icon: 'none' });
-  countdown.value = 60;
-  countdownTimer = setInterval(() => {
-    countdown.value--;
-    if (countdown.value <= 0 && countdownTimer) {
-      clearInterval(countdownTimer);
-      countdownTimer = null;
-    }
-  }, 1000);
+  try {
+    await authApi.sendCode(phone.value);
+    uni.showToast({ title: '验证码已发送', icon: 'success' });
+    countdown.value = 60;
+    countdownTimer = setInterval(() => {
+      countdown.value--;
+      if (countdown.value <= 0 && countdownTimer) {
+        clearInterval(countdownTimer);
+        countdownTimer = null;
+      }
+    }, 1000);
+  } catch (e: any) {
+    uni.showToast({ title: e?.message || '发送失败', icon: 'none' });
+  }
 }
 
 async function phoneLogin() {

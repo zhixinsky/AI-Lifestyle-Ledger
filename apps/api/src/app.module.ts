@@ -16,6 +16,7 @@ import { SharedBookModule } from './modules/shared-book/shared-book.module';
 import { GrowthModule } from './modules/growth/growth.module';
 import { DiscoverModule } from './modules/discover/discover.module';
 import { UploadModule } from './modules/upload/upload.module';
+import { SmsModule } from './modules/sms/sms.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -27,6 +28,7 @@ import { join } from 'path';
       serveRoot: '/uploads',
     }),
     PrismaModule,
+    SmsModule,
     AiModule,
     AuthModule,
     UsersModule,

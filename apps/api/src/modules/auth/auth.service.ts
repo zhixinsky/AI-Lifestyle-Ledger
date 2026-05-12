@@ -1,21 +1,69 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
+import { SmsService } from '../sms/sms.service';
 import { LoginDto } from './dto/login.dto';
 import { WxLoginDto } from './dto/wx-login.dto';
+import { SendCodeDto } from './dto/send-code.dto';
+
+interface CodeEntry {
+  code: string;
+  expiresAt: number;
+}
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+  private readonly codeStore = new Map<string, CodeEntry>();
+  private readonly smsTemplateId: string;
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly smsService: SmsService,
+  ) {
+    this.smsTemplateId = this.configService.get<string>('SMS_TEMPLATE_ID', '');
+  }
+
+  async sendCode(dto: SendCodeDto) {
+    const existing = this.codeStore.get(dto.phone);
+    if (existing && existing.expiresAt - Date.now() > 4.5 * 60 * 1000) {
+      throw new BadRequestException('发送过于频繁，请稍后再试');
+    }
+
+    const code = this.smsService.generateCode();
+    const templateId = this.smsTemplateId;
+
+    if (!templateId) {
+      this.logger.warn(`SMS_TEMPLATE_ID not configured, fallback code: ${code}`);
+    } else {
+      const sent = await this.smsService.sendTemplateSms(dto.phone, templateId);
+      if (!sent) {
+        throw new BadRequestException('短信发送失败，请稍后重试');
+      }
+    }
+
+    this.codeStore.set(dto.phone, {
+      code,
+      expiresAt: Date.now() + 5 * 60 * 1000,
+    });
+
+    this.logger.log(`Verification code for ${dto.phone}: ${code}`);
+
+    return { success: true };
+  }
 
   async login(dto: LoginDto) {
-    if (dto.code !== '123456') {
-      throw new UnauthorizedException('验证码错误，MVP 阶段请使用 123456');
+    if (dto.code === '123456') {
+      // MVP fallback
+    } else {
+      const entry = this.codeStore.get(dto.phone);
+      if (!entry || entry.code !== dto.code || Date.now() > entry.expiresAt) {
+        throw new UnauthorizedException('验证码错误或已过期');
+      }
+      this.codeStore.delete(dto.phone);
     }
 
     const user = await this.prisma.user.upsert({
@@ -24,7 +72,7 @@ export class AuthService {
       create: {
         phone: dto.phone,
         nickname: '小满',
-        streakDays: 45
+        streakDays: 0
       }
     });
 

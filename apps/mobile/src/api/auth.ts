@@ -12,6 +12,9 @@ export interface LoginResult {
 }
 
 export const authApi = {
+  sendCode(phone: string) {
+    return request<{ success: boolean }>('/auth/send-code', { method: 'POST', data: { phone } });
+  },
   login(payload: LoginPayload) {
     return request<LoginResult>('/auth/login', { method: 'POST', data: payload });
   },
