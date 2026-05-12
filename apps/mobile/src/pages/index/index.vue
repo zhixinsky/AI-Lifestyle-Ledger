@@ -295,7 +295,8 @@ const aiGreeting = ref('今天过得怎么样？');
 const userAvatar = computed(() => {
   const url = authStore.user?.avatarUrl;
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('cloud://')) return url;
   return `${getApiBase().replace('/api', '')}${url}`;
 });
 

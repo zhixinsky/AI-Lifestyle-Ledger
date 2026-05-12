@@ -1,15 +1,22 @@
 let cloudReady = false;
 
+/** 微信云开发环境 ID（与控制台「环境 ID」一致） */
 const CLOUD_ENV = 'prod-d3gw02rfhd26627e8';
+/** 云托管 callContainer 的 X-WX-SERVICE */
 const CLOUD_SERVICE = 'express-z4u4';
+
+/* 对象存储（控制台 COS）：桶 7072-prod-d3gw02rfhd26627e8-1432436662，地域 ap-shanghai，与 CLOUD_ENV 绑定。wx.cloud.uploadFile 无需在代码里写桶名。 */
 
 export function initCloudContainer() {
   // @ts-ignore
   if (typeof wx !== 'undefined' && wx.cloud) {
     // @ts-ignore
-    wx.cloud.init();
+    wx.cloud.init({
+      env: CLOUD_ENV,
+      traceUser: true,
+    });
     cloudReady = true;
-    console.log('wx.cloud.init() done');
+    console.log('wx.cloud.init done, env:', CLOUD_ENV);
   }
 }
 
@@ -33,55 +40,132 @@ export function getApiBase() {
   return '/api';
 }
 
-/** 小程序文件上传走 HTTPS 公网（callContainer 不支持 multipart，且 JSON 体有 ~100KiB 限制，头像 base64 会超限） */
-function resolveUploadBaseUrl(): string {
-  const fromEnv = import.meta.env.VITE_UPLOAD_BASE_URL as string | undefined;
-  if (fromEnv) return fromEnv.replace(/\/$/, '');
+function logUploadFailure(ctx: Record<string, unknown>) {
+  console.error('[uploadFile] FAIL', JSON.stringify(ctx, null, 2));
+}
+
+/** 上传失败时输出 errMsg、filePath、cloudPath */
+function logWxCloudAvatarFail(errMsg: unknown, filePath: string, cloudPath: string) {
+  console.error(
+    '[wx.cloud.uploadFile]',
+    JSON.stringify({
+      errMsg: errMsg == null ? '' : String(errMsg),
+      filePath,
+      cloudPath,
+    })
+  );
+}
+
+/**
+ * 微信云存储上传头像：仅 wx.cloud.uploadFile，不经 callContainer。
+ * cloudPath: avatars/${Date.now()}-${Math.random()}.png
+ * @returns cloud:// 开头的 fileID
+ */
+export async function uploadWxCloudAvatar(filePath: string): Promise<string> {
   // #ifdef MP-WEIXIN
-  return 'https://express-z4u4-257003-7-1432436662.sh.run.tcloudbase.com/api';
-  // #endif
-  return 'http://localhost:3000/api';
-}
-
-function parseUploadErrorMessage(data: unknown): string {
-  if (typeof data !== 'string') return '上传失败';
-  try {
-    const j = JSON.parse(data) as { message?: string };
-    return j?.message || '上传失败';
-  } catch {
-    return '上传失败';
+  const cloudPath = `avatars/${Date.now()}-${Math.random()}.png`;
+  // @ts-ignore
+  if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.uploadFile !== 'function') {
+    logWxCloudAvatarFail('wx.cloud.uploadFile unavailable', filePath, cloudPath);
+    throw new Error('云存储不可用，请检查基础库与 wx.cloud.init');
   }
+  return new Promise((resolve, reject) => {
+    // @ts-ignore
+    wx.cloud.uploadFile({
+      cloudPath,
+      filePath,
+      success: (res: { fileID: string }) => resolve(res.fileID),
+      fail: (e: { errMsg?: string }) => {
+        logWxCloudAvatarFail(e?.errMsg, filePath, cloudPath);
+        const msg = e?.errMsg || '上传失败';
+        reject(
+          new Error(
+            /storage|STORAGE|permission|env/i.test(msg)
+              ? '云存储失败：请在云开发控制台开通云存储并检查权限'
+              : msg
+          )
+        );
+      },
+    });
+  });
+  // #endif
+
+  // #ifndef MP-WEIXIN
+  return Promise.reject(new Error('请在微信小程序内使用云存储上传头像'));
+  // #endif
 }
 
-export async function uploadFile(url: string, filePath: string): Promise<{ url: string }> {
-  const token = uni.getStorageSync('token');
-  const base = resolveUploadBaseUrl();
+/**
+ * 小程序：仅 wx.cloud.uploadFile → 云存储 fileID（不经 callContainer）。
+ * H5：uni.uploadFile 本地开发服务。
+ */
+export async function uploadFile(urlPath: string, filePath: string): Promise<{ url: string }> {
+  // #ifdef MP-WEIXIN
+  const fileID = await uploadWxCloudAvatar(filePath);
+  return { url: fileID };
+  // #endif
 
+  // #ifndef MP-WEIXIN
+  const authToken = uni.getStorageSync('token') as string | undefined;
   return new Promise((resolve, reject) => {
+    const uploadUrl = `http://localhost:3000/api${urlPath.startsWith('/') ? urlPath : `/${urlPath}`}`;
     uni.uploadFile({
-      url: `${base}${url}`,
+      url: uploadUrl,
       filePath,
       name: 'file',
-      header: token ? { Authorization: `Bearer ${token}` } : {},
+      header: authToken ? { Authorization: `Bearer ${authToken}` } : {},
       success: (res) => {
-        if (res.statusCode >= 200 && res.statusCode < 300) {
+        const statusCode = res.statusCode;
+        if (statusCode >= 200 && statusCode < 300) {
           try {
             resolve(JSON.parse(res.data as string) as { url: string });
           } catch {
+            logUploadFailure({
+              channel: 'uni.uploadFile',
+              errMsg: 'JSON parse error',
+              statusCode,
+              uploadUrl,
+              filePath,
+            });
             reject(new Error('上传失败'));
           }
           return;
         }
-        if (res.statusCode === 401) {
+        if (statusCode === 401) {
           triggerLogin();
+          logUploadFailure({
+            channel: 'uni.uploadFile',
+            errMsg: 'HTTP 401',
+            statusCode,
+            uploadUrl,
+            filePath,
+          });
           reject(new Error('请先登录'));
           return;
         }
-        reject(new Error(parseUploadErrorMessage(res.data)));
+        logUploadFailure({
+          channel: 'uni.uploadFile',
+          errMsg: `HTTP ${statusCode}`,
+          statusCode,
+          uploadUrl,
+          filePath,
+          responseBody: typeof res.data === 'string' ? (res.data as string).slice(0, 500) : res.data,
+        });
+        reject(new Error('上传失败'));
       },
-      fail: (err) => reject(err || new Error('上传失败')),
+      fail: (err) => {
+        logUploadFailure({
+          channel: 'uni.uploadFile',
+          errMsg: (err as UniApp.GeneralCallbackResult)?.errMsg ?? String(err),
+          statusCode: null,
+          uploadUrl,
+          filePath,
+        });
+        reject(err || new Error('上传失败'));
+      },
     });
   });
+  // #endif
 }
 
 export async function request<T>(url: string, options: RequestOptions = {}): Promise<T> {

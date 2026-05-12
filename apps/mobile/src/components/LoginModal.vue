@@ -83,7 +83,7 @@
 import { ref } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { authApi } from '@/api/auth';
-import { uploadFile } from '@/utils/request';
+import { uploadWxCloudAvatar } from '@/utils/request';
 import { makeSvgIcon } from '@/utils/icons';
 
 const props = defineProps<{ visible: boolean }>();
@@ -151,6 +151,34 @@ function onNicknameBlur(e: any) {
   tempNickname.value = e.detail.value || '';
 }
 
+/** chooseAvatar 返回本地临时路径或 https 临时 URL，均须上传后再存库，不可长期直接使用 */
+async function resolveAvatarToLocalFile(avatarSrc: string): Promise<string> {
+  if (avatarSrc.startsWith('http://') || avatarSrc.startsWith('https://')) {
+    const dl = await new Promise<UniApp.DownloadSuccessData>((resolve, reject) => {
+      uni.downloadFile({
+        url: avatarSrc,
+        success: resolve,
+        fail: (err) => {
+          console.error(
+            '[LoginModal] downloadFile FAIL',
+            JSON.stringify({ errMsg: (err as UniApp.GeneralCallbackResult)?.errMsg, filePath: avatarSrc })
+          );
+          reject(err);
+        },
+      });
+    });
+    if (dl.statusCode !== 200 || !dl.tempFilePath) {
+      console.error(
+        '[LoginModal] downloadFile bad response',
+        JSON.stringify({ statusCode: dl.statusCode, filePath: avatarSrc })
+      );
+      throw new Error('头像下载失败');
+    }
+    return dl.tempFilePath;
+  }
+  return avatarSrc;
+}
+
 async function saveProfile() {
   saving.value = true;
   try {
@@ -158,8 +186,8 @@ async function saveProfile() {
     const nick = tempNickname.value?.trim();
     if (nick) updateData.nickname = nick;
 
-    if (tempAvatar.value && !tempAvatar.value.startsWith('http')) {
-      let filePath = tempAvatar.value;
+    if (tempAvatar.value) {
+      let filePath = await resolveAvatarToLocalFile(tempAvatar.value);
       try {
         const cr = await new Promise<{ tempFilePath: string }>((resolve, reject) => {
           uni.compressImage({
@@ -171,18 +199,26 @@ async function saveProfile() {
         });
         filePath = cr.tempFilePath;
       } catch {
-        // 使用原临时文件
+        // 使用已解析的本地路径
       }
-      const { url } = await uploadFile('/upload/image', filePath);
-      if (url) updateData.avatarUrl = url;
+      const fileID = await uploadWxCloudAvatar(filePath);
+      if (fileID) updateData.avatarUrl = fileID;
     }
 
     if (Object.keys(updateData).length > 0) {
-      const updated = await authApi.updateProfile(updateData);
+      const updated = await authApi.postUserProfile(updateData);
       authStore.user = { ...authStore.user!, ...updated };
     }
     emit('success');
   } catch (e: any) {
+    console.error(
+      '[LoginModal saveProfile] FAIL',
+      JSON.stringify({
+        message: e?.message,
+        errMsg: e?.errMsg,
+        tempAvatarSample: (tempAvatar.value || '').slice(0, 120),
+      })
+    );
     uni.showToast({ title: e?.message || '保存失败', icon: 'none' });
   } finally {
     saving.value = false;

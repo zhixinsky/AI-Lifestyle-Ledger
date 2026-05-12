@@ -143,7 +143,8 @@ const streakDays = computed(() => authStore.user?.streakDays || 0);
 const avatarUrl = computed(() => {
   const url = authStore.user?.avatarUrl;
   if (!url) return '';
-  if (url.startsWith('http')) return url;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith('cloud://')) return url;
   const base = getApiBase().replace('/api', '');
   return `${base}${url}`;
 });

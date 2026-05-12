@@ -17,7 +17,7 @@ model User {
   phone        String        @unique
   openid       String?       @unique
   nickname     String        @default("")
-  avatarUrl    String?
+  avatarUrl    String?       @db.Text // 可为 cloud:// fileID 或外链，需长于默认 VARCHAR
   passwordHash String?
   streakDays   Int           @default(0)
   createdAt    DateTime      @default(now())
