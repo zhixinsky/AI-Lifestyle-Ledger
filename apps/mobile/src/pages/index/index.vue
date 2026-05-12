@@ -257,14 +257,16 @@
 
     <AppTabbar current="index" />
   </PageShell>
+  <LoginModal :visible="showLogin" @close="showLogin = false" @success="onLoginSuccess" />
   </view>
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
+import LoginModal from '@/components/LoginModal.vue';
 import { useFinanceStore } from '@/stores/finance';
 import { useAiStore } from '@/stores/ai';
 import { useAuthStore } from '@/stores/auth';
@@ -280,6 +282,7 @@ const aiStore = useAiStore();
 const authStore = useAuthStore();
 const { formatMoney, formatSignedMoney } = useMoney();
 
+const showLogin = ref(false);
 const budgetOverview = ref<BudgetOverview | null>(null);
 const wealthOverview = ref<WealthOverview | null>(null);
 const topGoal = ref<WealthGoal | null>(null);
@@ -370,32 +373,48 @@ function goGrowth() {
   uni.navigateTo({ url: '/pages/growth/index' });
 }
 
-onMounted(async () => {
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
-  if (!authStore.isLoggedIn) {
-    uni.redirectTo({ url: '/pages/login/index' });
-    return;
-  }
-  try {
-    await Promise.all([
-      authStore.loadProfile(),
-      finance.loadCategories(),
-      finance.loadDashboard(),
-      finance.loadStatistics(),
-      aiStore.loadInsight(),
-      budgetApi.overview().then((r) => { budgetOverview.value = r; }).catch(() => {}),
-      wealthApi.overview().then((r) => {
-        wealthOverview.value = r;
-        topGoal.value = r.goals.find((g: WealthGoal) => !g.completed) || r.goals[0] || null;
-      }).catch(() => {}),
-      growthApi.listBadges().then((r) => { badges.value = r; }).catch(() => {}),
-    ]);
-  } catch (_) { /* 401 会被 request.ts 自动跳转登录 */ }
+function loadData() {
+  Promise.all([
+    authStore.loadProfile(),
+    finance.loadCategories(),
+    finance.loadDashboard(),
+    finance.loadStatistics(),
+    aiStore.loadInsight(),
+    budgetApi.overview().then((r) => { budgetOverview.value = r; }).catch(() => {}),
+    wealthApi.overview().then((r) => {
+      wealthOverview.value = r;
+      topGoal.value = r.goals.find((g: WealthGoal) => !g.completed) || r.goals[0] || null;
+    }).catch(() => {}),
+    growthApi.listBadges().then((r) => { badges.value = r; }).catch(() => {}),
+  ]).catch(() => {});
   request<{ greeting: string }>('/ai/greeting').then((r) => {
     if (r.greeting) aiGreeting.value = r.greeting;
   }).catch(() => {});
+}
+
+function onLoginSuccess() {
+  showLogin.value = false;
+  loadData();
+}
+
+function onShowLogin() {
+  showLogin.value = true;
+}
+
+onMounted(() => {
+  // #ifdef MP-WEIXIN
+  uni.hideTabBar();
+  // #endif
+  uni.$on('show-login', onShowLogin);
+  if (authStore.isLoggedIn) {
+    loadData();
+  } else {
+    showLogin.value = true;
+  }
+});
+
+onUnmounted(() => {
+  uni.$off('show-login', onShowLogin);
 });
 </script>
 

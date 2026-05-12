@@ -15,16 +15,14 @@ interface RequestOptions {
   auth?: boolean;
 }
 
-let isRedirecting = false;
+let isShowingLogin = false;
 
-function redirectToLogin() {
-  if (isRedirecting) return;
-  isRedirecting = true;
+function triggerLogin() {
+  if (isShowingLogin) return;
+  isShowingLogin = true;
   uni.removeStorageSync('token');
-  uni.redirectTo({
-    url: '/pages/login/index',
-    complete: () => { isRedirecting = false; }
-  });
+  uni.$emit('show-login');
+  setTimeout(() => { isShowingLogin = false; }, 1000);
 }
 
 export function getApiBase() {
@@ -45,8 +43,8 @@ export async function uploadFile(url: string, filePath: string): Promise<{ url: 
       success: (res) => {
         if (res.statusCode >= 200 && res.statusCode < 300) {
           resolve(JSON.parse(res.data));
-        } else if (res.statusCode === 401) {
-          redirectToLogin();
+        } else         if (res.statusCode === 401) {
+          triggerLogin();
           reject(new Error('请先登录'));
         } else {
           reject(new Error('上传失败'));
@@ -75,7 +73,7 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
           return;
         }
         if (res.statusCode === 401) {
-          redirectToLogin();
+          triggerLogin();
           reject(new Error('请先登录'));
           return;
         }

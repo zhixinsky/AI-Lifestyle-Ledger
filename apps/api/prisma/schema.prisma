@@ -15,6 +15,7 @@ enum TransactionType {
 model User {
   id           String        @id @default(cuid())
   phone        String        @unique
+  openid       String?       @unique
   nickname     String        @default("小满")
   avatarUrl    String?
   passwordHash String?

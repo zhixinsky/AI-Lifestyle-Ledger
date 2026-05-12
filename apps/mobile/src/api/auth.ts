@@ -15,6 +15,9 @@ export const authApi = {
   login(payload: LoginPayload) {
     return request<LoginResult>('/auth/login', { method: 'POST', data: payload });
   },
+  wxLogin(code: string) {
+    return request<LoginResult>('/auth/wx-login', { method: 'POST', data: { code } });
+  },
   profile() {
     return request<User>('/users/me');
   },
