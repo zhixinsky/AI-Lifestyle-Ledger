@@ -6,7 +6,7 @@ function toBase64(raw: string): string {
   );
 }
 
-function svgToUri(raw: string): string {
+export function svgToUri(raw: string): string {
   // #ifdef H5
   return `data:image/svg+xml,${encodeURIComponent(raw)}`;
   // #endif

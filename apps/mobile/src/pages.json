@@ -1,23 +1,16 @@
 {
   "pages": [
     {
+      "path": "pages/mili/index",
+      "style": {
+        "navigationBarTitleText": "AI米粒",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/index/index",
       "style": {
-        "navigationBarTitleText": "Moona",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/ai/index",
-      "style": {
-        "navigationBarTitleText": "AI 财务助手",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/ai-confirm/index",
-      "style": {
-        "navigationBarTitleText": "AI 识别结果",
+        "navigationBarTitleText": "概览",
         "navigationStyle": "custom"
       }
     },
@@ -25,6 +18,20 @@
       "path": "pages/bills/index",
       "style": {
         "navigationBarTitleText": "账单",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/ai/index",
+      "style": {
+        "navigationBarTitleText": "AI 聊天",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/ai-confirm/index",
+      "style": {
+        "navigationBarTitleText": "AI 识别结果",
         "navigationStyle": "custom"
       }
     },
@@ -108,28 +115,28 @@
   ],
   "globalStyle": {
     "navigationBarTextStyle": "black",
-    "navigationBarTitleText": "Moona",
-    "navigationBarBackgroundColor": "#F7F8FA",
-    "backgroundColor": "#F7F8FA"
+    "navigationBarTitleText": "AI生活账本",
+    "navigationBarBackgroundColor": "#f4faf8",
+    "backgroundColor": "#f4faf8"
   },
   "tabBar": {
     "custom": true,
     "color": "#88909B",
-    "selectedColor": "#00D4C8",
+    "selectedColor": "#2eb8a0",
     "backgroundColor": "#FFFFFF",
     "borderStyle": "white",
     "list": [
       {
         "pagePath": "pages/index/index",
-        "text": "首页"
-      },
-      {
-        "pagePath": "pages/ai/index",
-        "text": "AI"
+        "text": "概览"
       },
       {
         "pagePath": "pages/bills/index",
         "text": "账单"
+      },
+      {
+        "pagePath": "pages/mili/index",
+        "text": "AI米粒"
       },
       {
         "pagePath": "pages/discover/index",

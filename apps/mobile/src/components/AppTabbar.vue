@@ -1,42 +1,33 @@
 <template>
   <view class="tabbar-anchor">
-    <view
-      class="tabbar-capsule"
-      :style="capsuleStyle"
-    >
-      <!-- Liquid Glass 多层底 -->
+    <view class="tabbar-capsule" :style="capsuleStyle">
       <view class="glass-layer glass-base" />
       <view class="glass-layer glass-shine" />
       <view class="glass-layer glass-refraction" />
       <view class="glass-layer glass-rim" />
       <view class="glass-breath" />
 
-      <!-- 滑块 -->
       <view class="slider-track">
         <view class="slider-glow" :style="sliderStyle" />
       </view>
 
-      <!-- Tab 项 -->
       <view class="tab-row">
         <view
           v-for="(tab, idx) in tabs"
           :key="tab.key"
           :class="['tab-item', { active: current === tab.key, center: tab.center }]"
-          @tap="onTap(tab, idx)"
+          @tap="onTap(tab)"
         >
-          <!-- 中间按钮 -->
           <template v-if="tab.center">
             <view class="center-orb">
               <view class="orb-glow" />
               <view class="orb-ring" />
               <view class="orb-core">
-                <text class="orb-icon">＋</text>
+                <image class="orb-logo" :src="miliTabLogo" mode="aspectFit" />
               </view>
               <view class="orb-pulse" />
             </view>
           </template>
-
-          <!-- 普通按钮 -->
           <template v-else>
             <view class="icon-wrap">
               <image
@@ -52,60 +43,16 @@
       </view>
     </view>
   </view>
-
-  <!-- 内置记账弹窗 -->
-  <TransactionEditor
-    v-model="form"
-    :visible="editorVisible"
-    :saving="saving"
-    :categories="categories"
-    @save="handleSave"
-    @close="editorVisible = false"
-  />
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import TransactionEditor from '@/components/TransactionEditor.vue';
-import { useFinanceStore } from '@/stores/finance';
-import { useTransactionForm } from '@/composables/useTransactionForm';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 const props = defineProps<{ current: string }>();
-const emit = defineEmits<{ add: [] }>();
 
-const finance = useFinanceStore();
-const categories = computed(() => finance.categories);
+/** 根目录 ailogo.png 同步至 src/static/tab，供中间 Tab 使用 */
+const miliTabLogo = '/static/tab/ailogo.png';
 
-const editorVisible = ref(false);
-const { saving, form, save } = useTransactionForm(async () => {
-  if (props.current === 'index') {
-    await Promise.all([finance.loadDashboard(), finance.loadTransactions()]);
-  } else if (props.current === 'discover') {
-    // no-op
-  }
-});
-
-async function handleSave() {
-  await save();
-  editorVisible.value = false;
-}
-
-function openEditor() {
-  form.value = {
-    type: 'expense',
-    amount: 0,
-    categoryId: '',
-    occurredAt: new Date().toISOString(),
-    remark: '',
-    tags: [],
-  };
-  editorVisible.value = true;
-  if (!finance.categories.length) {
-    finance.loadCategories();
-  }
-}
-
-/* ── 图标 SVG Data URI (base64 编码，兼容微信小程序) ── */
 function svg(paths: string, color: string) {
   const raw = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${paths}</svg>`;
   // #ifdef H5
@@ -113,50 +60,50 @@ function svg(paths: string, color: string) {
   // #endif
   // #ifndef H5
   const encoded = uni.arrayBufferToBase64(
-    new Uint8Array([...raw].map(c => c.charCodeAt(0))).buffer
+    new Uint8Array([...raw].map((c) => c.charCodeAt(0))).buffer
   );
   return `data:image/svg+xml;base64,${encoded}`;
   // #endif
 }
 
 const gray = '#8e8e93';
-const mint = '#00c6b7';
+const mint = '#2eb8a0';
 
 const iconPaths = {
-  home: '<path d="M4 11.4L12 4l8 7.4V20a1.5 1.5 0 01-1.5 1.5h-13A1.5 1.5 0 014 20z"/><path d="M9.5 21.5V15h5v6.5"/>',
-  ai: '<circle cx="12" cy="12" r="9"/><circle cx="9.5" cy="10.5" r="1.2"/><circle cx="14.5" cy="10.5" r="1.2"/><path d="M9.5 15c.8 1 1.8 1.5 2.5 1.5s1.7-.5 2.5-1.5"/>',
+  overview:
+    '<path d="M4 19V5"/><path d="M10 19V10"/><path d="M16 19v-5"/><path d="M22 19V8"/>',
+  bills:
+    '<path d="M6 4h12v16H6z"/><path d="M9 8h6"/><path d="M9 12h4"/>',
   discover: '<circle cx="12" cy="12" r="9"/><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36z"/>',
   profile: '<circle cx="12" cy="8.5" r="3.8"/><path d="M5.5 21.5c0-3.6 2.9-6.5 6.5-6.5s6.5 2.9 6.5 6.5"/>',
 };
 
 const tabs = [
-  { key: 'index',    label: '首页', icon: svg(iconPaths.home, gray),     iconActive: svg(iconPaths.home, mint),     center: false },
-  { key: 'ai',       label: 'AI',   icon: svg(iconPaths.ai, gray),       iconActive: svg(iconPaths.ai, mint),       center: false },
-  { key: '__add__',  label: '',      icon: '',                            iconActive: '',                            center: true  },
+  { key: 'index', label: '概览', icon: svg(iconPaths.overview, gray), iconActive: svg(iconPaths.overview, mint), center: false },
+  { key: 'bills', label: '账单', icon: svg(iconPaths.bills, gray), iconActive: svg(iconPaths.bills, mint), center: false },
+  { key: 'mili', label: '', icon: '', iconActive: '', center: true },
   { key: 'discover', label: '发现', icon: svg(iconPaths.discover, gray), iconActive: svg(iconPaths.discover, mint), center: false },
-  { key: 'profile',  label: '我的', icon: svg(iconPaths.profile, gray),  iconActive: svg(iconPaths.profile, mint),  center: false },
+  { key: 'profile', label: '我的', icon: svg(iconPaths.profile, gray), iconActive: svg(iconPaths.profile, mint), center: false },
 ];
 
-/* ── 滑块位置 ── */
 const sliderIndex = computed(() => {
   const idx = tabs.findIndex((t) => t.key === props.current);
-  return idx >= 0 ? idx : 0;
+  return idx >= 0 ? idx : 2;
 });
 
 const sliderStyle = computed(() => ({
   transform: `translateX(${sliderIndex.value * 100}%)`,
 }));
 
-/* ── 滚动联动 ── */
 const scrollY = ref(0);
 const capsuleStyle = computed(() => {
   const t = Math.min(scrollY.value / 300, 1);
-  const blur = 32 + t * 16;
-  const bg = 0.52 + t * 0.2;
-  const scale = 1 - t * 0.015;
+  const blur = 36 + t * 18;
+  const bg = 0.42 + t * 0.18;
+  const scale = 1 - t * 0.012;
   return {
-    backdropFilter: `blur(${blur}px) saturate(${180 + t * 40}%)`,
-    WebkitBackdropFilter: `blur(${blur}px) saturate(${180 + t * 40}%)`,
+    backdropFilter: `blur(${blur}px) saturate(${165 + t * 35}%)`,
+    WebkitBackdropFilter: `blur(${blur}px) saturate(${165 + t * 35}%)`,
     background: `rgba(255,255,255,${bg})`,
     transform: `scale(${scale})`,
   };
@@ -180,27 +127,21 @@ onUnmounted(() => {
   // #endif
 });
 
-/* ── 路由 ── */
 const routes: Record<string, string> = {
   index: '/pages/index/index',
-  ai: '/pages/ai/index',
+  bills: '/pages/bills/index',
+  mili: '/pages/mili/index',
   discover: '/pages/discover/index',
   profile: '/pages/profile/index',
 };
 
-function onTap(tab: (typeof tabs)[number], _idx: number) {
-  if (tab.center) {
-    openEditor();
-    emit('add');
-    return;
-  }
+function onTap(tab: (typeof tabs)[number]) {
   if (tab.key === props.current) return;
   uni.switchTab({ url: routes[tab.key] });
 }
 </script>
 
 <style scoped>
-/* ━━━ 定位锚点 ━━━ */
 .tabbar-anchor {
   position: fixed;
   z-index: 9999;
@@ -210,95 +151,97 @@ function onTap(tab: (typeof tabs)[number], _idx: number) {
   pointer-events: none;
 }
 
-/* ━━━ 胶囊主体 ━━━ */
 .tabbar-capsule {
   position: relative;
   border-radius: 999rpx;
   padding: 0 4rpx;
   pointer-events: auto;
   transition:
-    backdrop-filter 0.6s ease,
-    background 0.6s ease,
-    transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-
-  /* 默认值（被 JS 覆盖） */
-  background: rgba(255, 255, 255, 0.52);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
+    backdrop-filter 0.55s ease,
+    background 0.55s ease,
+    transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(40px) saturate(165%);
+  -webkit-backdrop-filter: blur(40px) saturate(165%);
 }
 
-/* ━━━ Liquid Glass 多层 ━━━ */
 .glass-layer {
   position: absolute;
-  top: 0; right: 0; bottom: 0; left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   border-radius: 999rpx;
   pointer-events: none;
 }
 
-/* 底层：柔和外阴影 + 内阴影 */
 .glass-base {
   box-shadow:
-    0 8rpx 48rpx rgba(0, 0, 0, 0.07),
-    0 2rpx 6rpx rgba(0, 0, 0, 0.03),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.8),
-    inset 0 -1rpx 0 rgba(0, 0, 0, 0.04);
+    0 12rpx 48rpx rgba(46, 184, 160, 0.12),
+    0 4rpx 16rpx rgba(24, 48, 44, 0.05),
+    inset 0 2rpx 0 rgba(255, 255, 255, 0.88),
+    inset 0 -2rpx 0 rgba(127, 255, 212, 0.06);
 }
 
-/* 顶部高光：模拟玻璃弧面反射 */
 .glass-shine {
-  background: linear-gradient(
-    180deg,
-    rgba(255, 255, 255, 0.55) 0%,
-    rgba(255, 255, 255, 0.12) 40%,
-    transparent 60%
-  );
-  opacity: 0.7;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.62) 0%, rgba(255, 255, 255, 0.12) 42%, transparent 62%);
+  opacity: 0.72;
   mask: linear-gradient(180deg, #000 0%, transparent 55%);
   -webkit-mask: linear-gradient(180deg, #000 0%, transparent 55%);
 }
 
-/* 折射流光 */
 .glass-refraction {
   background: linear-gradient(
     105deg,
-    transparent 20%,
-    rgba(0, 212, 200, 0.06) 35%,
-    rgba(124, 140, 255, 0.05) 50%,
-    transparent 65%
+    transparent 18%,
+    rgba(127, 255, 212, 0.12) 38%,
+    rgba(140, 255, 216, 0.08) 52%,
+    transparent 72%
   );
-  animation: refraction-drift 8s ease-in-out infinite alternate;
+  animation: refraction-drift 9s ease-in-out infinite alternate;
 }
 
 @keyframes refraction-drift {
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
+  0% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 0.95;
+  }
 }
 
-/* 边缘描边 */
 .glass-rim {
-  border: 1rpx solid rgba(255, 255, 255, 0.45);
+  border: 1rpx solid rgba(255, 255, 255, 0.55);
 }
 
-/* 呼吸光效 */
 .glass-breath {
   position: absolute;
-  top: -2rpx; right: -2rpx; bottom: -2rpx; left: -2rpx;
+  top: -2rpx;
+  right: -2rpx;
+  bottom: -2rpx;
+  left: -2rpx;
   border-radius: 999rpx;
   pointer-events: none;
-  box-shadow: 0 0 24rpx 2rpx rgba(0, 212, 200, 0.08);
-  animation: breath 4s ease-in-out infinite;
+  box-shadow: 0 0 32rpx 2rpx rgba(127, 255, 212, 0.18);
+  animation: breath 4.2s ease-in-out infinite;
 }
 
 @keyframes breath {
-  0%, 100% { opacity: 0.3; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.005); }
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1.004);
+  }
 }
 
-/* ━━━ 滑块 ━━━ */
 .slider-track {
   position: absolute;
-  top: 8rpx;
-  bottom: 8rpx;
+  top: 4rpx;
+  bottom: 4rpx;
   left: 4rpx;
   right: 4rpx;
   pointer-events: none;
@@ -311,29 +254,28 @@ function onTap(tab: (typeof tabs)[number], _idx: number) {
   width: 20%;
   height: 100%;
   border-radius: 999rpx;
-  transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-
+  transition: transform 0.48s cubic-bezier(0.34, 1.45, 0.64, 1);
   background: radial-gradient(
-    ellipse at 50% 30%,
-    rgba(0, 212, 200, 0.18) 0%,
-    rgba(0, 212, 200, 0.06) 60%,
+    ellipse at 50% 28%,
+    rgba(127, 255, 212, 0.28) 0%,
+    rgba(46, 184, 160, 0.1) 55%,
     transparent 100%
   );
   box-shadow:
-    inset 0 1rpx 2rpx rgba(255, 255, 255, 0.5),
-    0 0 20rpx rgba(0, 212, 200, 0.1);
+    inset 0 1rpx 2rpx rgba(255, 255, 255, 0.55),
+    0 0 24rpx rgba(127, 255, 212, 0.12);
 }
 
-/* ━━━ Tab 行 ━━━ */
 .tab-row {
   position: relative;
   z-index: 2;
   display: flex;
   align-items: center;
-  height: 108rpx;
+  height: 96rpx;
+  padding: 4rpx 0;
+  box-sizing: border-box;
 }
 
-/* ━━━ 普通 Tab ━━━ */
 .tab-item {
   flex: 1;
   display: flex;
@@ -342,7 +284,7 @@ function onTap(tab: (typeof tabs)[number], _idx: number) {
   justify-content: center;
   gap: 2rpx;
   height: 100%;
-  transition: all 0.35s ease;
+  transition: all 0.32s ease;
 }
 
 .icon-wrap {
@@ -355,55 +297,66 @@ function onTap(tab: (typeof tabs)[number], _idx: number) {
 }
 
 .tab-svg {
-  width: 44rpx;
-  height: 44rpx;
-  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-              filter 0.4s ease;
+  width: 42rpx;
+  height: 42rpx;
+  transition:
+    transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.38s ease;
 }
 
 .tab-item.active .tab-svg {
-  transform: scale(1.2) translateY(-4rpx);
-  filter: drop-shadow(0 2rpx 8rpx rgba(0, 198, 183, 0.35));
+  transform: scale(1.1);
+  filter: drop-shadow(0 2rpx 10rpx rgba(46, 184, 160, 0.35));
 }
 
-/* 选中发光 */
 .icon-glow {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 64rpx;
-  height: 64rpx;
-  margin: -32rpx 0 0 -32rpx;
+  width: 58rpx;
+  height: 58rpx;
+  margin: -29rpx 0 0 -29rpx;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 212, 200, 0.25) 0%, transparent 70%);
-  animation: icon-pulse 2.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(127, 255, 212, 0.35) 0%, transparent 72%);
+  animation: icon-pulse 2.6s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes icon-pulse {
-  0%, 100% { opacity: 0.6; transform: scale(0.9); }
-  50% { opacity: 1; transform: scale(1.15); }
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
 }
 
 .tab-text {
+  display: block;
   font-size: 20rpx;
   font-weight: 500;
   color: #8e8e93;
-  opacity: 0.8;
-  transition: all 0.35s ease;
+  opacity: 0.82;
   letter-spacing: 0.5rpx;
+  text-align: center;
+  width: 100%;
+  line-height: 1.2;
 }
 
 .tab-item.active .tab-text {
-  color: #00b8a9;
+  color: #2a9d8f;
   font-weight: 700;
   opacity: 1;
-  transform: translateY(-2rpx);
+  transform: none;
 }
 
-/* ━━━ 中间 Orb ━━━ */
 .tab-item.center {
-  flex: 1.15;
+  flex: 1.12;
+  justify-content: center;
+  padding-bottom: 0;
 }
 
 .center-orb {
@@ -411,99 +364,122 @@ function onTap(tab: (typeof tabs)[number], _idx: number) {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 96rpx;
-  height: 96rpx;
-  margin-top: -24rpx;
-  animation: orbFloat 3s ease-in-out infinite;
+  width: 88rpx;
+  height: 88rpx;
+  margin-top: -26rpx;
+  animation: orbFloat 3.2s ease-in-out infinite;
 }
 
 @keyframes orbFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6rpx); }
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6rpx);
+  }
 }
 
-/* 呼吸光晕 */
 .orb-glow {
   position: absolute;
-  top: -14rpx; right: -14rpx; bottom: -14rpx; left: -14rpx;
+  top: -12rpx;
+  right: -12rpx;
+  bottom: -12rpx;
+  left: -12rpx;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 212, 200, 0.25) 0%, transparent 70%);
-  animation: glowBreath 2.5s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(127, 255, 212, 0.45) 0%, transparent 70%);
+  animation: glowBreath 2.6s ease-in-out infinite;
 }
 
 @keyframes glowBreath {
-  0%, 100% { transform: scale(0.85); opacity: 0.5; }
-  50% { transform: scale(1.15); opacity: 1; }
+  0%,
+  100% {
+    transform: scale(0.88);
+    opacity: 0.55;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
 }
 
-/* 外圈 */
 .orb-ring {
   position: absolute;
-  top: -4rpx; right: -4rpx; bottom: -4rpx; left: -4rpx;
+  top: -3rpx;
+  right: -3rpx;
+  bottom: -3rpx;
+  left: -3rpx;
   border-radius: 50%;
-  border: 2rpx solid rgba(0, 212, 200, 0.3);
-  animation: ring-rotate 6s linear infinite;
+  border: 2rpx solid rgba(127, 255, 212, 0.45);
+  animation: ring-rotate 10s linear infinite;
   background: conic-gradient(
     from 0deg,
     transparent 0%,
-    rgba(0, 212, 200, 0.15) 25%,
-    transparent 50%,
-    rgba(52, 211, 153, 0.15) 75%,
+    rgba(140, 255, 216, 0.2) 22%,
+    transparent 48%,
+    rgba(127, 255, 212, 0.18) 72%,
     transparent 100%
   );
 }
 
 @keyframes ring-rotate {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
-/* 核心球 */
 .orb-core {
   position: relative;
   z-index: 2;
-  width: 84rpx;
-  height: 84rpx;
+  width: 74rpx;
+  height: 74rpx;
   border-radius: 50%;
-  background: linear-gradient(145deg, #00d4c8 0%, #34d399 60%, #00b4d8 100%);
+  background: rgba(255, 255, 255, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
   box-shadow:
-    0 6rpx 24rpx rgba(0, 212, 200, 0.45),
-    0 2rpx 8rpx rgba(0, 212, 200, 0.2),
-    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.35);
-  transition: transform 0.2s ease;
+    0 10rpx 32rpx rgba(127, 255, 212, 0.45),
+    inset 0 3rpx 10rpx rgba(255, 255, 255, 0.85),
+    inset 0 -8rpx 20rpx rgba(46, 184, 160, 0.15);
+  transition: transform 0.18s ease;
 }
 
-.orb-core:active {
-  transform: scale(0.88);
+.orb-logo {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
 }
 
-.orb-icon {
-  color: #fff;
-  font-size: 44rpx;
-  font-weight: 200;
-  margin-top: -4rpx;
-  animation: iconPulse 2.5s ease-in-out infinite;
+.tab-item.center.active .orb-core {
+  box-shadow:
+    0 12rpx 40rpx rgba(127, 255, 212, 0.55),
+    inset 0 3rpx 10rpx rgba(255, 255, 255, 0.92),
+    inset 0 -6rpx 18rpx rgba(46, 184, 160, 0.2);
 }
 
-@keyframes iconPulse {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.15); opacity: 1; }
-}
-
-/* 脉冲光环 */
 .orb-pulse {
   position: absolute;
-  top: -8rpx; right: -8rpx; bottom: -8rpx; left: -8rpx;
+  top: -6rpx;
+  right: -6rpx;
+  bottom: -6rpx;
+  left: -6rpx;
   border-radius: 50%;
-  border: 2rpx solid rgba(0, 212, 200, 0.2);
-  animation: orb-breathe 3s ease-in-out infinite;
+  border: 2rpx solid rgba(127, 255, 212, 0.35);
+  animation: orb-breathe 2.8s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes orb-breathe {
-  0%, 100% { transform: scale(1); opacity: 0.4; }
-  50% { transform: scale(1.18); opacity: 0; }
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: scale(1.16);
+    opacity: 0;
+  }
 }
 </style>

@@ -1,7 +1,7 @@
 {
-    "name" : "Moona",
+    "name" : "AI生活账本",
     "appid" : "__UNI__MOONA",
-    "description" : "AI 财务生活助手",
+    "description" : "AI陪伴型生活账本 · AI米粒",
     "versionName" : "0.1.0",
     "versionCode" : "100",
     "mp-weixin" : {

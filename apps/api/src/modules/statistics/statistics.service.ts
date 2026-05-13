@@ -29,7 +29,7 @@ export class StatisticsService {
         where: { userId },
         include: { category: true, tags: { include: { tag: true } } },
         orderBy: { occurredAt: 'desc' },
-        take: 3
+        take: 10
       }),
       this.prisma.user.findUnique({ where: { id: userId } }),
       this.prisma.budget.findFirst({

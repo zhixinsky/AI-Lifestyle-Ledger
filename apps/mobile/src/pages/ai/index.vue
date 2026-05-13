@@ -157,6 +157,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick, onMounted } from 'vue';
+import { onLoad } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import { aiApi } from '@/api/ai';
 import { useAiStore } from '@/stores/ai';
@@ -202,7 +203,7 @@ function goBack() {
   if (pages.length > 1) {
     uni.navigateBack();
   } else {
-    uni.switchTab({ url: '/pages/index/index' });
+    uni.switchTab({ url: '/pages/mili/index' });
   }
 }
 
@@ -278,6 +279,31 @@ async function sendChat(message: string) {
   await nextTick();
   scrollTop.value = 99999;
 }
+
+/** 从 AI 米粒统一入口跳转：非记账意图时带文案进入对话 */
+onLoad(async (options: Record<string, string | undefined>) => {
+  let text = '';
+  if (options?.from === 'mili_bridge') {
+    try {
+      text = String(uni.getStorageSync('MILI_VOICE_PREFILL') || '').trim();
+      uni.removeStorageSync('MILI_VOICE_PREFILL');
+    } catch {
+      /* ignore */
+    }
+  } else if (typeof options?.prefill === 'string' && options.prefill.trim()) {
+    try {
+      text = decodeURIComponent(options.prefill).trim();
+    } catch {
+      text = options.prefill.trim();
+    }
+  }
+  if (!text) return;
+
+  mode.value = 'chat';
+  await nextTick();
+  await sendChat(text);
+  scrollTop.value = 99999;
+});
 
 async function parseBill(text: string) {
   aiStore.chatMessages.push({ role: 'user', content: text });

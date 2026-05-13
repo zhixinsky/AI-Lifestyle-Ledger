@@ -36,7 +36,7 @@ const article = ref<Article | null>(null);
 function goBack() {
   const pages = getCurrentPages();
   if (pages.length > 1) { uni.navigateBack(); }
-  else { uni.switchTab({ url: '/pages/index/index' }); }
+  else { uni.switchTab({ url: '/pages/mili/index' }); }
 }
 
 function catLabel(cat: string) {

@@ -1,14 +1,6 @@
 <template>
   <view>
   <PageShell>
-    <!-- 顶部问候 -->
-    <view class="topbar">
-      <view>
-        <text class="greeting">Hi，{{ userName }}</text>
-        <text class="sub-text">{{ aiGreeting }}</text>
-      </view>
-    </view>
-
     <!-- 今日支出 Hero -->
     <MoonaCard>
       <view class="hero-row">
@@ -150,10 +142,10 @@
       </MoonaCard>
     </view>
 
-    <!-- 最近账单 -->
+    <!-- 最近记录（最新 10 条，点击进入账单） -->
     <view class="section" @tap="goBills">
       <view class="section-header">
-        <text class="section-title">最近 3 笔</text>
+        <text class="section-title">最近记录</text>
         <text class="section-sub">本月 ¥{{ formatAmount(summary.monthExpense) }}</text>
       </view>
       <MoonaCard>
@@ -271,7 +263,6 @@ import { useFinanceStore } from '@/stores/finance';
 import { useAiStore } from '@/stores/ai';
 import { useAuthStore } from '@/stores/auth';
 import { useMoney } from '@/composables/useMoney';
-import { getApiBase, request } from '@/utils/request';
 import { budgetApi } from '@/api/budgets';
 import { wealthApi } from '@/api/wealth';
 import { growthApi } from '@/api/growth';
@@ -289,16 +280,6 @@ const topGoal = ref<WealthGoal | null>(null);
 const badges = ref<Badge[]>([]);
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
 const badgeTotal = computed(() => badges.value.length);
-
-const userName = computed(() => authStore.user?.nickname || '用户');
-const aiGreeting = ref('今天过得怎么样？');
-const userAvatar = computed(() => {
-  const url = authStore.user?.avatarUrl;
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  if (url.startsWith('cloud://')) return url;
-  return `${getApiBase().replace('/api', '')}${url}`;
-});
 
 const summary = computed(() => finance.dashboard || {
   todayExpense: 0,
@@ -351,7 +332,7 @@ function formatAmount(val: number) {
 }
 
 function goAiChat() {
-  uni.switchTab({ url: '/pages/ai/index' });
+  uni.switchTab({ url: '/pages/mili/index' });
 }
 
 function goProfile() {
@@ -388,9 +369,6 @@ function loadData() {
     }).catch(() => {}),
     growthApi.listBadges().then((r) => { badges.value = r; }).catch(() => {}),
   ]).catch(() => {});
-  request<{ greeting: string }>('/ai/greeting').then((r) => {
-    if (r.greeting) aiGreeting.value = r.greeting;
-  }).catch(() => {});
 }
 
 function onLoginSuccess() {
@@ -420,29 +398,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 顶部问候 */
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 8rpx;
-}
-
-.greeting {
-  display: block;
-  font-size: 40rpx;
-  font-weight: 800;
-  color: #1e1e1e;
-}
-
-.sub-text {
-  display: block;
-  margin-top: 4rpx;
-  font-size: 26rpx;
-  color: #88909b;
-}
-
-
 /* Hero 卡片 */
 .hero-row {
   display: flex;

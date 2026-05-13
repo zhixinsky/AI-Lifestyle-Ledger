@@ -1,0 +1,99 @@
+/**
+ * 米粒球外圈随机浮动提示（玻璃胶囊 + 小尾巴）
+ * 父级需 .orb-stage position:relative
+ */
+
+.orb-float-pill {
+  position: absolute;
+  z-index: 2;
+  max-width: 240rpx;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(18rpx) scale(0.92);
+  transition:
+    opacity 0.85s cubic-bezier(0.22, 0.61, 0.36, 1),
+    transform 0.88s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+.orb-float-pill--show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+/* 围绕中心：左列 3 槽（上/中/下），右列 3 槽；脚本里 position 0–5 随机占用，避免与当前已显示的其它条撞位 */
+.orb-float-pill--s0 {
+  left: 0;
+  top: 14%;
+}
+
+.orb-float-pill--s1 {
+  left: 0;
+  top: 42%;
+}
+
+.orb-float-pill--s2 {
+  left: 0;
+  top: 70%;
+}
+
+.orb-float-pill--s3 {
+  right: 0;
+  top: 14%;
+}
+
+.orb-float-pill--s4 {
+  right: 0;
+  top: 42%;
+}
+
+.orb-float-pill--s5 {
+  right: 0;
+  top: 70%;
+}
+
+.orb-float-pill__bubble {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 56rpx;
+  min-height: 56rpx;
+  max-height: 56rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1rpx solid rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow:
+    0 10rpx 32rpx rgba(127, 255, 212, 0.14),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.85);
+}
+
+.orb-float-pill__text {
+  width: 100%;
+  font-size: 18rpx;
+  line-height: 1.28;
+  font-weight: 600;
+  color: rgba(22, 72, 58, 0.88);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+}
+
+.orb-float-pill__tail {
+  position: absolute;
+  left: 50%;
+  bottom: -9rpx;
+  margin-left: -11rpx;
+  width: 0;
+  height: 0;
+  border-left: 12rpx solid transparent;
+  border-right: 12rpx solid transparent;
+  border-top: 14rpx solid rgba(255, 255, 255, 0.38);
+  filter: drop-shadow(0 2rpx 6rpx rgba(120, 200, 170, 0.2));
+}

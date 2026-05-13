@@ -3,19 +3,15 @@
     <!-- 导航 -->
     <view class="nav">
       <view class="nav-left">
-        <view class="nav-back" @tap="goBack">
-          <view class="back-glass" />
-          <image class="back-icon" :src="backIcon" />
-        </view>
         <text class="nav-title">账单</text>
-      </view>
-      <view class="nav-right">
-        <view v-if="!isCurrentMonth" class="back-today" @tap="goToday">
-          <text>今</text>
-        </view>
-        <view class="month-picker-btn" @tap="openPicker">
-          <text class="picker-label">{{ pickerDisplay }}</text>
-          <text class="picker-arrow">▾</text>
+        <view class="nav-after-title">
+          <view class="month-picker-btn" @tap.stop="openPicker">
+            <text class="picker-label">{{ pickerDisplay }}</text>
+            <text class="picker-arrow">▾</text>
+          </view>
+          <view v-if="!isCurrentMonth" class="back-today" @tap.stop="goToday">
+            <text>今</text>
+          </view>
         </view>
       </view>
     </view>
@@ -182,14 +178,16 @@
     </view>
 
     <view style="height: 60rpx;" />
+
+    <AppTabbar current="bills" />
   </PageShell>
 </template>
 
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
+import AppTabbar from '@/components/AppTabbar.vue';
 import { useFinanceStore } from '@/stores/finance';
 import { useMoney } from '@/composables/useMoney';
 import { transactionApi } from '@/api/transactions';
@@ -270,15 +268,6 @@ async function confirmAmountEdit() {
     uni.showToast({ title: '已更新', icon: 'success' });
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' });
-  }
-}
-
-function goBack() {
-  const pages = getCurrentPages();
-  if (pages.length > 1) {
-    uni.navigateBack();
-  } else {
-    uni.switchTab({ url: '/pages/index/index' });
   }
 }
 
@@ -419,52 +408,29 @@ onMounted(() => {
 .nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
   gap: 12rpx;
+  flex: 1;
+  min-width: 0;
 }
 
-.nav-back {
-  position: relative;
-  width: 60rpx;
-  height: 60rpx;
+.nav-after-title {
   display: flex;
   align-items: center;
-  justify-content: center;
-}
-
-.back-glass {
-  position: absolute;
-  top: 0; right: 0; bottom: 0; left: 0;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.55);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1rpx solid rgba(255, 255, 255, 0.5);
-}
-
-.back-icon {
-  position: relative;
-  z-index: 1;
-  width: 36rpx;
-  height: 36rpx;
-  margin-left: -4rpx;
+  gap: 10rpx;
+  margin-left: 8rpx;
+  flex-shrink: 0;
 }
 
 .nav-title {
   font-size: 38rpx;
   font-weight: 800;
   color: #1e1e1e;
-}
-
-.nav-right {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
+  flex-shrink: 0;
 }
 
 .back-today {

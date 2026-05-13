@@ -1,5 +1,7 @@
 <template>
-  <view v-if="visible" class="editor-mask">
+  <view v-if="visible" class="editor-root" :class="{ 'is-sheet': variant === 'sheet' }">
+    <view v-if="variant === 'sheet'" class="sheet-backdrop" @tap="emit('close')" />
+    <view class="editor-mask" :class="{ 'editor-mask-sheet': variant === 'sheet' }">
     <!-- 顶栏（始终显示） -->
     <view class="top-bar" :style="{ marginTop: statusBarHeight + 'px' }">
       <view class="nav-back" @tap="emit('close')">
@@ -138,6 +140,7 @@
         </picker-view>
       </view>
     </view>
+    </view>
   </view>
 </template>
 
@@ -170,6 +173,8 @@ const props = defineProps<{
   saving: boolean;
   modelValue: TransactionPayload;
   categories: Category[];
+  /** fullscreen：全屏；sheet：底部抽屉（AI米粒手动记账） */
+  variant?: 'fullscreen' | 'sheet';
 }>();
 
 const emit = defineEmits<{
@@ -377,18 +382,61 @@ function onDone() {
 </script>
 
 <style scoped>
-.editor-mask {
+.editor-root {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  width: 100vw;
-  height: 100vh;
   z-index: 10000;
+}
+
+.sheet-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(18, 42, 38, 0.4);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.editor-mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
   background: #f7f8fa;
   display: flex;
   flex-direction: column;
+}
+
+.editor-mask-sheet {
+  top: auto;
+  height: 90vh;
+  max-height: 90vh;
+  border-radius: 32rpx 32rpx 0 0;
+  overflow: hidden;
+  background: rgba(248, 252, 250, 0.98);
+  backdrop-filter: blur(28px) saturate(118%);
+  -webkit-backdrop-filter: blur(28px) saturate(118%);
+  box-shadow: 0 -12rpx 60rpx rgba(46, 184, 160, 0.12);
+  animation: editor-sheet-in 0.38s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes editor-sheet-in {
+  from {
+    transform: translateY(110%);
+    opacity: 0.85;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 /* 顶栏 */

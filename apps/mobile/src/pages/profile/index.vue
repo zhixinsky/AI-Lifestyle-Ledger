@@ -341,7 +341,6 @@ onMounted(async () => {
 const menuGroups = [
   [
     { icon: '⭐', label: '会员中心', url: '/pages/membership/index' },
-    { icon: '📋', label: '账单', url: '/pages/bills/index' },
     { icon: '💰', label: '预算管理', url: '/pages/budget/index' },
     { icon: '📈', label: '财富成长', url: '/pages/saving-goals/index' },
   ],
@@ -355,7 +354,6 @@ const menuGroups = [
   ],
   [
     { icon: '💾', label: '数据备份', url: '' },
-    { icon: '⚙', label: '设置', url: '' },
   ],
   [
     { icon: '💬', label: '帮助与反馈', url: '' },
@@ -363,7 +361,7 @@ const menuGroups = [
   ],
 ];
 
-const tabBarPages = ['/pages/index/index', '/pages/ai/index', '/pages/bills/index', '/pages/discover/index', '/pages/profile/index'];
+const tabBarPages = ['/pages/index/index', '/pages/bills/index', '/pages/mili/index', '/pages/discover/index', '/pages/profile/index'];
 
 function onMenuTap(item: { label: string; url: string }) {
   if (item.url) {
@@ -385,7 +383,7 @@ function handleLogout() {
       if (res.confirm) {
         authStore.logout();
         financeStore.reset();
-        uni.switchTab({ url: '/pages/index/index' });
+        uni.switchTab({ url: '/pages/mili/index' });
         setTimeout(() => uni.$emit('show-login'), 300);
       }
     }

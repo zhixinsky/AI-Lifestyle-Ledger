@@ -97,9 +97,11 @@ function switchTo(page: string) {
   if (page === props.current) return;
   const routes: Record<string, string> = {
     index: '/pages/index/index',
-    ai: '/pages/ai/index',
     bills: '/pages/bills/index',
+    mili: '/pages/mili/index',
+    discover: '/pages/discover/index',
     profile: '/pages/profile/index',
+    ai: '/pages/ai/index',
   };
   uni.switchTab({ url: routes[page] });
 }

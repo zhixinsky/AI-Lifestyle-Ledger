@@ -1,0 +1,177 @@
+/**
+ * Apple Intelligence / VisionOS 风格全屏背景（仅样式层）
+ * uni-app：根节点使用 fixed 的 .page-bg，内层依次为 __base / __mint / __cyan / __lilac / __grain
+ */
+
+$page-bg-solid: #f6f8fa;
+
+$vision-mint: rgba(170, 255, 220, 0.35);
+$vision-cyan: rgba(120, 230, 255, 0.28);
+$vision-lilac: rgba(220, 210, 255, 0.22);
+
+$page-bg-breathe: 17s;
+
+.page-bg {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 第 1 层：整体底色 + 中央大面积偏白柔光 */
+.page-bg__base {
+  position: absolute;
+  inset: 0;
+  background-color: $page-bg-solid;
+  background-image:
+    radial-gradient(
+      ellipse 82% 76% at 50% 48%,
+      rgba(255, 255, 255, 0.92) 0%,
+      rgba(247, 248, 250, 0.55) 36%,
+      rgba(246, 248, 250, 0.12) 58%,
+      transparent 76%
+    ),
+    linear-gradient(185deg, rgba(255, 255, 255, 0.35) 0%, transparent 42%, rgba(245, 247, 250, 0.4) 100%);
+  animation: page-bg-breathe-base $page-bg-breathe ease-in-out infinite;
+}
+
+/* 第 2 层：右上薄荷绿 */
+.page-bg__mint {
+  position: absolute;
+  width: 165%;
+  height: 165%;
+  top: -38%;
+  left: -18%;
+  opacity: 0.94;
+  background: radial-gradient(
+    ellipse 88% 72% at 86% 6%,
+    $vision-mint 0%,
+    rgba(170, 255, 220, 0.14) 40%,
+    rgba(170, 255, 220, 0.04) 58%,
+    transparent 72%
+  );
+  animation: page-bg-breathe-mint $page-bg-breathe ease-in-out infinite;
+  animation-delay: -2.5s;
+}
+
+/* 第 3 层：左下青蓝 */
+.page-bg__cyan {
+  position: absolute;
+  width: 170%;
+  height: 170%;
+  top: -22%;
+  left: -48%;
+  opacity: 0.92;
+  background: radial-gradient(
+    ellipse 100% 78% at 8% 92%,
+    $vision-cyan 0%,
+    rgba(120, 230, 255, 0.12) 44%,
+    rgba(120, 230, 255, 0.03) 62%,
+    transparent 76%
+  );
+  animation: page-bg-breathe-cyan 19s ease-in-out infinite;
+  animation-delay: -6s;
+}
+
+/* 第 4 层：右下极淡粉紫 */
+.page-bg__lilac {
+  position: absolute;
+  width: 155%;
+  height: 155%;
+  top: -8%;
+  left: -12%;
+  opacity: 0.9;
+  background: radial-gradient(
+    ellipse 82% 70% at 94% 96%,
+    $vision-lilac 0%,
+    rgba(220, 210, 255, 0.1) 46%,
+    rgba(220, 210, 255, 0.03) 64%,
+    transparent 78%
+  );
+  animation: page-bg-breathe-lilac 20s ease-in-out infinite;
+  animation-delay: -9s;
+}
+
+/* 极轻颗粒 / 空气雾（无外链图，纯 CSS；避免 mix-blend 在部分小程序端异常） */
+.page-bg__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image: repeating-linear-gradient(
+      -11deg,
+      rgba(255, 255, 255, 0) 0,
+      rgba(255, 255, 255, 0) 5px,
+      rgba(255, 255, 255, 0.045) 5px,
+      rgba(255, 255, 255, 0.045) 6px
+    ),
+    repeating-linear-gradient(
+      8deg,
+      rgba(0, 0, 0, 0) 0,
+      rgba(0, 0, 0, 0) 7px,
+      rgba(120, 130, 140, 0.02) 7px,
+      rgba(120, 130, 140, 0.02) 8px
+    );
+  animation: page-bg-breathe-grain 22s ease-in-out infinite;
+}
+
+@keyframes page-bg-breathe-base {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.985;
+  }
+}
+
+@keyframes page-bg-breathe-mint {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.9;
+  }
+  50% {
+    transform: translate(-1.8%, 1.2%) scale(1.015);
+    opacity: 0.98;
+  }
+}
+
+@keyframes page-bg-breathe-cyan {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.88;
+  }
+  50% {
+    transform: translate(2%, -1.4%) scale(1.02);
+    opacity: 0.96;
+  }
+}
+
+@keyframes page-bg-breathe-lilac {
+  0%,
+  100% {
+    transform: translate(0%, 0%) scale(1);
+    opacity: 0.86;
+  }
+  50% {
+    transform: translate(-1.2%, -1.8%) scale(1.018);
+    opacity: 0.94;
+  }
+}
+
+@keyframes page-bg-breathe-grain {
+  0%,
+  100% {
+    opacity: 0.1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
