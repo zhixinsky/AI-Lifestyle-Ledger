@@ -92,10 +92,18 @@ export class AiReportService {
     const now = dayjs();
     const weekStart = now.subtract(7, 'day').startOf('day').toDate();
     const weekEnd = now.endOf('day').toDate();
-    const [transactions, memoryContext] = await Promise.all([
+    let [transactions, memoryContext] = await Promise.all([
       this.getTransactions(userId, weekStart, weekEnd),
       this.memories.getMemoryContext(userId, 6),
     ]);
+
+    if (transactions.length === 0) {
+      transactions = await this.getTransactions(
+        userId,
+        now.startOf('month').toDate(),
+        now.endOf('month').toDate(),
+      );
+    }
 
     if (transactions.length === 0 && memoryContext) {
       return { text: this.memoryOnlyInsight(memoryContext), type: 'tip' };

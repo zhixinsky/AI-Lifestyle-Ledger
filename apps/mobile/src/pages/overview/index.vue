@@ -309,7 +309,22 @@ const localInsightText = computed(() => {
   if (recent) return `最近记录了${recent.category?.name || '一笔账'}，继续保持会更准`;
   return '记一笔账，让 AI 更了解你';
 });
-const insightText = computed(() => aiStore.insight?.text || localInsightText.value);
+const hasUserRecords = computed(() => {
+  const s = summary.value;
+  if (s.recentTransactions?.length) return true;
+  if (s.monthExpense > 0 || s.monthIncome > 0) return true;
+  if (finance.statistics?.totalExpense || finance.statistics?.totalIncome) return true;
+  return false;
+});
+const emptyInsightPatterns = ['记一笔账', '还没有记账', '还没有新的共同记录'];
+function isEmptyInsightText(text?: string) {
+  return Boolean(text && emptyInsightPatterns.some((pattern) => text.includes(pattern)));
+}
+const insightText = computed(() => {
+  const aiText = aiStore.insight?.text;
+  if (hasUserRecords.value && isEmptyInsightText(aiText)) return localInsightText.value;
+  return aiText || localInsightText.value;
+});
 const insightType = computed(() => aiStore.insight?.type || 'tip');
 const insightColorMap: Record<string, string> = {
   tip: '#00d4c8', warning: '#ff9f43', praise: '#7c8cff', info: '#667085'

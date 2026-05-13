@@ -363,7 +363,7 @@ const menuGroups = [
     { icon: '📈', label: '财富成长', url: '/pages/saving-goals/index' },
   ],
   [
-    { icon: '👨‍👩‍👧', label: '共享账本', url: '/pages/shared-book/index' },
+    { icon: '🏡', label: '生活空间', url: '/pages/shared-book/index' },
     { icon: '🏆', label: '成长中心', url: '/pages/growth/index' },
   ],
   [

@@ -78,7 +78,7 @@ const levelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][c
 const benefits = [
   { icon: '🤖', label: 'AI 智能对话', desc: '无限次 AI 财务对话', level: 0 },
   { icon: '📊', label: '高级分析报告', desc: '月度/年度深度财务分析', level: 1 },
-  { icon: '👨‍👩‍👧', label: '共享账本', desc: '家庭/情侣多人记账', level: 1 },
+  { icon: '🏡', label: '生活空间', desc: '家庭/情侣生活记录', level: 1 },
   { icon: '🏆', label: '成长体系', desc: '勋章和挑战系统', level: 0 },
   { icon: '📈', label: 'AI 财富建议', desc: '个性化存钱与理财建议', level: 1 },
   { icon: '🔮', label: 'AI 预测', desc: '消费趋势与目标预测', level: 2 },

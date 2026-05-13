@@ -88,14 +88,14 @@
     {
       "path": "pages/shared-book/index",
       "style": {
-        "navigationBarTitleText": "共享账本",
+        "navigationBarTitleText": "生活空间",
         "navigationStyle": "custom"
       }
     },
     {
       "path": "pages/shared-book/detail",
       "style": {
-        "navigationBarTitleText": "账本详情",
+        "navigationBarTitleText": "生活空间",
         "navigationStyle": "custom"
       }
     },

@@ -154,24 +154,39 @@
     </view>
 
     <!-- 名称编辑弹窗 -->
-    <view v-if="showNameEdit" class="edit-mask" @tap="showNameEdit = false">
-      <view class="edit-sheet edit-sheet-sm" @tap.stop>
+    <view v-if="showNameEdit" class="edit-mask" @tap="closeNameEdit">
+      <view class="edit-sheet edit-sheet-sm keyboard-safe-sheet" :style="editSheetKeyboardStyle" @tap.stop>
         <text class="edit-sheet-title">编辑名称</text>
-        <input class="edit-input" v-model="editNameVal" :focus="showNameEdit" @confirm="confirmNameEdit" />
+        <input
+          class="edit-input"
+          v-model="editNameVal"
+          :focus="showNameEdit"
+          :adjust-position="false"
+          cursor-spacing="24"
+          @confirm="confirmNameEdit"
+        />
         <view class="edit-actions">
-          <button class="edit-cancel" @tap="showNameEdit = false">取消</button>
+          <button class="edit-cancel" @tap="closeNameEdit">取消</button>
           <button class="edit-confirm" @tap="confirmNameEdit">确定</button>
         </view>
       </view>
     </view>
 
     <!-- 金额编辑弹窗 -->
-    <view v-if="showAmountEdit" class="edit-mask" @tap="showAmountEdit = false">
-      <view class="edit-sheet edit-sheet-sm" @tap.stop>
+    <view v-if="showAmountEdit" class="edit-mask" @tap="closeAmountEdit">
+      <view class="edit-sheet edit-sheet-sm keyboard-safe-sheet" :style="editSheetKeyboardStyle" @tap.stop>
         <text class="edit-sheet-title">编辑金额</text>
-        <input class="edit-input" type="digit" v-model="editAmountVal" :focus="showAmountEdit" @confirm="confirmAmountEdit" />
+        <input
+          class="edit-input"
+          type="digit"
+          v-model="editAmountVal"
+          :focus="showAmountEdit"
+          :adjust-position="false"
+          cursor-spacing="24"
+          @confirm="confirmAmountEdit"
+        />
         <view class="edit-actions">
-          <button class="edit-cancel" @tap="showAmountEdit = false">取消</button>
+          <button class="edit-cancel" @tap="closeAmountEdit">取消</button>
           <button class="edit-confirm" @tap="confirmAmountEdit">确定</button>
         </view>
       </view>
@@ -184,7 +199,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
@@ -206,10 +221,30 @@ const showNameEdit = ref(false);
 const showAmountEdit = ref(false);
 const editNameVal = ref('');
 const editAmountVal = ref('');
+const keyboardHeight = ref(0);
+
+const editSheetKeyboardStyle = computed(() => {
+  if (!keyboardHeight.value || (!showNameEdit.value && !showAmountEdit.value)) return {};
+  return {
+    transform: `translateY(-${keyboardHeight.value + 12}px)`,
+  };
+});
 
 const pickerCategories = computed(() =>
   finance.categories.filter((c) => c.type === editingItem.value?.type)
 );
+
+function handleKeyboardHeightChange(res: { height: number }) {
+  keyboardHeight.value = res.height || 0;
+}
+
+onMounted(() => {
+  uni.onKeyboardHeightChange?.(handleKeyboardHeightChange);
+});
+
+onUnmounted(() => {
+  uni.offKeyboardHeightChange?.(handleKeyboardHeightChange);
+});
 
 function openCatPicker(item: Transaction) {
   editingItem.value = item;
@@ -239,6 +274,11 @@ function openNameEdit(item: Transaction) {
   showNameEdit.value = true;
 }
 
+function closeNameEdit() {
+  showNameEdit.value = false;
+  keyboardHeight.value = 0;
+}
+
 async function confirmNameEdit() {
   if (!editingItem.value) return;
   const val = editNameVal.value.trim();
@@ -248,7 +288,7 @@ async function confirmNameEdit() {
     if (!isCategoryName) {
       await transactionApi.update(editingItem.value.id, { remark: val });
     }
-    showNameEdit.value = false;
+    closeNameEdit();
     await fetchData();
     uni.showToast({ title: '已更新', icon: 'success' });
     try {
@@ -267,6 +307,11 @@ function openAmountEdit(item: Transaction) {
   showAmountEdit.value = true;
 }
 
+function closeAmountEdit() {
+  showAmountEdit.value = false;
+  keyboardHeight.value = 0;
+}
+
 async function confirmAmountEdit() {
   if (!editingItem.value) return;
   const val = Number(editAmountVal.value);
@@ -276,7 +321,7 @@ async function confirmAmountEdit() {
   }
   try {
     await transactionApi.update(editingItem.value.id, { amount: Math.round(val * 100) / 100 });
-    showAmountEdit.value = false;
+    closeAmountEdit();
     await fetchData();
     uni.showToast({ title: '已更新', icon: 'success' });
     try {
@@ -826,6 +871,11 @@ onShow(() => {
 
 .edit-sheet-sm {
   max-height: 40vh;
+}
+
+.keyboard-safe-sheet {
+  transition: transform 0.22s ease;
+  will-change: transform;
 }
 
 .edit-sheet-title {

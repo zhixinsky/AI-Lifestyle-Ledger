@@ -345,7 +345,19 @@ const localInsightFallback = computed(() => {
   return '记一笔账，让米粒更了解你的日常节奏～';
 });
 
-const insightDisplay = computed(() => aiStore.insight?.text || localInsightFallback.value);
+const emptyInsightPatterns = ['记一笔账', '还没有记账', '还没有新的共同记录'];
+
+function isEmptyInsightText(text?: string) {
+  return Boolean(text && emptyInsightPatterns.some((pattern) => text.includes(pattern)));
+}
+
+const insightDisplay = computed(() => {
+  const aiText = aiStore.insight?.text;
+  if (hasUserRecords.value && isEmptyInsightText(aiText)) {
+    return localInsightFallback.value;
+  }
+  return aiText || localInsightFallback.value;
+});
 
 const ORB_HINT_POOL = [
   '这个月花了多少？',
