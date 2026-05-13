@@ -91,9 +91,6 @@ async function loadArticles() {
 
 watch(activeTab, loadArticles);
 onMounted(() => {
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
   loadArticles();
 });
 </script>

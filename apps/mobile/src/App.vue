@@ -1,9 +1,13 @@
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app';
+import { useLoginSheetStore } from '@/stores/login-sheet';
 import { initCloudContainer } from '@/utils/request';
+
+const loginSheet = useLoginSheetStore();
 
 onLaunch(() => {
   console.log('Moona launched');
+  uni.$on('show-login', () => loginSheet.open());
   // #ifdef MP-WEIXIN
   initCloudContainer();
   // #endif

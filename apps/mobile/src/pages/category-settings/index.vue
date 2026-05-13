@@ -93,16 +93,25 @@
         </view>
       </view>
     </view>
+
+    <LoginModal
+      :visible="loginSheet.visible"
+      @close="loginSheet.close"
+      @success="loginSheet.onSuccess"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import LoginModal from '@/components/LoginModal.vue';
 import { backIcon } from '@/utils/icons';
+import { useLoginSheetStore } from '@/stores/login-sheet';
 import { useFinanceStore } from '@/stores/finance';
 import type { Category, TransactionType } from '@/types/domain';
 
 const finance = useFinanceStore();
+const loginSheet = useLoginSheetStore();
 const currentType = ref<TransactionType>('expense');
 const showAddDialog = ref(false);
 const newName = ref('');

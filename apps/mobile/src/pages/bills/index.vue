@@ -184,16 +184,19 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
 import { useFinanceStore } from '@/stores/finance';
+import { useAuthStore } from '@/stores/auth';
 import { useMoney } from '@/composables/useMoney';
 import { transactionApi } from '@/api/transactions';
 import type { Transaction, Category } from '@/types/domain';
 
 const finance = useFinanceStore();
+const authStore = useAuthStore();
 const keyword = ref('');
 const { formatSignedMoney } = useMoney();
 
@@ -380,6 +383,11 @@ function switchPeriod(p: 'week' | 'month' | 'year') {
 }
 
 async function fetchData() {
+  if (!authStore.isLoggedIn) {
+    finance.transactions = [];
+    finance.statistics = null;
+    return;
+  }
   finance.statistics = null;
   await Promise.all([
     finance.loadTransactions({ month: selectedMonthStr.value, keyword: keyword.value }),
@@ -395,12 +403,11 @@ watch([filterType, period], async () => {
   await fetchData();
 });
 
-onMounted(() => {
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
+onShow(() => {
   fetchData();
-  if (!finance.categories.length) finance.loadCategories();
+  if (authStore.isLoggedIn && !finance.categories.length) {
+    finance.loadCategories();
+  }
 });
 </script>
 

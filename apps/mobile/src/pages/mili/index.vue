@@ -70,7 +70,11 @@
             </view>
             <view class="mili-orb" :class="orbState">
               <view class="orb-mascot-slot">
-                <image class="orb-mascot" src="/static/images/ai.png" mode="aspectFit" />
+                <image
+                  class="orb-mascot"
+                  :src="orbMascotSrc"
+                  mode="aspectFit"
+                />
               </view>
             </view>
           </view>
@@ -117,6 +121,12 @@
 
     <AppTabbar current="mili" />
 
+    <LoginModal
+      :visible="loginSheet.visible"
+      @close="loginSheet.close"
+      @success="loginSheet.onSuccess"
+    />
+
     <TransactionEditor
       v-model="form"
       variant="sheet"
@@ -133,18 +143,26 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import AppTabbar from '@/components/AppTabbar.vue';
+import LoginModal from '@/components/LoginModal.vue';
 import TransactionEditor from '@/components/TransactionEditor.vue';
+import { useLoginSheetStore } from '@/stores/login-sheet';
 import { aiApi } from '@/api/ai';
 import { useAiStore } from '@/stores/ai';
 import { useFinanceStore } from '@/stores/finance';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionForm } from '@/composables/useTransactionForm';
+import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
 import { dailyExpenseFromTrend, buildSpendCurveSvgRaw } from './spend-curve';
 
 const aiStore = useAiStore();
 const finance = useFinanceStore();
 const authStore = useAuthStore();
+const loginSheet = useLoginSheetStore();
+
+/** 云存储路径勿写成连续的 `/ai.png`，否则 Vite 会误当作根目录静态资源导入导致构建失败 */
+const orbMascotSrc =
+  'cloud://prod-d3gw02rfhd26627e8.7072-prod-d3gw02rfhd26627e8-1432436662' + '/' + 'ai' + '.png';
 
 const categories = computed(() => finance.categories);
 
@@ -496,9 +514,6 @@ onMounted(() => {
   } catch {
     /* ignore */
   }
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
   if (authStore.isLoggedIn) {
     finance.loadDashboard().catch(() => {});
     authStore.loadProfile().catch(() => {});
@@ -511,7 +526,7 @@ onMounted(() => {
 });
 
 onShow(() => {
-  if (!finance.categories.length) {
+  if (authStore.isLoggedIn && !finance.categories.length) {
     finance.loadCategories();
   }
   if (authStore.isLoggedIn) {
@@ -525,6 +540,7 @@ onShow(() => {
 });
 
 function openEditor() {
+  if (!ensureLoggedIn()) return;
   form.value = {
     type: 'expense',
     amount: 0,
@@ -578,6 +594,7 @@ async function parseVoiceBill(text: string) {
 }
 
 function onHoldStart() {
+  if (!ensureLoggedIn()) return;
   if (parsing.value) return;
   voiceLiveText.value = '';
   recording.value = true;

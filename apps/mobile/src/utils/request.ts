@@ -132,7 +132,9 @@ export async function uploadFile(urlPath: string, filePath: string): Promise<{ u
           return;
         }
         if (statusCode === 401) {
-          triggerLogin();
+          if (authToken) {
+            triggerLogin();
+          }
           logUploadFailure({
             channel: 'uni.uploadFile',
             errMsg: 'HTTP 401',
@@ -199,7 +201,8 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
           const msg = (res.data as { message?: string })?.message;
           if (res.statusCode === 401) {
             const isAuthEndpoint = reqPath.includes('/auth/');
-            if (!isAuthEndpoint) {
+            // 无 token 时的 401 不弹窗（允许未登录浏览）；仅会话过期仍弹登录
+            if (!isAuthEndpoint && token) {
               triggerLogin();
             }
             reject(new Error(msg || '请先登录'));
@@ -234,7 +237,7 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
         }
         const msg = (res.data as { message?: string })?.message;
         if (res.statusCode === 401) {
-          if (!url.includes('/auth/')) {
+          if (!url.includes('/auth/') && token) {
             triggerLogin();
           }
           reject(new Error(msg || '请先登录'));

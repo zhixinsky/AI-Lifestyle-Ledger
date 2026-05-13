@@ -5,11 +5,20 @@
     <view class="page-body" :style="{ paddingTop: topPadding }">
       <slot />
     </view>
+    <LoginModal
+      :visible="loginSheet.visible"
+      @close="loginSheet.close"
+      @success="loginSheet.onSuccess"
+    />
   </view>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import LoginModal from '@/components/LoginModal.vue';
+import { useLoginSheetStore } from '@/stores/login-sheet';
+
+const loginSheet = useLoginSheetStore();
 
 const topPadding = ref('60px');
 try {

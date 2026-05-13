@@ -161,9 +161,12 @@ import { onLoad } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import { aiApi } from '@/api/ai';
 import { useAiStore } from '@/stores/ai';
+import { useAuthStore } from '@/stores/auth';
 import { backIcon } from '@/utils/icons';
+import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 
 const aiStore = useAiStore();
+const authStore = useAuthStore();
 const input = ref('');
 const parsing = ref(false);
 const scrollTop = ref(0);
@@ -190,9 +193,7 @@ const showSuggestions = computed(() =>
   aiStore.chatMessages.length < 2 && !busy.value
 );
 
-// #ifdef MP-WEIXIN
-onMounted(() => { uni.hideTabBar(); });
-// #endif
+// 自定义 tabBar 模式下禁止调用原生 hideTabBar/showTabBar
 
 const dragDirection = ref<'left' | 'right' | ''>('');
 let touchStartX = 0;
@@ -246,6 +247,7 @@ function handleQuickTap(text: string) {
 }
 
 async function handleSend() {
+  if (!ensureLoggedIn()) return;
   const text = input.value.trim();
   if (!text || busy.value) return;
   input.value = '';
@@ -261,6 +263,7 @@ async function handleSend() {
 }
 
 async function submitVoiceText(text: string) {
+  if (!ensureLoggedIn()) return;
   if (!text || busy.value) return;
   voiceText.value = '';
 
@@ -299,6 +302,11 @@ onLoad(async (options: Record<string, string | undefined>) => {
   }
   if (!text) return;
 
+  if (!authStore.isLoggedIn) {
+    uni.$emit('show-login');
+    return;
+  }
+
   mode.value = 'chat';
   await nextTick();
   await sendChat(text);
@@ -333,6 +341,7 @@ async function parseBill(text: string) {
 }
 
 function startRecord() {
+  if (!ensureLoggedIn()) return;
   if (busy.value) return;
   voiceText.value = '';
   recording.value = true;

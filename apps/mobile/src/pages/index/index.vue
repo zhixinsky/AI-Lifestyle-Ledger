@@ -249,7 +249,6 @@
 
     <AppTabbar current="index" />
   </PageShell>
-  <LoginModal :visible="showLogin" @close="showLogin = false" @success="onLoginSuccess" />
   </view>
 </template>
 
@@ -258,7 +257,6 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
-import LoginModal from '@/components/LoginModal.vue';
 import { useFinanceStore } from '@/stores/finance';
 import { useAiStore } from '@/stores/ai';
 import { useAuthStore } from '@/stores/auth';
@@ -267,13 +265,13 @@ import { budgetApi } from '@/api/budgets';
 import { wealthApi } from '@/api/wealth';
 import { growthApi } from '@/api/growth';
 import type { BudgetOverview, WealthOverview, WealthGoal, Badge } from '@/types/domain';
+import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 
 const finance = useFinanceStore();
 const aiStore = useAiStore();
 const authStore = useAuthStore();
 const { formatMoney, formatSignedMoney } = useMoney();
 
-const showLogin = ref(false);
 const budgetOverview = ref<BudgetOverview | null>(null);
 const wealthOverview = ref<WealthOverview | null>(null);
 const topGoal = ref<WealthGoal | null>(null);
@@ -340,10 +338,12 @@ function goProfile() {
 }
 
 function goBudget() {
+  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/budget/index' });
 }
 
 function goSavingGoals() {
+  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/saving-goals/index' });
 }
 
@@ -352,6 +352,7 @@ function goBills() {
 }
 
 function goGrowth() {
+  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/growth/index' });
 }
 
@@ -371,29 +372,19 @@ function loadData() {
   ]).catch(() => {});
 }
 
-function onLoginSuccess() {
-  showLogin.value = false;
-  loadData();
-}
-
-function onShowLogin() {
-  showLogin.value = true;
+function onLoginSuccessReload() {
+  if (authStore.isLoggedIn) loadData();
 }
 
 onMounted(() => {
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
-  uni.$on('show-login', onShowLogin);
+  uni.$on('login-success', onLoginSuccessReload);
   if (authStore.isLoggedIn) {
     loadData();
-  } else {
-    showLogin.value = true;
   }
 });
 
 onUnmounted(() => {
-  uni.$off('show-login', onShowLogin);
+  uni.$off('login-success', onLoginSuccessReload);
 });
 </script>
 

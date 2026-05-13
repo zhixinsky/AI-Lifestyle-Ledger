@@ -1,7 +1,7 @@
 <template>
   <PageShell>
     <!-- 用户信息 -->
-    <view class="user-section" @tap="openEditor">
+    <view class="user-section" @tap="onUserSectionTap">
       <view class="user-avatar">
         <image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" />
         <view v-else class="avatar-face">
@@ -83,7 +83,7 @@
     </view>
 
     <!-- VIP 卡片 -->
-    <view v-if="isPro" :class="['vip-card', `vip-level-${memberStatus?.level}`]" @tap="uni.navigateTo({ url: '/pages/membership/index' })">
+    <view v-if="isPro" :class="['vip-card', `vip-level-${memberStatus?.level}`]" @tap="goMembership">
       <view class="vip-level-top">
         <text class="vip-level-icon">{{ memberLevelIcon }}</text>
         <view class="vip-level-info">
@@ -116,7 +116,7 @@
     </MoonaCard>
 
     <!-- 退出 -->
-    <view class="logout-wrap">
+    <view v-if="authStore.isLoggedIn" class="logout-wrap">
       <button class="logout-btn" @tap="handleLogout">退出登录</button>
     </view>
 
@@ -125,7 +125,8 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
@@ -135,6 +136,7 @@ import { authApi } from '@/api/auth';
 import { membershipApi } from '@/api/membership';
 import { uploadFile, getApiBase } from '@/utils/request';
 import type { MembershipStatus } from '@/types/domain';
+import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
@@ -164,6 +166,16 @@ const imgW = ref(300);
 const imgH = ref(300);
 const AREA_SIZE = 300;
 const RING_SIZE = 240;
+
+function onUserSectionTap() {
+  if (!ensureLoggedIn()) return;
+  openEditor();
+}
+
+function goMembership() {
+  if (!ensureLoggedIn()) return;
+  uni.navigateTo({ url: '/pages/membership/index' });
+}
 
 function openEditor() {
   editName.value = userName.value;
@@ -330,12 +342,18 @@ const memberExpire = computed(() => {
   return memberStatus.value.expireAt.substring(0, 10);
 });
 
-onMounted(async () => {
-  // #ifdef MP-WEIXIN
-  uni.hideTabBar();
-  // #endif
+async function refreshProfileData() {
+  if (!authStore.isLoggedIn) return;
   authStore.loadProfile();
-  try { memberStatus.value = await membershipApi.getStatus(); } catch {}
+  try {
+    memberStatus.value = await membershipApi.getStatus();
+  } catch {
+    /* ignore */
+  }
+}
+
+onShow(() => {
+  refreshProfileData();
 });
 
 const menuGroups = [
@@ -364,14 +382,18 @@ const menuGroups = [
 const tabBarPages = ['/pages/index/index', '/pages/bills/index', '/pages/mili/index', '/pages/discover/index', '/pages/profile/index'];
 
 function onMenuTap(item: { label: string; url: string }) {
-  if (item.url) {
-    if (tabBarPages.includes(item.url)) {
-      uni.switchTab({ url: item.url });
-    } else {
-      uni.navigateTo({ url: item.url });
-    }
-  } else {
+  if (!item.url) {
     uni.showToast({ title: `${item.label} 即将上线`, icon: 'none' });
+    return;
+  }
+  if (!authStore.isLoggedIn) {
+    uni.$emit('show-login');
+    return;
+  }
+  if (tabBarPages.includes(item.url)) {
+    uni.switchTab({ url: item.url });
+  } else {
+    uni.navigateTo({ url: item.url });
   }
 }
 
@@ -384,7 +406,6 @@ function handleLogout() {
         authStore.logout();
         financeStore.reset();
         uni.switchTab({ url: '/pages/mili/index' });
-        setTimeout(() => uni.$emit('show-login'), 300);
       }
     }
   });

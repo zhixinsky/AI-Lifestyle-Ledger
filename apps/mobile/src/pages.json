@@ -127,16 +127,16 @@
     "borderStyle": "white",
     "list": [
       {
+        "pagePath": "pages/mili/index",
+        "text": "AI米粒"
+      },
+      {
         "pagePath": "pages/index/index",
         "text": "概览"
       },
       {
         "pagePath": "pages/bills/index",
         "text": "账单"
-      },
-      {
-        "pagePath": "pages/mili/index",
-        "text": "AI米粒"
       },
       {
         "pagePath": "pages/discover/index",
