@@ -7,7 +7,7 @@
       <view class="glass-layer glass-rim" />
       <view class="glass-breath" />
 
-      <view class="slider-track">
+      <view v-if="!isCenterActive" class="slider-track">
         <view class="slider-glow" :style="sliderStyle" />
       </view>
 
@@ -90,6 +90,8 @@ const sliderIndex = computed(() => {
   const idx = tabs.findIndex((t) => t.key === props.current);
   return idx >= 0 ? idx : 2;
 });
+
+const isCenterActive = computed(() => props.current === 'mili');
 
 const sliderStyle = computed(() => ({
   transform: `translateX(${sliderIndex.value * 100}%)`,
@@ -453,10 +455,22 @@ function onTap(tab: (typeof tabs)[number]) {
 }
 
 .tab-item.center.active .orb-core {
+  transform: translateY(-2rpx) scale(1.06);
+  background: rgba(255, 255, 255, 0.28);
   box-shadow:
-    0 12rpx 40rpx rgba(127, 255, 212, 0.55),
+    0 14rpx 44rpx rgba(127, 255, 212, 0.62),
+    0 0 0 8rpx rgba(127, 255, 212, 0.08),
     inset 0 3rpx 10rpx rgba(255, 255, 255, 0.92),
     inset 0 -6rpx 18rpx rgba(46, 184, 160, 0.2);
+}
+
+.tab-item.center.active .orb-glow {
+  background: radial-gradient(circle, rgba(127, 255, 212, 0.68) 0%, rgba(46, 184, 160, 0.18) 42%, transparent 72%);
+}
+
+.tab-item.center.active .orb-ring {
+  border-color: rgba(127, 255, 212, 0.72);
+  box-shadow: 0 0 24rpx rgba(127, 255, 212, 0.24);
 }
 
 .orb-pulse {

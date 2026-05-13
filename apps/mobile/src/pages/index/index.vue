@@ -1109,10 +1109,10 @@ onUnmounted(() => {
 
 .orb-stage {
   position: relative;
-  margin-top: 40rpx;
+  margin-top: 26rpx;
   width: 100%;
   max-width: 700rpx;
-  height: 440rpx;
+  height: 500rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1375,8 +1375,8 @@ onUnmounted(() => {
   z-index: 8;
   left: 18rpx;
   right: 18rpx;
-  top: 42rpx;
-  max-height: 360rpx;
+  top: 8rpx;
+  bottom: 10rpx;
   border-radius: 32rpx;
   border: 1rpx solid rgba(255, 255, 255, 0.72);
   background: rgba(255, 255, 255, 0.34);
@@ -1415,7 +1415,7 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 22rpx 24rpx 8rpx;
+  padding: 18rpx 24rpx 6rpx;
 }
 
 .chat-panel__title-wrap {
@@ -1455,19 +1455,19 @@ onUnmounted(() => {
 .chat-panel__body {
   position: relative;
   z-index: 1;
-  padding: 12rpx 24rpx 24rpx;
+  padding: 8rpx 24rpx 22rpx;
   display: flex;
   flex-direction: column;
   gap: 12rpx;
-  max-height: 250rpx;
+  max-height: 372rpx;
   overflow-y: auto;
 }
 
 .chat-panel__bubble {
-  padding: 16rpx 18rpx;
+  padding: 14rpx 18rpx;
   border-radius: 22rpx;
-  font-size: 26rpx;
-  line-height: 1.6;
+  font-size: 25rpx;
+  line-height: 1.58;
   word-break: break-word;
 }
 
