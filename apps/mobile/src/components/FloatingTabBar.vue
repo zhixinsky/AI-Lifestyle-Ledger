@@ -10,10 +10,10 @@
         <text class="tab-label">首页</text>
       </view>
 
-      <!-- AI -->
-      <view :class="['tab-item', { active: current === 'ai' }]" @tap="switchTo('ai')">
-        <image class="tab-icon-img" :src="current === 'ai' ? icons.aiActive : icons.ai" mode="aspectFit" />
-        <text class="tab-label">AI</text>
+      <!-- AI米粒 -->
+      <view :class="['tab-item', { active: current === 'mili' }]" @tap="switchTo('mili')">
+        <image class="tab-icon-img" :src="current === 'mili' ? icons.aiActive : icons.ai" mode="aspectFit" />
+        <text class="tab-label">米粒</text>
       </view>
 
       <!-- 中间记账按钮 -->
@@ -83,7 +83,7 @@ const icons = {
   profileActive: makeSvg(svgPaths.profile, mint),
 };
 
-const tabs = ['index', 'ai', '__center__', 'bills', 'profile'];
+const tabs = ['index', 'mili', '__center__', 'bills', 'profile'];
 
 const indicatorStyle = computed(() => {
   const idx = tabs.indexOf(props.current);
@@ -96,12 +96,11 @@ const indicatorStyle = computed(() => {
 function switchTo(page: string) {
   if (page === props.current) return;
   const routes: Record<string, string> = {
-    index: '/pages/index/index',
+    index: '/pages/overview/index',
     bills: '/pages/bills/index',
-    mili: '/pages/mili/index',
+    mili: '/pages/index/index',
     discover: '/pages/discover/index',
     profile: '/pages/profile/index',
-    ai: '/pages/ai/index',
   };
   uni.switchTab({ url: routes[page] });
 }

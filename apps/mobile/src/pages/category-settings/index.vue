@@ -147,7 +147,7 @@ function goBack() {
   if (pages.length > 1) {
     uni.navigateBack();
   } else {
-    uni.switchTab({ url: '/pages/mili/index' });
+    uni.switchTab({ url: '/pages/index/index' });
   }
 }
 

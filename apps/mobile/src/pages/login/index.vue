@@ -99,7 +99,7 @@ async function wxLogin() {
     auth.token = result.accessToken;
     auth.user = result.user;
     uni.setStorageSync('token', result.accessToken);
-    uni.switchTab({ url: '/pages/mili/index' });
+    uni.switchTab({ url: '/pages/index/index' });
   } catch (e: any) {
     uni.showToast({ title: e?.message || '微信登录失败', icon: 'none' });
   } finally {
@@ -115,7 +115,7 @@ async function submit() {
   loading.value = true;
   try {
     await auth.login(phone.value, code.value);
-    uni.switchTab({ url: '/pages/mili/index' });
+    uni.switchTab({ url: '/pages/index/index' });
   } catch (e: any) {
     uni.showToast({ title: e?.message || '登录失败', icon: 'none' });
   } finally {

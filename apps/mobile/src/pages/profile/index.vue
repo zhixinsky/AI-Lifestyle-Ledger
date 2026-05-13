@@ -379,7 +379,7 @@ const menuGroups = [
   ],
 ];
 
-const tabBarPages = ['/pages/index/index', '/pages/bills/index', '/pages/mili/index', '/pages/discover/index', '/pages/profile/index'];
+const tabBarPages = ['/pages/overview/index', '/pages/bills/index', '/pages/index/index', '/pages/discover/index', '/pages/profile/index'];
 
 function onMenuTap(item: { label: string; url: string }) {
   if (!item.url) {
@@ -405,7 +405,7 @@ function handleLogout() {
       if (res.confirm) {
         authStore.logout();
         financeStore.reset();
-        uni.switchTab({ url: '/pages/mili/index' });
+        uni.switchTab({ url: '/pages/index/index' });
       }
     }
   });

@@ -1,6 +1,7 @@
 {
     "mp-weixin" : {
-        "appid" : "wx7813e423c1038e4e"
+        "appid" : "wx7813e423c1038e4e",
+        "entryPagePath" : "pages/index/index"
     },
     "appid" : "__UNI__7E22740",
     "name" : "AI生活账本",

@@ -128,9 +128,9 @@ onUnmounted(() => {
 });
 
 const routes: Record<string, string> = {
-  index: '/pages/index/index',
+  index: '/pages/overview/index',
   bills: '/pages/bills/index',
-  mili: '/pages/mili/index',
+  mili: '/pages/index/index',
   discover: '/pages/discover/index',
   profile: '/pages/profile/index',
 };

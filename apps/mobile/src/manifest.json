@@ -6,6 +6,7 @@
     "versionCode" : "100",
     "mp-weixin" : {
         "appid" : "wx7813e423c1038e4e",
+        "entryPagePath": "pages/index/index",
         "setting" : {
             "urlCheck" : false,
             "minified" : true

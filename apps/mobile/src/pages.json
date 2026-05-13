@@ -1,14 +1,15 @@
 {
+  "entryPagePath": "pages/index/index",
   "pages": [
     {
-      "path": "pages/mili/index",
+      "path": "pages/index/index",
       "style": {
         "navigationBarTitleText": "AI米粒",
         "navigationStyle": "custom"
       }
     },
     {
-      "path": "pages/index/index",
+      "path": "pages/overview/index",
       "style": {
         "navigationBarTitleText": "概览",
         "navigationStyle": "custom"
@@ -18,13 +19,6 @@
       "path": "pages/bills/index",
       "style": {
         "navigationBarTitleText": "账单",
-        "navigationStyle": "custom"
-      }
-    },
-    {
-      "path": "pages/ai/index",
-      "style": {
-        "navigationBarTitleText": "AI 聊天",
         "navigationStyle": "custom"
       }
     },
@@ -127,16 +121,16 @@
     "borderStyle": "white",
     "list": [
       {
-        "pagePath": "pages/mili/index",
-        "text": "AI米粒"
-      },
-      {
-        "pagePath": "pages/index/index",
+        "pagePath": "pages/overview/index",
         "text": "概览"
       },
       {
         "pagePath": "pages/bills/index",
         "text": "账单"
+      },
+      {
+        "pagePath": "pages/index/index",
+        "text": "AI米粒"
       },
       {
         "pagePath": "pages/discover/index",

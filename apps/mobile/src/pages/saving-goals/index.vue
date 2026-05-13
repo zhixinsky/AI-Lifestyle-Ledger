@@ -270,7 +270,7 @@ function barHeight(surplus: number) {
 function goBack() {
   const pages = getCurrentPages();
   if (pages.length > 1) { uni.navigateBack(); }
-  else { uni.switchTab({ url: '/pages/mili/index' }); }
+  else { uni.switchTab({ url: '/pages/index/index' }); }
 }
 
 function onDateChange(e: any) { createForm.value.deadline = e.detail.value; }
