@@ -34,7 +34,17 @@
           <text>手机号登录</text>
         </button>
 
-        <text class="legal">登录即同意《用户协议》和《隐私政策》</text>
+        <view class="agreement-row">
+          <view class="agreement-check" :class="{ checked: agreementAccepted }" @tap="toggleAgreement">
+            <text v-if="agreementAccepted">✓</text>
+          </view>
+          <view class="agreement-text">
+            <text>我已阅读并同意</text>
+            <text class="agreement-link" @tap="showUserAgreement">《用户服务协议》</text>
+            <text>和</text>
+            <text class="agreement-link" @tap="openPrivacyPolicy">《隐私政策》</text>
+          </view>
+        </view>
       </view>
 
       <!-- 步骤2: 完善资料（微信头像+昵称） -->
@@ -96,6 +106,7 @@ const authStore = useAuthStore();
 const loading = ref(false);
 const saving = ref(false);
 const step = ref<'login' | 'profile'>('login');
+const agreementAccepted = ref(false);
 const tempAvatar = ref('');
 const tempNickname = ref('');
 const defaultAvatar = 'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJCJ1aPAK2dQagdusBZg/0';
@@ -119,7 +130,50 @@ function goPhoneLogin() {
   uni.navigateTo({ url: '/pages/login/index' });
 }
 
+function toggleAgreement() {
+  agreementAccepted.value = !agreementAccepted.value;
+}
+
+function ensureAgreementAccepted() {
+  if (agreementAccepted.value) return true;
+  uni.showToast({ title: '请先阅读并同意协议', icon: 'none' });
+  return false;
+}
+
+function showUserAgreement() {
+  uni.showModal({
+    title: '用户服务协议',
+    content: '请在使用 AI生活账本 前阅读并理解用户服务协议。继续登录代表你确认已阅读并自愿选择是否同意相关服务条款。',
+    showCancel: false,
+    confirmText: '我知道了',
+  });
+}
+
+function openPrivacyPolicy() {
+  // #ifdef MP-WEIXIN
+  wx.openPrivacyContract({
+    fail: () => {
+      uni.showModal({
+        title: '隐私政策',
+        content: '请在小程序资料页查看并阅读隐私政策，确认理解后再自主选择是否勾选同意。',
+        showCancel: false,
+        confirmText: '我知道了',
+      });
+    },
+  });
+  // #endif
+  // #ifndef MP-WEIXIN
+  uni.showModal({
+    title: '隐私政策',
+    content: '请先阅读隐私政策，确认理解后再自主选择是否勾选同意。',
+    showCancel: false,
+    confirmText: '我知道了',
+  });
+  // #endif
+}
+
 async function wxLogin() {
+  if (!ensureAgreementAccepted()) return;
   loading.value = true;
   try {
     const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
@@ -340,12 +394,44 @@ function skipProfile() {
 
 .phone-btn::after { border: none; }
 
-.legal {
-  display: block;
+.agreement-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12rpx;
   margin-top: 32rpx;
+}
+
+.agreement-check {
+  flex-shrink: 0;
+  width: 28rpx;
+  height: 28rpx;
+  margin-top: 3rpx;
+  border: 2rpx solid #cfd4dc;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20rpx;
+  line-height: 1;
+}
+
+.agreement-check.checked {
+  border-color: #2eb8a0;
+  background: #2eb8a0;
+}
+
+.agreement-text {
+  max-width: 560rpx;
   font-size: 22rpx;
   color: #98a2b3;
-  text-align: center;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.agreement-link {
+  color: #2eb8a0;
 }
 
 /* 步骤2: 完善资料 */
