@@ -32,6 +32,11 @@ export function useTransactionForm(onSaved?: () => Promise<void> | void) {
       await transactionApi.create(form.value);
       visible.value = false;
       uni.showToast({ title: '记账成功', icon: 'success' });
+      try {
+        uni.$emit('transactions-updated');
+      } catch {
+        /* ignore */
+      }
       await onSaved?.();
     } catch (e: any) {
       console.error('[save] failed:', e);

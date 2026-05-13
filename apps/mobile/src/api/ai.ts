@@ -45,6 +45,9 @@ export const aiApi = {
   insight() {
     return request<AiInsight>('/ai/insight');
   },
+  greeting() {
+    return request<{ greeting: string }>('/ai/greeting');
+  },
   userProfile() {
     return request<UserProfile>('/ai/profile');
   },

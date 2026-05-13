@@ -4,6 +4,7 @@ import * as dayjs from 'dayjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiChatService } from './ai-chat.service';
 import { AiPromptService } from './ai-prompt.service';
+import { UserMemoryService } from './user-memory.service';
 
 interface ChatHistory {
   role: 'user' | 'assistant';
@@ -16,14 +17,26 @@ export class AiFinancialChatService {
     private readonly prisma: PrismaService,
     private readonly aiChat: AiChatService,
     private readonly prompts: AiPromptService,
+    private readonly memories: UserMemoryService,
   ) {}
 
   async chat(userId: string, message: string, history: ChatHistory[] = []) {
-    const context = await this.buildUserContext(userId);
+    const [context, memoryContext] = await Promise.all([
+      this.buildUserContext(userId),
+      this.memories.getMemoryContext(userId),
+    ]);
     const systemPrompt = this.prompts.getFinancialChatPrompt();
 
     const messages = [
-      { role: 'system' as const, content: `${systemPrompt}\n\n用户财务概况：\n${context}` },
+      {
+        role: 'system' as const,
+        content: [
+          systemPrompt,
+          `用户财务概况：\n${context}`,
+          memoryContext ? `用户近期/长期记忆：\n${memoryContext}` : '',
+          '如果用户表达了新的省钱目标、资金压力或消费偏好，可以在回复里自然说明“米粒记住啦”。',
+        ].filter(Boolean).join('\n\n'),
+      },
       ...history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
       { role: 'user' as const, content: message },
     ];
@@ -31,15 +44,24 @@ export class AiFinancialChatService {
     const result = await this.aiChat.complete(messages);
 
     if (!result) {
-      return {
+      const fallback = {
         reply: '抱歉，AI 暂时无法响应，请稍后再试～',
         suggestions: ['查看今日消费', '本月账单分析'],
       };
+      return fallback;
     }
 
     try {
-      return JSON.parse(result);
+      const parsed = JSON.parse(result);
+      const reply = parsed.reply || result;
+      this.memories.extractFromChat(userId, message, reply).catch((err) => {
+        console.error('[UserMemory] extract failed:', err);
+      });
+      return parsed;
     } catch {
+      this.memories.extractFromChat(userId, message, result).catch((err) => {
+        console.error('[UserMemory] extract failed:', err);
+      });
       return { reply: result, suggestions: [] };
     }
   }
@@ -125,29 +147,14 @@ export class AiFinancialChatService {
     return lines.filter(Boolean).join('\n');
   }
 
-  private greetingCache = new Map<string, { text: string; slot: string }>();
-
-  private getTimeSlotKey(): string {
-    const h = dayjs().hour();
-    const day = dayjs().format('YYYY-MM-DD');
-    const slot = h < 11 ? 'morning' : h < 14 ? 'noon' : h < 18 ? 'afternoon' : 'evening';
-    return `${day}-${slot}`;
-  }
-
   async getGreeting(userId: string): Promise<{ greeting: string }> {
-    const slotKey = this.getTimeSlotKey();
-    const cached = this.greetingCache.get(userId);
-    if (cached && cached.slot === slotKey) {
-      return { greeting: cached.text };
-    }
-
     const now = dayjs();
     const monthStart = now.startOf('month').toDate();
     const monthEnd = now.endOf('month').toDate();
     const yesterdayStart = now.subtract(1, 'day').startOf('day').toDate();
     const yesterdayEnd = now.subtract(1, 'day').endOf('day').toDate();
 
-    const [recentTx, yesterdayTx, user] = await Promise.all([
+    const [recentTx, yesterdayTx, user, memoryContext] = await Promise.all([
       this.prisma.transaction.findMany({
         where: { userId, occurredAt: { gte: monthStart, lte: monthEnd } },
         include: { category: true },
@@ -159,6 +166,7 @@ export class AiFinancialChatService {
         include: { category: true },
       }),
       this.prisma.user.findUnique({ where: { id: userId } }),
+      this.memories.getMemoryContext(userId, 5),
     ]);
 
     const categories = recentTx.map((t) => t.category.name);
@@ -181,6 +189,7 @@ ${categories.includes('旅行') || categories.includes('交通') ? '用户近期
 ${streakDays >= 7 ? '用户坚持记账超过一周，可以鼓励' : ''}
 ${yesterdayTotal > 500 ? '昨日消费较高' : ''}
 ${recentTx.length === 0 ? '用户还没开始记账' : ''}
+${memoryContext ? `用户记忆：\n${memoryContext}` : ''}
 
 要求：
 - 只输出问候语本身，不要引号、前缀
@@ -193,12 +202,19 @@ ${recentTx.length === 0 ? '用户还没开始记账' : ''}
         { role: 'system', content: '你是 Moona，一个温暖贴心的 AI 记账助手，请用简短自然的语气。' },
         { role: 'user', content: prompt },
       ]);
-      const text = (result || '').replace(/["""]/g, '').trim() || '今天也要好好生活哦~';
-      this.greetingCache.set(userId, { text, slot: slotKey });
+      const text = (result || '').replace(/["""]/g, '').trim() || this.fallbackGreeting(timeSlot, recentTx.length, uniqueCats, yesterdayTotal, streakDays);
       return { greeting: text };
     } catch {
-      return { greeting: '今天也要好好生活哦~' };
+      return { greeting: this.fallbackGreeting(timeSlot, recentTx.length, uniqueCats, yesterdayTotal, streakDays) };
     }
+  }
+
+  private fallbackGreeting(timeSlot: string, txCount: number, categories: string, yesterdayTotal: number, streakDays: number) {
+    if (txCount === 0) return `${timeSlot}好，先记一笔让米粒更懂你`;
+    if (streakDays >= 7) return `${timeSlot}好，连续记账很稳哦`;
+    if (yesterdayTotal > 500) return `${timeSlot}好，昨天花销有点高`;
+    if (categories) return `${timeSlot}好，米粒在观察你的${categories.split('、')[0]}支出`;
+    return `${timeSlot}好，今天也记得轻松记账`;
   }
 
   async getBudgetAdvice(userId: string, budgetOverview: any) {

@@ -8,6 +8,7 @@ import { AiFinancialChatService } from './services/ai-financial-chat.service';
 import { AiPromptService } from './services/ai-prompt.service';
 import { AiReportService } from './services/ai-report.service';
 import { BillParserService } from './services/bill-parser.service';
+import { UserMemoryService } from './services/user-memory.service';
 
 @Module({
   imports: [CategoriesModule, TransactionsModule, BudgetsModule],
@@ -18,6 +19,7 @@ import { BillParserService } from './services/bill-parser.service';
     BillParserService,
     AiReportService,
     AiFinancialChatService,
+    UserMemoryService,
   ],
 })
 export class AiModule {}

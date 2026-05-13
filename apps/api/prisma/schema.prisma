@@ -36,6 +36,7 @@ model User {
   bookMembers      BookMember[]
   userBadges       UserBadge[]
   userChallenges   UserChallenge[]
+  memories         UserMemory[]
 }
 
 model Category {
@@ -219,6 +220,34 @@ model UserProfile {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum UserMemoryType {
+  finance_state
+  preference
+  goal
+  warning
+  profile
+}
+
+model UserMemory {
+  id         String         @id @default(cuid())
+  userId     String
+  type       UserMemoryType
+  key        String
+  value      String         @db.Text
+  confidence Float          @default(0.7)
+  source     String         @default("chat")
+  pinned     Boolean        @default(false)
+  lastSeenAt DateTime       @default(now())
+  expiresAt  DateTime?
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, key])
+  @@index([userId, type])
+  @@index([userId, expiresAt])
 }
 
 // ===== 会员系统 =====

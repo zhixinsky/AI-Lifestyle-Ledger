@@ -77,6 +77,26 @@
                 />
               </view>
             </view>
+
+            <view v-if="chatPanelVisible" class="chat-panel">
+              <view class="chat-panel__glass" aria-hidden="true" />
+              <view class="chat-panel__shine" aria-hidden="true" />
+              <view class="chat-panel__head">
+                <view class="chat-panel__title-wrap">
+                  <text class="chat-panel__eyebrow">AI 米粒</text>
+                  <text class="chat-panel__title">继续按住说话追问</text>
+                </view>
+                <view class="chat-panel__close" @tap="closeChatPanel">×</view>
+              </view>
+              <view class="chat-panel__body">
+                <view class="chat-panel__bubble chat-panel__bubble--user">
+                  <text>{{ chatPanelText }}</text>
+                </view>
+                <view class="chat-panel__bubble chat-panel__bubble--ai">
+                  <text>{{ chatPanelLoading ? '正在思考…' : chatPanelReply }}</text>
+                </view>
+              </view>
+            </view>
           </view>
 
           <view class="hub-bottom-actions">
@@ -121,27 +141,6 @@
 
     <AppTabbar current="mili" />
 
-    <!-- 语音识别为「聊天」时：在当前页弹出小窗 -->
-    <view v-if="chatPopupVisible" class="chat-pop-mask" @tap="closeChatPopup">
-      <view class="chat-pop" @tap.stop>
-        <view class="chat-pop__head">
-          <text class="chat-pop__title">AI 米粒</text>
-          <text class="chat-pop__close" @tap="closeChatPopup">✕</text>
-        </view>
-        <view class="chat-pop__body">
-          <view class="chat-pop__bubble me">
-            <text>{{ chatPopupText }}</text>
-          </view>
-          <view class="chat-pop__bubble ai">
-            <text>{{ chatPopupLoading ? '正在思考…' : chatPopupReply }}</text>
-          </view>
-        </view>
-        <view class="chat-pop__footer">
-          <button class="chat-pop__btn" :disabled="chatPopupLoading" @tap="closeChatPopup">知道了</button>
-        </view>
-      </view>
-    </view>
-
     <LoginModal
       :visible="loginSheet.visible"
       @close="loginSheet.close"
@@ -174,6 +173,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTransactionForm } from '@/composables/useTransactionForm';
 import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
+import { classifyVoiceIntent } from '@/utils/intent-classifier';
 import { dailyExpenseFromTrend, buildSpendCurveSvgRaw } from './spend-curve';
 
 const aiStore = useAiStore();
@@ -231,6 +231,7 @@ const hasUserRecords = computed(() => {
 });
 
 const miliSubtitle = computed(() => {
+  if (aiStore.greeting) return aiStore.greeting;
   if (!hasUserRecords.value) {
     return SUBTITLE_EMPTY;
   }
@@ -310,21 +311,41 @@ function toggleHideSpend() {
 
 const compareTrendText = computed(() => {
   const t = finance.statistics?.trend;
-  if (!t || t.length < 6) return '继续保持记账，洞察会更准';
+  const top = finance.statistics?.categoryRatio?.[0];
+  const monthExpenseValue = summary.value.monthExpense || finance.statistics?.totalExpense || 0;
+  if (!t || t.length < 6) {
+    if (top?.amount) return `本月${top.category}支出最多，占 ${top.percent}%`;
+    if (monthExpenseValue > 0) return `本月已记录 ${monthExpenseValue.toFixed(0)} 元`;
+    return '继续保持记账，洞察会更准';
+  }
   const sorted = [...t].sort((a, b) => a.date.localeCompare(b.date));
   const mid = Math.floor(sorted.length / 2);
   const a = sorted.slice(0, mid).reduce((s, x) => s + (x.expense || 0), 0);
   const b = sorted.slice(mid).reduce((s, x) => s + (x.expense || 0), 0);
-  if (a <= 0) return '继续保持记账，洞察会更准';
+  if (a <= 0) {
+    if (top?.amount) return `本月${top.category}支出最多，占 ${top.percent}%`;
+    return '继续保持记账，洞察会更准';
+  }
   const pct = Math.round((1 - b / Math.max(a, 1)) * 100);
   if (pct >= 3) return `比上月少 ${pct}% ↓`;
   if (pct <= -3) return `比上月多 ${Math.abs(pct)}% ↑`;
+  if (top?.amount) return `支出节奏平稳，${top.category}占比最高`;
   return '支出节奏较平稳';
 });
 
-const insightDisplay = computed(
-  () => aiStore.insight?.text || '记一笔账，让米粒更了解你的日常节奏～'
-);
+const localInsightFallback = computed(() => {
+  const top = finance.statistics?.categoryRatio?.[0];
+  const recent = summary.value.recentTransactions?.[0];
+  if (top?.amount) {
+    return `米粒看到你本月${top.category}花得最多，约 ${top.amount.toFixed(0)} 元。`;
+  }
+  if (recent) {
+    return `刚记录了${recent.category?.name || '一笔账'}，米粒会继续帮你观察节奏。`;
+  }
+  return '记一笔账，让米粒更了解你的日常节奏～';
+});
+
+const insightDisplay = computed(() => aiStore.insight?.text || localInsightFallback.value);
 
 const ORB_HINT_POOL = [
   '这个月花了多少？',
@@ -472,14 +493,14 @@ const parsing = ref(false);
 const editorVisible = ref(false);
 const voiceLiveText = ref('');
 
-const chatPopupVisible = ref(false);
-const chatPopupLoading = ref(false);
-const chatPopupText = ref('');
-const chatPopupReply = ref('');
+const chatPanelVisible = ref(false);
+const chatPanelLoading = ref(false);
+const chatPanelText = ref('');
+const chatPanelReply = ref('');
 
-function closeChatPopup() {
-  chatPopupVisible.value = false;
-  chatPopupLoading.value = false;
+function closeChatPanel() {
+  chatPanelVisible.value = false;
+  chatPanelLoading.value = false;
 }
 
 const voiceTranscriptVisible = computed(
@@ -512,7 +533,7 @@ const manualChevronIcon = makeSvgIcon('<path d="M9 6l6 6-6 6"/>', MANUAL_TONE, '
 const voiceSubLine = computed(() => {
   if (parsing.value) return '正在解析语音…';
   if (recording.value) return '松开后自动识别账单';
-  return '一句话记录生活';
+  return '让记账，像聊天一样简单';
 });
 
 const { saving, form, save } = useTransactionForm(async () => {
@@ -551,6 +572,7 @@ onMounted(() => {
     Promise.all([
       finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
       aiStore.loadInsight().catch(() => {}),
+      aiStore.loadGreeting().catch(() => {}),
     ]);
   }
   initOrbFloatSlots();
@@ -566,6 +588,7 @@ onShow(() => {
     Promise.all([
       finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
       aiStore.loadInsight().catch(() => {}),
+      aiStore.loadGreeting().catch(() => {}),
     ]);
   }
 });
@@ -589,7 +612,80 @@ function openEditor() {
 async function handleEditorSave() {
   await save();
   editorVisible.value = false;
-  aiStore.loadInsight().catch(() => {});
+  aiStore.refreshInsight().catch(() => {});
+  aiStore.loadGreeting().catch(() => {});
+}
+
+function findCategoryId(name: string, type: 'expense' | 'income') {
+  const fallback = type === 'income' ? '其它收入' : '其它';
+  return (
+    finance.categories.find((cat) => cat.name === name && cat.type === type)?.id ||
+    finance.categories.find((cat) => cat.name === fallback && cat.type === type)?.id ||
+    ''
+  );
+}
+
+function buildQuickParsedBill(rawText: string, result: ReturnType<typeof classifyVoiceIntent>) {
+  const type = result.intent === 'income' ? 'income' : 'expense';
+  const category = result.category || (type === 'income' ? '其它收入' : '其它');
+  return {
+    type,
+    amount: result.amount || 0,
+    category,
+    categoryId: findCategoryId(category, type),
+    remark: result.remark || category,
+    occurredAt: new Date().toISOString(),
+    tags: result.tag ? [result.tag] : [],
+  };
+}
+
+function setQuickParsedBill(rawText: string, result: ReturnType<typeof classifyVoiceIntent>) {
+  const bill = buildQuickParsedBill(rawText, result);
+  try {
+    uni.setStorageSync('mili_pending_voice_intent', {
+      rawText,
+      type: bill.type,
+      category: bill.category,
+      tag: result.tag || '',
+      matchedKeyword: result.matchedKeyword || result.tag || '',
+    });
+  } catch {
+    /* ignore */
+  }
+  aiStore.setParsed(rawText, '', [bill]);
+  return bill;
+}
+
+function optimizeQuickBillInBackground(rawText: string, quickBill: ReturnType<typeof buildQuickParsedBill>) {
+  aiApi.parseBill(rawText).then((result) => {
+    if (!result.transactions.length) return;
+    if (aiStore.rawInput !== rawText || aiStore.logId) return;
+    const current = aiStore.parsedTransactions[0];
+    if (!current) return;
+    const userEdited =
+      current.amount !== quickBill.amount ||
+      current.category !== quickBill.category ||
+      current.remark !== quickBill.remark ||
+      current.type !== quickBill.type;
+    if (userEdited) return;
+    aiStore.setParsed(rawText, result.logId, result.transactions);
+  }).catch(() => {});
+}
+
+async function showVoiceChat(text: string) {
+  chatPanelText.value = text;
+  chatPanelReply.value = '';
+  chatPanelLoading.value = true;
+  chatPanelVisible.value = true;
+  try {
+    await aiStore.sendMessage(text);
+    const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
+    chatPanelReply.value = last?.content || '我暂时没想好怎么回答，换个说法试试？';
+  } catch {
+    chatPanelReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
+  } finally {
+    chatPanelLoading.value = false;
+  }
 }
 
 async function parseVoiceBill(text: string) {
@@ -597,26 +693,31 @@ async function parseVoiceBill(text: string) {
   if (!t || parsing.value) return;
   parsing.value = true;
   try {
+    const quickIntent = classifyVoiceIntent(t);
+    if ((quickIntent.intent === 'expense' || quickIntent.intent === 'income') && quickIntent.amount && !quickIntent.needAiFallback && quickIntent.confidence >= 0.8) {
+      if (!finance.categories.length) {
+        await finance.loadCategories().catch(() => {});
+      }
+      voiceLiveText.value = `已识别为记账：${quickIntent.category || '其它'} ${quickIntent.tag ? `· ${quickIntent.tag} ` : ''}¥${quickIntent.amount}`;
+      const quickBill = setQuickParsedBill(t, quickIntent);
+      setTimeout(() => uni.navigateTo({ url: '/pages/ai-confirm/index' }), 120);
+      optimizeQuickBillInBackground(t, quickBill);
+      return;
+    }
+
+    if (quickIntent.intent === 'analysis' || quickIntent.intent === 'chat') {
+      await showVoiceChat(t);
+      return;
+    }
+
     const result = await aiApi.parseBill(t);
     if (result.transactions.length > 0) {
       aiStore.setParsed(t, result.logId, result.transactions);
       uni.navigateTo({ url: '/pages/ai-confirm/index' });
       return;
     }
-    // 未识别到账单：视为「聊天」，在当前页弹小窗展示回复（不再跳转旧 AI 助手页面）
-    chatPopupText.value = t;
-    chatPopupReply.value = '';
-    chatPopupLoading.value = true;
-    chatPopupVisible.value = true;
-    try {
-      await aiStore.sendMessage(t);
-      const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
-      chatPopupReply.value = last?.content || '我暂时没想好怎么回答，换个说法试试？';
-    } catch {
-      chatPopupReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
-    } finally {
-      chatPopupLoading.value = false;
-    }
+    // 未识别到账单：视为「聊天」，在当前页展示轻量聊天卡片，用户可继续按住说话追问。
+    await showVoiceChat(t);
   } catch {
     uni.showToast({ title: '识别失败，请稍后再试', icon: 'none' });
   } finally {
@@ -1269,85 +1370,121 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.chat-pop-mask {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 10000;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: 0 24rpx calc(env(safe-area-inset-bottom, 0px) + 24rpx);
-}
-
-.chat-pop {
-  width: 100%;
-  max-width: 700rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.92);
-  border: 1rpx solid rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  box-shadow: 0 24rpx 80rpx rgba(0, 0, 0, 0.18);
+.chat-panel {
+  position: absolute;
+  z-index: 8;
+  left: 18rpx;
+  right: 18rpx;
+  top: 42rpx;
+  max-height: 360rpx;
+  border-radius: 32rpx;
+  border: 1rpx solid rgba(255, 255, 255, 0.72);
+  background: rgba(255, 255, 255, 0.34);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  box-shadow:
+    0 24rpx 72rpx rgba(78, 188, 162, 0.16),
+    0 8rpx 24rpx rgba(28, 72, 62, 0.06),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.86);
   overflow: hidden;
 }
 
-.chat-pop__head {
+.chat-panel__glass {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(145deg, rgba(244, 255, 250, 0.66) 0%, rgba(208, 246, 232, 0.24) 58%, rgba(177, 232, 218, 0.3) 100%),
+    radial-gradient(circle at 16% 8%, rgba(255, 255, 255, 0.86), transparent 42%);
+}
+
+.chat-panel__shine {
+  position: absolute;
+  top: 0;
+  left: 8%;
+  right: 28%;
+  height: 48rpx;
+  pointer-events: none;
+  border-radius: 0 0 999rpx 999rpx;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(255, 255, 255, 0));
+}
+
+.chat-panel__head {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 20rpx 22rpx;
-  border-bottom: 1rpx solid rgba(15, 23, 42, 0.06);
+  padding: 22rpx 24rpx 8rpx;
 }
 
-.chat-pop__title {
-  font-size: 30rpx;
+.chat-panel__title-wrap {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.chat-panel__eyebrow {
+  font-size: 22rpx;
   font-weight: 800;
-  color: #0f172a;
+  color: rgba(46, 130, 108, 0.72);
 }
 
-.chat-pop__close {
-  font-size: 30rpx;
-  color: rgba(15, 23, 42, 0.6);
-  padding: 6rpx 10rpx;
+.chat-panel__title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: rgba(19, 67, 56, 0.92);
 }
 
-.chat-pop__body {
-  padding: 18rpx 22rpx 8rpx;
+.chat-panel__close {
+  flex-shrink: 0;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1rpx solid rgba(255, 255, 255, 0.76);
+  color: rgba(29, 72, 62, 0.56);
+  font-size: 34rpx;
+  line-height: 1;
 }
 
-.chat-pop__bubble {
+.chat-panel__body {
+  position: relative;
+  z-index: 1;
+  padding: 12rpx 24rpx 24rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
+  max-height: 250rpx;
+  overflow-y: auto;
+}
+
+.chat-panel__bubble {
   padding: 16rpx 18rpx;
-  border-radius: 18rpx;
+  border-radius: 22rpx;
   font-size: 26rpx;
   line-height: 1.6;
-  margin-bottom: 14rpx;
+  word-break: break-word;
 }
 
-.chat-pop__bubble.me {
-  background: rgba(46, 184, 160, 0.12);
-  color: #134338;
+.chat-panel__bubble--user {
+  align-self: flex-end;
+  max-width: 88%;
+  background: rgba(46, 184, 160, 0.16);
+  color: rgba(19, 67, 56, 0.94);
+  border: 1rpx solid rgba(46, 184, 160, 0.14);
 }
 
-.chat-pop__bubble.ai {
-  background: rgba(15, 23, 42, 0.06);
-  color: #0f172a;
-}
-
-.chat-pop__footer {
-  padding: 10rpx 22rpx 18rpx;
-}
-
-.chat-pop__btn {
-  width: 100%;
-  height: 84rpx;
-  border-radius: 18rpx;
-  background: #2eb8a0;
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 28rpx;
+.chat-panel__bubble--ai {
+  align-self: flex-start;
+  max-width: 94%;
+  background: rgba(255, 255, 255, 0.48);
+  color: rgba(20, 44, 38, 0.9);
+  border: 1rpx solid rgba(255, 255, 255, 0.76);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.78);
 }
 </style>

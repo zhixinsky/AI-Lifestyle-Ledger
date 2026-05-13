@@ -223,6 +223,11 @@ async function confirmCatChange(cat: Category) {
     showCatPicker.value = false;
     await fetchData();
     uni.showToast({ title: '已更新', icon: 'success' });
+    try {
+      uni.$emit('transactions-updated');
+    } catch {
+      /* ignore */
+    }
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' });
   }
@@ -246,6 +251,11 @@ async function confirmNameEdit() {
     showNameEdit.value = false;
     await fetchData();
     uni.showToast({ title: '已更新', icon: 'success' });
+    try {
+      uni.$emit('transactions-updated');
+    } catch {
+      /* ignore */
+    }
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' });
   }
@@ -269,6 +279,11 @@ async function confirmAmountEdit() {
     showAmountEdit.value = false;
     await fetchData();
     uni.showToast({ title: '已更新', icon: 'success' });
+    try {
+      uni.$emit('transactions-updated');
+    } catch {
+      /* ignore */
+    }
   } catch {
     uni.showToast({ title: '更新失败', icon: 'none' });
   }

@@ -68,10 +68,14 @@ import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import { aiApi } from '@/api/ai';
+import { transactionApi } from '@/api/transactions';
 import { useAiStore } from '@/stores/ai';
+import { useFinanceStore } from '@/stores/finance';
 import type { AiParsedTransaction } from '@/types/domain';
+import { saveVoiceCategoryPreference } from '@/utils/intent-classifier';
 
 const aiStore = useAiStore();
+const finance = useFinanceStore();
 const saving = ref(false);
 const transactions = computed({
   get: () => aiStore.parsedTransactions,
@@ -124,13 +128,74 @@ function back() {
   uni.navigateBack();
 }
 
+async function ensureCategories() {
+  if (!finance.categories.length) {
+    await finance.loadCategories();
+  }
+}
+
+function resolveCategoryId(item: AiParsedTransaction) {
+  if (item.categoryId) return item.categoryId;
+  const fallbackName = item.type === 'income' ? '其它收入' : '其它';
+  return (
+    finance.categories.find((cat) => cat.name === item.category && cat.type === item.type)?.id ||
+    finance.categories.find((cat) => cat.name === fallbackName && cat.type === item.type)?.id ||
+    ''
+  );
+}
+
+function saveVoicePreferencesIfNeeded() {
+  let pending: { type?: 'expense' | 'income'; category?: string; tag?: string; matchedKeyword?: string } | null = null;
+  try {
+    pending = uni.getStorageSync('mili_pending_voice_intent') || null;
+  } catch {
+    pending = null;
+  }
+  if (!pending?.type) return;
+  const first = transactions.value[0];
+  if (!first) return;
+  const keyword = pending.matchedKeyword || pending.tag || first.tags?.[0] || '';
+  if (!keyword) return;
+  if (first.category && first.category !== pending.category) {
+    saveVoiceCategoryPreference(keyword, pending.type, first.category);
+  }
+  try {
+    uni.removeStorageSync('mili_pending_voice_intent');
+  } catch {
+    /* ignore */
+  }
+}
+
 async function confirm() {
   saving.value = true;
   try {
-    await aiApi.confirmBill(aiStore.logId, transactions.value);
+    await ensureCategories();
+    if (aiStore.logId) {
+      await aiApi.confirmBill(aiStore.logId, transactions.value);
+    } else {
+      const payloads = transactions.value.map((item) => ({
+        type: item.type,
+        amount: item.amount,
+        categoryId: resolveCategoryId(item),
+        occurredAt: item.occurredAt,
+        remark: item.remark,
+        tags: item.tags,
+      }));
+      if (payloads.some((item) => !item.categoryId)) {
+        uni.showToast({ title: '分类加载失败，请稍后再试', icon: 'none' });
+        return;
+      }
+      await Promise.all(payloads.map((item) => transactionApi.create(item)));
+    }
+    saveVoicePreferencesIfNeeded();
     aiStore.clear();
     uni.showToast({ title: '已保存', icon: 'success' });
-    setTimeout(() => uni.switchTab({ url: '/pages/bills/index' }), 500);
+    try {
+      uni.$emit('transactions-updated');
+    } catch {
+      /* ignore */
+    }
+    setTimeout(() => uni.switchTab({ url: '/pages/index/index' }), 500);
   } finally {
     saving.value = false;
   }

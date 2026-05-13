@@ -302,7 +302,14 @@ const ringLeftDeg = computed(() => {
   return pct > 50 ? ((pct - 50) / 50) * 180 : 0;
 });
 
-const insightText = computed(() => aiStore.insight?.text || '记一笔账，让 AI 更了解你');
+const localInsightText = computed(() => {
+  const top = finance.statistics?.categoryRatio?.[0];
+  const recent = summary.value.recentTransactions?.[0];
+  if (top?.amount) return `本月${top.category}支出占比最高，约 ${top.percent}%`;
+  if (recent) return `最近记录了${recent.category?.name || '一笔账'}，继续保持会更准`;
+  return '记一笔账，让 AI 更了解你';
+});
+const insightText = computed(() => aiStore.insight?.text || localInsightText.value);
 const insightType = computed(() => aiStore.insight?.type || 'tip');
 const insightColorMap: Record<string, string> = {
   tip: '#00d4c8', warning: '#ff9f43', praise: '#7c8cff', info: '#667085'
@@ -376,8 +383,13 @@ function onLoginSuccessReload() {
   if (authStore.isLoggedIn) loadData();
 }
 
+function onTransactionsUpdatedReload() {
+  if (authStore.isLoggedIn) loadData();
+}
+
 onMounted(() => {
   uni.$on('login-success', onLoginSuccessReload);
+  uni.$on('transactions-updated', onTransactionsUpdatedReload);
   if (authStore.isLoggedIn) {
     loadData();
   }
@@ -385,6 +397,7 @@ onMounted(() => {
 
 onUnmounted(() => {
   uni.$off('login-success', onLoginSuccessReload);
+  uni.$off('transactions-updated', onTransactionsUpdatedReload);
 });
 </script>
 

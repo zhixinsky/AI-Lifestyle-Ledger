@@ -4,6 +4,7 @@ import * as dayjs from 'dayjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AiChatService } from './ai-chat.service';
 import { AiPromptService } from './ai-prompt.service';
+import { UserMemoryService } from './user-memory.service';
 
 interface TransactionRow {
   type: TransactionType;
@@ -19,6 +20,7 @@ export class AiReportService {
     private readonly prisma: PrismaService,
     private readonly aiChat: AiChatService,
     private readonly prompts: AiPromptService,
+    private readonly memories: UserMemoryService,
   ) {}
 
   async generateDailyReport(userId: string, date?: string) {
@@ -90,7 +92,14 @@ export class AiReportService {
     const now = dayjs();
     const weekStart = now.subtract(7, 'day').startOf('day').toDate();
     const weekEnd = now.endOf('day').toDate();
-    const transactions = await this.getTransactions(userId, weekStart, weekEnd);
+    const [transactions, memoryContext] = await Promise.all([
+      this.getTransactions(userId, weekStart, weekEnd),
+      this.memories.getMemoryContext(userId, 6),
+    ]);
+
+    if (transactions.length === 0 && memoryContext) {
+      return { text: this.memoryOnlyInsight(memoryContext), type: 'tip' };
+    }
 
     if (transactions.length === 0) {
       return { text: '最近还没有记账哦，记一笔试试吧！', type: 'tip' };
@@ -100,7 +109,14 @@ export class AiReportService {
     const userData = this.formatTransactionsForAi(transactions);
     const result = await this.aiChat.complete([
       { role: 'system', content: prompt },
-      { role: 'user', content: `用户近 7 天消费数据：\n${userData}` },
+      {
+        role: 'user',
+        content: [
+          `用户近 7 天消费数据：\n${userData}`,
+          memoryContext ? `用户近期/长期记忆：\n${memoryContext}` : '',
+          '请优先结合用户记忆给出更贴心、可执行的提醒。例如用户本月资金紧张时，提醒省钱和减少非必要支出。',
+        ].filter(Boolean).join('\n\n'),
+      },
     ]);
 
     if (!result) {
@@ -205,6 +221,19 @@ ${compareFormatted}`;
       return { text: `近 7 天${top[0]}支出 ¥${top[1]}，占总支出 ${Math.round((top[1] / total) * 100)}%`, type: 'info' };
     }
     return { text: '继续保持记账习惯，数据越多分析越准！', type: 'tip' };
+  }
+
+  private memoryOnlyInsight(memoryContext: string) {
+    if (memoryContext.includes('资金紧张') || memoryContext.includes('省钱')) {
+      return '米粒记得你想省钱，会帮你盯住不必要支出';
+    }
+    if (memoryContext.includes('外卖')) {
+      return '米粒记得你想控制外卖，今天可以少点一次';
+    }
+    if (memoryContext.includes('目标')) {
+      return '米粒记得你的目标，会帮你一起规划支出';
+    }
+    return '米粒已记住你的偏好，会给你更贴心提醒';
   }
 
   private fallbackReport(type: 'daily' | 'monthly', transactions: TransactionRow[]) {

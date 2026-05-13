@@ -44,6 +44,20 @@
       }
     },
     {
+      "path": "pages/legal/user-agreement",
+      "style": {
+        "navigationBarTitleText": "用户服务协议",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/legal/privacy-policy",
+      "style": {
+        "navigationBarTitleText": "隐私政策",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/category-settings/index",
       "style": {
         "navigationBarTitleText": "类别设置",

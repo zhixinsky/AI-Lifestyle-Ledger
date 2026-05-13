@@ -40,7 +40,7 @@
           </view>
           <view class="agreement-text">
             <text>我已阅读并同意</text>
-            <text class="agreement-link" @tap="showUserAgreement">《用户服务协议》</text>
+            <text class="agreement-link" @tap="openUserAgreement">《用户服务协议》</text>
             <text>和</text>
             <text class="agreement-link" @tap="openPrivacyPolicy">《隐私政策》</text>
           </view>
@@ -140,36 +140,12 @@ function ensureAgreementAccepted() {
   return false;
 }
 
-function showUserAgreement() {
-  uni.showModal({
-    title: '用户服务协议',
-    content: '请在使用 AI生活账本 前阅读并理解用户服务协议。继续登录代表你确认已阅读并自愿选择是否同意相关服务条款。',
-    showCancel: false,
-    confirmText: '我知道了',
-  });
+function openUserAgreement() {
+  uni.navigateTo({ url: '/pages/legal/user-agreement' });
 }
 
 function openPrivacyPolicy() {
-  // #ifdef MP-WEIXIN
-  wx.openPrivacyContract({
-    fail: () => {
-      uni.showModal({
-        title: '隐私政策',
-        content: '请在小程序资料页查看并阅读隐私政策，确认理解后再自主选择是否勾选同意。',
-        showCancel: false,
-        confirmText: '我知道了',
-      });
-    },
-  });
-  // #endif
-  // #ifndef MP-WEIXIN
-  uni.showModal({
-    title: '隐私政策',
-    content: '请先阅读隐私政策，确认理解后再自主选择是否勾选同意。',
-    showCancel: false,
-    confirmText: '我知道了',
-  });
-  // #endif
+  uni.navigateTo({ url: '/pages/legal/privacy-policy' });
 }
 
 async function wxLogin() {
