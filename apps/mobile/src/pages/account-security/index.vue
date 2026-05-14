@@ -86,11 +86,11 @@
       </view>
     </view>
 
-    <view v-if="activeForm" class="sheet-mask" @tap="closeForm">
-      <view class="sheet" :style="sheetKeyboardStyle" @tap.stop>
-        <view class="sheet-header">
-          <text class="sheet-title">{{ sheetTitle }}</text>
-          <text class="sheet-close" @tap="closeForm">×</text>
+    <view v-if="activeForm" class="modal-mask" @tap="closeForm">
+      <view class="modal-panel" @tap.stop>
+        <view class="modal-header">
+          <text class="modal-title">{{ sheetTitle }}</text>
+          <text class="modal-close" @tap="closeForm">×</text>
         </view>
 
         <view v-if="activeForm === 'phone'" class="form">
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import { backIcon } from '@/utils/icons';
 import { getApiBase } from '@/utils/request';
@@ -138,7 +138,6 @@ const profile = ref<AccountProfile | null>(null);
 const activeForm = ref<'phone' | 'email' | 'password' | ''>('');
 const sendingCode = ref(false);
 const submitting = ref(false);
-const keyboardHeight = ref(0);
 
 const phoneForm = reactive({ phone: '', code: '' });
 const emailForm = reactive({ email: '', code: '' });
@@ -164,9 +163,6 @@ const sheetTitle = computed(() => {
   if (activeForm.value === 'email') return profile.value?.email ? '修改邮箱' : '绑定邮箱';
   return profile.value?.hasPassword ? '修改密码' : '设置登录密码';
 });
-const sheetKeyboardStyle = computed(() => ({
-  transform: keyboardHeight.value ? `translateY(-${keyboardHeight.value}px)` : 'translateY(0)',
-}));
 
 function goBack() {
   const pages = getCurrentPages();
@@ -200,7 +196,6 @@ function openPasswordForm() {
 
 function closeForm() {
   activeForm.value = '';
-  keyboardHeight.value = 0;
 }
 
 async function sendPhoneCode() {
@@ -321,24 +316,7 @@ async function handleDeleteAccount() {
   });
 }
 
-function handleKeyboardHeightChange(res: { height?: number }) {
-  const height = Math.max(0, Number(res.height || 0));
-  const safeHeight = height > 40 ? height : 0;
-  keyboardHeight.value = Math.min(safeHeight, 360);
-}
-
-onMounted(() => {
-  loadProfile();
-  // #ifdef MP-WEIXIN
-  uni.onKeyboardHeightChange(handleKeyboardHeightChange);
-  // #endif
-});
-
-onUnmounted(() => {
-  // #ifdef MP-WEIXIN
-  uni.offKeyboardHeightChange(handleKeyboardHeightChange);
-  // #endif
-});
+onMounted(loadProfile);
 </script>
 
 <style scoped>
@@ -472,37 +450,40 @@ onUnmounted(() => {
 }
 .danger-soft { color: #d97706; }
 .danger { color: #d92d20; }
-.sheet-mask {
+.modal-mask {
   position: fixed;
   inset: 0;
   z-index: 10000;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
   background: rgba(0, 0, 0, 0.42);
+  box-sizing: border-box;
 }
-.sheet {
+.modal-panel {
   width: 100%;
-  max-height: 86vh;
+  max-width: 680rpx;
+  max-height: 72vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 28rpx 34rpx calc(env(safe-area-inset-bottom, 0px) + 42rpx);
-  border-radius: 30rpx 30rpx 0 0;
+  padding: 30rpx 30rpx 34rpx;
+  border-radius: 28rpx;
   background: #fff;
   box-sizing: border-box;
-  will-change: transform;
 }
-.sheet-header {
+.modal-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 26rpx;
 }
-.sheet-title {
+.modal-title {
   font-size: 34rpx;
   font-weight: 750;
   color: #1e1e1e;
 }
-.sheet-close {
+.modal-close {
   width: 56rpx;
   height: 56rpx;
   border-radius: 50%;
