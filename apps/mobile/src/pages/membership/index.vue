@@ -1,5 +1,5 @@
 <template>
-  <PageShell>
+  <PageShell class="membership-shell">
     <view class="nav">
       <view class="nav-back" @tap="goBack">
         <view class="back-glass" />
@@ -22,8 +22,8 @@
     </view>
 
     <!-- 会员权益 -->
-    <view class="section-title">会员权益</view>
-    <MoonaCard class="benefits-card">
+    <view class="section-title benefits-title">会员权益</view>
+    <view class="benefits-card">
       <view v-for="b in benefits" :key="b.label" class="benefit-row">
         <text class="benefit-icon">{{ b.icon }}</text>
         <view class="benefit-text">
@@ -34,10 +34,10 @@
           {{ b.level <= currentLevelNum ? '✓' : levelNames[b.level] }}
         </text>
       </view>
-    </MoonaCard>
+    </view>
 
     <!-- 订阅方案 -->
-    <view class="section-title">订阅方案</view>
+    <view class="section-title plan-title">订阅方案</view>
     <view class="plan-grid">
       <view v-for="p in plans" :key="p.id" :class="['plan-card', { selected: selectedPlan === p.id }]" @tap="selectedPlan = p.id">
         <text v-if="p.tag" class="plan-tag">{{ p.tag }}</text>
@@ -59,7 +59,6 @@
 import { ref, computed, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
-import MoonaCard from '@/components/MoonaCard.vue';
 import { membershipApi, type WxPaymentParams } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
 
@@ -147,7 +146,7 @@ async function handleSubscribe() {
     if (message.includes('cancel')) {
       uni.showToast({ title: '已取消支付', icon: 'none' });
     } else {
-      uni.showToast({ title: '支付失败，请稍后重试', icon: 'none' });
+      uni.showToast({ title: message || '支付失败，请稍后重试', icon: 'none' });
     }
   } finally {
     paying.value = false;
@@ -256,9 +255,23 @@ onMounted(loadStatus);
   margin: 18rpx 0 4rpx 8rpx;
 }
 
+.benefits-title {
+  margin-top: 18rpx;
+}
+
+.plan-title {
+  margin-top: 18rpx;
+}
+
 .benefits-card {
-  padding: 16rpx 28rpx !important;
-  margin-bottom: 4rpx;
+  margin-top: 12rpx;
+  margin-bottom: 6rpx;
+  padding: 16rpx 28rpx;
+  border-radius: 24rpx;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 8rpx 32rpx rgba(30, 30, 30, 0.06);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 .benefit-row {
   display: flex;
@@ -343,7 +356,7 @@ onMounted(loadStatus);
 }
 
 .subscribe-btn {
-  margin-top: 32rpx;
+  margin-top: 22rpx;
   width: 100%;
   height: 88rpx;
   border-radius: 44rpx;
@@ -354,5 +367,9 @@ onMounted(loadStatus);
   line-height: 88rpx;
 }
 
-.spacer { height: 60rpx; }
+.membership-shell :deep(.page-body) {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 32rpx);
+}
+
+.spacer { height: 16rpx; }
 </style>

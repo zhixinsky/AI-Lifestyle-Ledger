@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { createDecipheriv, createHash, createSign, createVerify, randomBytes } from 'crypto';
+import { createDecipheriv, createHash, createPrivateKey, createPublicKey, createSign, createVerify, randomBytes } from 'crypto';
 import { Order, OrderStatus, OrderType, MemberLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../membership/membership.service';
@@ -66,6 +66,7 @@ export class PaymentService {
         `微信支付配置已加载 appId=${this.mask(this.appId)} mchId=${this.mask(this.mchId)} ` +
           `certSerial=${this.mask(this.certSerialNo)} privateKeyHash=${this.hashText(this.privateKey)}`,
       );
+      this.verifyLocalPrivateKey();
     }
   }
 
@@ -337,6 +338,23 @@ export class PaymentService {
 
   private sign(message: string) {
     return createSign('RSA-SHA256').update(message).sign(this.privateKey, 'base64');
+  }
+
+  private verifyLocalPrivateKey() {
+    try {
+      const privateKey = createPrivateKey(this.privateKey);
+      const publicKey = createPublicKey(privateKey);
+      const message = 'moona-wechat-pay-sign-test';
+      const signature = createSign('RSA-SHA256').update(message).sign(privateKey);
+      const verified = createVerify('RSA-SHA256').update(message).verify(publicKey, signature);
+      if (!verified) {
+        this.logger.error('微信支付商户私钥本地验签失败，请检查 WX_PAY_PRIVATE_KEY');
+        return;
+      }
+      this.logger.log('微信支付商户私钥本地验签通过');
+    } catch (error: any) {
+      this.logger.error(`微信支付商户私钥格式不可用：${error?.message || error}`);
+    }
   }
 
   private normalizePrivateKey(value: string) {
