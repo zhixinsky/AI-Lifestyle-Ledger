@@ -50,18 +50,20 @@
     </view>
 
     <!-- 菜单列表 -->
-    <MoonaCard class="menu-card">
-      <view v-for="(group, gIdx) in menuGroups" :key="gIdx">
-        <view v-for="(item, idx) in group" :key="item.label" :class="['menu-item', { bordered: idx < group.length - 1 }]" @tap="onMenuTap(item)">
-          <view class="menu-left">
-            <text class="menu-icon">{{ item.icon }}</text>
-            <text class="menu-label">{{ item.label }}</text>
+    <view class="profile-menu-card-wrap">
+      <MoonaCard class="menu-card">
+        <view v-for="(group, gIdx) in menuGroups" :key="gIdx">
+          <view v-for="(item, idx) in group" :key="item.label" :class="['menu-item', { bordered: idx < group.length - 1 }]" @tap="onMenuTap(item)">
+            <view class="menu-left">
+              <text class="menu-icon">{{ item.icon }}</text>
+              <text class="menu-label">{{ item.label }}</text>
+            </view>
+            <text class="menu-arrow">›</text>
           </view>
-          <text class="menu-arrow">›</text>
+          <view v-if="gIdx < menuGroups.length - 1" class="menu-divider" />
         </view>
-        <view v-if="gIdx < menuGroups.length - 1" class="menu-divider" />
-      </view>
-    </MoonaCard>
+      </MoonaCard>
+    </view>
 
     <!-- 退出 -->
     <view v-if="authStore.isLoggedIn" class="logout-wrap">
@@ -362,6 +364,10 @@ function handleLogout() {
 
 .profile-member-card-wrap {
   margin-top: 32rpx;
+}
+
+.profile-menu-card-wrap {
+  margin-top: -8rpx;
 }
 
 /* 菜单 */
