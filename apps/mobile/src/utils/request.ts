@@ -39,6 +39,11 @@ function logUploadFailure(ctx: Record<string, unknown>) {
   console.error('[uploadFile] FAIL', JSON.stringify(ctx, null, 2));
 }
 
+function normalizeAuthMessage(message?: string) {
+  if (!message || /^unauthorized$/i.test(message)) return '请登录后再继续';
+  return message;
+}
+
 /** 上传失败时输出 errMsg、filePath、cloudPath */
 function logWxCloudAvatarFail(errMsg: unknown, filePath: string, cloudPath: string) {
   console.error(
@@ -198,7 +203,7 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
             if (!reqPath.includes('/auth/') && token) {
               clearExpiredLogin();
             }
-            reject(new Error(msg || '请先登录'));
+            reject(new Error(normalizeAuthMessage(msg)));
             return;
           }
           reject(new Error(msg || '请求失败'));
@@ -233,7 +238,7 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
           if (!url.includes('/auth/') && token) {
             clearExpiredLogin();
           }
-          reject(new Error(msg || '请先登录'));
+          reject(new Error(normalizeAuthMessage(msg)));
           return;
         }
         reject(new Error(msg || '请求失败'));

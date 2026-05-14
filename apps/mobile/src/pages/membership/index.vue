@@ -61,11 +61,15 @@ import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import { membershipApi, type VirtualPaymentParams } from '@/api/membership';
 import { authApi } from '@/api/auth';
+import { useAuthStore } from '@/stores/auth';
+import { useLoginSheetStore } from '@/stores/login-sheet';
 import type { MembershipStatus } from '@/types/domain';
 
 const status = ref<MembershipStatus | null>(null);
 const selectedPlan = ref('monthly_pro');
 const paying = ref(false);
+const authStore = useAuthStore();
+const loginSheet = useLoginSheetStore();
 
 const levelNames = ['免费版', 'Pro', 'Premium'];
 const currentLevelNum = computed(() => {
@@ -108,6 +112,11 @@ function goBack() {
 
 async function handleSubscribe() {
   if (paying.value) return;
+  if (!authStore.isLoggedIn) {
+    uni.showToast({ title: '请登录后再订阅', icon: 'none' });
+    loginSheet.open();
+    return;
+  }
   const plan = plans.find((p) => p.id === selectedPlan.value);
   if (!plan) return;
 
