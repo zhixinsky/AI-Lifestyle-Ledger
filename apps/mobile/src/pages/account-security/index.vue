@@ -87,7 +87,7 @@
     </view>
 
     <view v-if="activeForm" class="sheet-mask" @tap="closeForm">
-      <view class="sheet" @tap.stop>
+      <view class="sheet" :style="sheetKeyboardStyle" @tap.stop>
         <view class="sheet-header">
           <text class="sheet-title">{{ sheetTitle }}</text>
           <text class="sheet-close" @tap="closeForm">×</text>
@@ -123,7 +123,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import { backIcon } from '@/utils/icons';
 import { getApiBase } from '@/utils/request';
@@ -138,6 +138,7 @@ const profile = ref<AccountProfile | null>(null);
 const activeForm = ref<'phone' | 'email' | 'password' | ''>('');
 const sendingCode = ref(false);
 const submitting = ref(false);
+const keyboardHeight = ref(0);
 
 const phoneForm = reactive({ phone: '', code: '' });
 const emailForm = reactive({ email: '', code: '' });
@@ -163,6 +164,9 @@ const sheetTitle = computed(() => {
   if (activeForm.value === 'email') return profile.value?.email ? '修改邮箱' : '绑定邮箱';
   return profile.value?.hasPassword ? '修改密码' : '设置登录密码';
 });
+const sheetKeyboardStyle = computed(() => ({
+  paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 42rpx + ${keyboardHeight.value}px)`,
+}));
 
 function goBack() {
   const pages = getCurrentPages();
@@ -196,6 +200,7 @@ function openPasswordForm() {
 
 function closeForm() {
   activeForm.value = '';
+  keyboardHeight.value = 0;
 }
 
 async function sendPhoneCode() {
@@ -316,7 +321,22 @@ async function handleDeleteAccount() {
   });
 }
 
-onMounted(loadProfile);
+function handleKeyboardHeightChange(res: { height?: number }) {
+  keyboardHeight.value = Math.max(0, Number(res.height || 0));
+}
+
+onMounted(() => {
+  loadProfile();
+  // #ifdef MP-WEIXIN
+  uni.onKeyboardHeightChange(handleKeyboardHeightChange);
+  // #endif
+});
+
+onUnmounted(() => {
+  // #ifdef MP-WEIXIN
+  uni.offKeyboardHeightChange(handleKeyboardHeightChange);
+  // #endif
+});
 </script>
 
 <style scoped>
@@ -460,9 +480,14 @@ onMounted(loadProfile);
 }
 .sheet {
   width: 100%;
+  max-height: 86vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   padding: 28rpx 34rpx calc(env(safe-area-inset-bottom, 0px) + 42rpx);
   border-radius: 30rpx 30rpx 0 0;
   background: #fff;
+  box-sizing: border-box;
+  transition: padding-bottom 0.18s ease;
 }
 .sheet-header {
   display: flex;
