@@ -4,6 +4,7 @@ export interface User {
   id: string;
   nickname: string;
   phone?: string;
+  email?: string;
   avatarUrl?: string;
   streakDays: number;
 }

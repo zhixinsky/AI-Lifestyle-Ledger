@@ -68,12 +68,26 @@ export class AuthService {
 
     const user = await this.prisma.user.upsert({
       where: { phone: dto.phone },
-      update: {},
+      update: {
+        identities: {
+          upsert: {
+            where: { provider_identifier: { provider: 'phone', identifier: dto.phone } },
+            update: {},
+            create: { provider: 'phone', identifier: dto.phone },
+          },
+        },
+      },
       create: {
         phone: dto.phone,
         nickname: '',
-        streakDays: 0
-      }
+        streakDays: 0,
+        identities: {
+          create: {
+            provider: 'phone',
+            identifier: dto.phone,
+          },
+        },
+      },
     });
 
     return this.buildResult(user);
@@ -152,21 +166,41 @@ export class AuthService {
       let user = await this.prisma.user.findUnique({ where: { openid } });
 
       if (!user) {
-        const randomPhone = `wx_${openid.slice(-8)}`;
         user = await this.prisma.user.create({
           data: {
-            phone: randomPhone,
             openid,
             wxSessionKey: sessionKey,
             nickname: '',
             streakDays: 0,
+            identities: {
+              create: {
+                provider: 'wechat',
+                identifier: openid,
+                unionid: rawHeaderOpenid && unionid ? unionid : undefined,
+              },
+            },
           },
         });
         this.logger.log('New user created for openid');
       } else if (sessionKey) {
         user = await this.prisma.user.update({
           where: { id: user.id },
-          data: { wxSessionKey: sessionKey },
+          data: {
+            wxSessionKey: sessionKey,
+            identities: {
+              upsert: {
+                where: { provider_identifier: { provider: 'wechat', identifier: openid } },
+                update: { unionid: rawHeaderOpenid && unionid ? unionid : undefined },
+                create: { provider: 'wechat', identifier: openid, unionid: rawHeaderOpenid && unionid ? unionid : undefined },
+              },
+            },
+          },
+        });
+      } else {
+        await this.prisma.userIdentity.upsert({
+          where: { provider_identifier: { provider: 'wechat', identifier: openid } },
+          update: { userId: user.id, unionid: rawHeaderOpenid && unionid ? unionid : undefined },
+          create: { userId: user.id, provider: 'wechat', identifier: openid, unionid: rawHeaderOpenid && unionid ? unionid : undefined },
         });
       }
 
@@ -375,7 +409,7 @@ export class AuthService {
     return String(value).trim();
   }
 
-  private async buildResult(user: { id: string; phone: string; nickname: string; avatarUrl: string | null; streakDays: number }) {
+  private async buildResult(user: { id: string; phone: string | null; nickname: string; avatarUrl: string | null; streakDays: number }) {
     const accessToken = await this.jwtService.signAsync({ sub: user.id, phone: user.phone });
     return {
       accessToken,

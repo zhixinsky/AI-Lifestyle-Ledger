@@ -12,6 +12,7 @@ export class UsersService {
     return {
       id: user.id,
       phone: user.phone,
+      email: user.email,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
       streakDays: user.streakDays
@@ -29,6 +30,7 @@ export class UsersService {
     return {
       id: user.id,
       phone: user.phone,
+      email: user.email,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
       streakDays: user.streakDays

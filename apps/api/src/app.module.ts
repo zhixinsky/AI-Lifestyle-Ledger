@@ -17,6 +17,7 @@ import { GrowthModule } from './modules/growth/growth.module';
 import { DiscoverModule } from './modules/discover/discover.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { SmsModule } from './modules/sms/sms.module';
+import { AccountModule } from './modules/account/account.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -44,6 +45,7 @@ import { join } from 'path';
     GrowthModule,
     DiscoverModule,
     UploadModule,
+    AccountModule,
   ]
 })
 export class AppModule {}

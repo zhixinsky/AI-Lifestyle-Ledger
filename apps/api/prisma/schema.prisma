@@ -14,7 +14,8 @@ enum TransactionType {
 
 model User {
   id           String        @id @default(cuid())
-  phone        String        @unique
+  phone        String?       @unique
+  email        String?       @unique
   openid       String?       @unique
   wxSessionKey String?
   nickname     String        @default("")
@@ -38,6 +39,26 @@ model User {
   userBadges       UserBadge[]
   userChallenges   UserChallenge[]
   memories         UserMemory[]
+  identities       UserIdentity[]
+}
+
+enum IdentityProvider {
+  wechat
+  phone
+}
+
+model UserIdentity {
+  id         String           @id @default(cuid())
+  userId     String
+  provider   IdentityProvider
+  identifier String
+  unionid    String?
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, identifier])
+  @@index([userId])
 }
 
 model Category {

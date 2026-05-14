@@ -93,7 +93,7 @@
       </view>
       <button v-if="canUpgrade" class="vip-upgrade-btn">{{ upgradeText }}</button>
     </view>
-    <view v-else class="vip-card" @tap="uni.navigateTo({ url: '/pages/membership/index' })">
+    <view v-else class="vip-card" @tap="goMembership">
       <view class="vip-left">
         <text class="vip-title">AI 高级会员</text>
         <text class="vip-desc">享受更多 AI 分析功能</text>
@@ -372,6 +372,7 @@ const menuGroups = [
     { icon: '🏷', label: '标签管理', url: '' },
   ],
   [
+    { icon: '🔐', label: '账号与安全', url: '/pages/account-security/index' },
     { icon: '💾', label: '数据备份', url: '' },
   ],
   [
