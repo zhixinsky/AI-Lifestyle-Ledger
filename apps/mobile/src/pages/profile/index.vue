@@ -361,7 +361,7 @@ function handleLogout() {
 }
 
 .profile-member-card-wrap {
-  margin-top: 64rpx;
+  margin-top: 32rpx;
 }
 
 /* 菜单 */
