@@ -60,6 +60,7 @@ import { ref, computed, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import { membershipApi, type VirtualPaymentParams } from '@/api/membership';
+import { authApi } from '@/api/auth';
 import type { MembershipStatus } from '@/types/domain';
 
 const status = ref<MembershipStatus | null>(null);
@@ -87,7 +88,7 @@ const benefits = [
 
 const plans = [
   { id: 'monthly_pro', name: 'Pro 月卡', price: 8, unit: '/月', tag: '' },
-  { id: 'quarterly_pro', name: 'Pro 季卡', price: 18, unit: '/3月', tag: '省6元' },
+  { id: 'quarterly_pro', name: 'Pro 季卡', price: 18, unit: '/季', tag: '省6元' },
   { id: 'yearly_pro', name: 'Pro 年卡', price: 68, unit: '/年', tag: '最划算' },
   { id: 'yearly_premium', name: '永久会员', price: 288, unit: '一次买断', tag: 'Premium' },
 ];
@@ -112,6 +113,7 @@ async function handleSubscribe() {
 
   try {
     paying.value = true;
+    await refreshWechatPaySession();
     const res = await membershipApi.createOrder({
       type: 'subscription',
       planId: plan.id,
@@ -151,6 +153,16 @@ async function handleSubscribe() {
   } finally {
     paying.value = false;
   }
+}
+
+async function refreshWechatPaySession() {
+  // #ifdef MP-WEIXIN
+  const loginRes = await new Promise<UniApp.LoginRes>((resolve, reject) => {
+    uni.login({ provider: 'weixin', success: resolve, fail: reject });
+  });
+  if (!loginRes.code) throw new Error('获取微信支付登录态失败');
+  await authApi.refreshSession(loginRes.code);
+  // #endif
 }
 
 function requestWechatVirtualPayment(params: VirtualPaymentParams) {

@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { lookup } from 'dns';
+import { Resolver } from 'dns/promises';
 import { request as httpsRequest } from 'https';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
@@ -25,13 +25,16 @@ interface WeChatSessionResponse {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private readonly codeStore = new Map<string, CodeEntry>();
+  private readonly publicDnsResolver = new Resolver();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly smsService: SmsService,
-  ) {}
+  ) {
+    this.publicDnsResolver.setServers(['119.29.29.29', '223.5.5.5', '8.8.8.8']);
+  }
 
   async sendCode(dto: SendCodeDto) {
     const existing = this.codeStore.get(dto.phone);
@@ -150,7 +153,52 @@ export class AuthService {
     }
   }
 
-  private code2Session(appId: string, appSecret: string, code: string): Promise<WeChatSessionResponse> {
+  async refreshSession(userId: string, code?: string, headerOpenid?: string) {
+    if (!code) throw new BadRequestException('缺少微信登录 code，无法刷新支付登录态');
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('用户不存在');
+
+    const appId = this.configService.get<string>('WX_APPID');
+    const appSecret = this.configService.get<string>('WX_APP_SECRET');
+    if (!appId || !appSecret) throw new UnauthorizedException('微信登录未配置');
+
+    this.logger.log(
+      `refreshSession called, userId=${userId}, userOpenid=${user.openid ? 'YES' : 'NO'}, headerOpenid=${headerOpenid ? 'YES' : 'NO'}`,
+    );
+
+    let data: WeChatSessionResponse;
+    try {
+      data = await this.code2Session(appId, appSecret, code);
+    } catch (error: any) {
+      this.logger.warn(`refreshSession code2Session 请求失败: ${this.describeRequestError(error)}`);
+      throw new BadRequestException(`刷新微信支付登录态失败: ${this.describeRequestError(error)}`);
+    }
+
+    if (data.errcode) throw new BadRequestException(`刷新微信支付登录态失败: ${data.errmsg}`);
+    if (!data.openid || !data.session_key) {
+      throw new BadRequestException('刷新微信支付登录态失败: 微信未返回 openid/session_key');
+    }
+
+    const normalizedHeaderOpenid = this.normalizeHeaderValue(headerOpenid);
+    const expectedOpenid = user.openid || normalizedHeaderOpenid;
+    if (expectedOpenid && expectedOpenid !== data.openid) {
+      throw new UnauthorizedException('微信登录态不匹配，请重新登录后再支付');
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        openid: user.openid || data.openid,
+        wxSessionKey: data.session_key,
+      },
+    });
+
+    this.logger.log('refreshSession 成功刷新 wxSessionKey');
+    return { success: true };
+  }
+
+  private async code2Session(appId: string, appSecret: string, code: string): Promise<WeChatSessionResponse> {
     const params = new URLSearchParams({
       appid: appId,
       secret: appSecret,
@@ -158,18 +206,40 @@ export class AuthService {
       grant_type: 'authorization_code',
     });
     const path = `/sns/jscode2session?${params.toString()}`;
+    const errors: string[] = [];
+
+    try {
+      this.logger.log('code2Session 使用公网 DNS 直连 api.weixin.qq.com');
+      return await this.requestWeChatSession(path, true);
+    } catch (error: any) {
+      errors.push(`public-dns: ${this.describeRequestError(error)}`);
+    }
+
+    try {
+      this.logger.log('code2Session 使用系统 DNS 直连 api.weixin.qq.com');
+      return await this.requestWeChatSession(path, false);
+    } catch (error: any) {
+      errors.push(`system-dns: ${this.describeRequestError(error)}`);
+    }
+
+    throw new Error(errors.join(' ; '));
+  }
+
+  private async requestWeChatSession(path: string, usePublicDns: boolean): Promise<WeChatSessionResponse> {
+    const connectHost = usePublicDns ? await this.resolvePublicWeChatHost() : 'api.weixin.qq.com';
 
     return new Promise((resolve, reject) => {
       const req = httpsRequest(
         {
-          hostname: 'api.weixin.qq.com',
+          hostname: connectHost,
+          servername: 'api.weixin.qq.com',
           path,
           method: 'GET',
           timeout: 8000,
           family: 4,
-          lookup,
           headers: {
             Accept: 'application/json',
+            Host: 'api.weixin.qq.com',
             'User-Agent': 'MoonaCloudRun/1.0',
           },
         },
@@ -200,6 +270,13 @@ export class AuthService {
       req.on('error', reject);
       req.end();
     });
+  }
+
+  private async resolvePublicWeChatHost() {
+    const addresses = await this.publicDnsResolver.resolve4('api.weixin.qq.com');
+    const address = addresses[0];
+    if (!address) throw new Error('public DNS returned empty address list');
+    return address;
   }
 
   private describeRequestError(error: any) {

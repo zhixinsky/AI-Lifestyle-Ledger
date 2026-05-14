@@ -1,4 +1,6 @@
-import { Body, Controller, Post, Headers } from '@nestjs/common';
+import { Body, Controller, Headers, Post, UseGuards } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { CurrentUser, AuthUser } from '../../common/current-user.decorator';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { SendCodeDto } from './dto/send-code.dto';
@@ -24,5 +26,15 @@ export class AuthController {
     @Body() body: { code?: string },
   ) {
     return this.authService.wxLogin(openid, body.code, unionid);
+  }
+
+  @Post('refresh-session')
+  @UseGuards(AuthGuard('jwt'))
+  refreshSession(
+    @CurrentUser() user: AuthUser,
+    @Headers('x-wx-openid') openid: string,
+    @Body() body: { code?: string },
+  ) {
+    return this.authService.refreshSession(user.sub, body.code, openid);
   }
 }

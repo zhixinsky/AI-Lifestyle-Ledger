@@ -21,6 +21,9 @@ export const authApi = {
   wxLogin(code: string) {
     return request<LoginResult>('/auth/wx-login', { method: 'POST', data: { code } });
   },
+  refreshSession(code: string) {
+    return request<{ success: boolean }>('/auth/refresh-session', { method: 'POST', data: { code } });
+  },
   profile() {
     return request<User>('/users/me');
   },
