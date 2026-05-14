@@ -1,6 +1,8 @@
 import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { lookup } from 'dns';
+import { request as httpsRequest } from 'https';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
 import { LoginDto } from './dto/login.dto';
@@ -9,6 +11,14 @@ import { SendCodeDto } from './dto/send-code.dto';
 interface CodeEntry {
   code: string;
   expiresAt: number;
+}
+
+interface WeChatSessionResponse {
+  openid?: string;
+  session_key?: string;
+  unionid?: string;
+  errcode?: number;
+  errmsg?: string;
 }
 
 @Injectable()
@@ -79,14 +89,7 @@ export class AuthService {
           throw new UnauthorizedException('微信登录未配置');
         }
         try {
-          const params = new URLSearchParams({
-            appid: appId,
-            secret: appSecret,
-            js_code: code,
-            grant_type: 'authorization_code',
-          });
-          const res = await fetch(`https://api.weixin.qq.com/sns/jscode2session?${params.toString()}`);
-          const data = await res.json();
+          const data = await this.code2Session(appId, appSecret, code);
           this.logger.log(`WeChat response: errcode=${data.errcode}`);
           if (data.errcode) {
             throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
@@ -100,7 +103,9 @@ export class AuthService {
           if (!openid || error instanceof UnauthorizedException) {
             throw error;
           }
-          this.logger.warn(`code2Session 请求失败，已使用云托管 openid 继续登录: ${error?.message || error}`);
+          this.logger.warn(
+            `code2Session 请求失败，已使用云托管 openid 继续登录: ${this.describeRequestError(error)}`,
+          );
         }
       }
 
@@ -134,6 +139,72 @@ export class AuthService {
       this.logger.error(`wxLogin error: ${error?.message}`, error?.stack);
       throw error;
     }
+  }
+
+  private code2Session(appId: string, appSecret: string, code: string): Promise<WeChatSessionResponse> {
+    const params = new URLSearchParams({
+      appid: appId,
+      secret: appSecret,
+      js_code: code,
+      grant_type: 'authorization_code',
+    });
+    const path = `/sns/jscode2session?${params.toString()}`;
+
+    return new Promise((resolve, reject) => {
+      const req = httpsRequest(
+        {
+          hostname: 'api.weixin.qq.com',
+          path,
+          method: 'GET',
+          timeout: 8000,
+          family: 4,
+          lookup,
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'MoonaCloudRun/1.0',
+          },
+        },
+        (res) => {
+          let text = '';
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            text += chunk;
+          });
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(text || '{}') as WeChatSessionResponse;
+              if ((res.statusCode || 0) >= 400) {
+                reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 200)}`));
+                return;
+              }
+              resolve(data);
+            } catch (error: any) {
+              reject(new Error(`Invalid JSON from WeChat: ${error?.message || error}`));
+            }
+          });
+        },
+      );
+
+      req.on('timeout', () => {
+        req.destroy(new Error('code2Session timeout'));
+      });
+      req.on('error', reject);
+      req.end();
+    });
+  }
+
+  private describeRequestError(error: any) {
+    const cause = error?.cause;
+    const parts = [
+      error?.message,
+      error?.code,
+      cause?.message,
+      cause?.code,
+      cause?.errno,
+      cause?.syscall,
+      cause?.hostname,
+    ].filter(Boolean);
+    return parts.length ? parts.join(' | ') : String(error);
   }
 
   private async buildResult(user: { id: string; phone: string; nickname: string; avatarUrl: string | null; streakDays: number }) {
