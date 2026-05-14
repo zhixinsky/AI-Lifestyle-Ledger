@@ -816,7 +816,6 @@ async function showSavedBillResult(saved: Transaction[]) {
   chatPanelVisible.value = false;
   scheduleSavedBillAutoClose();
   await refreshAfterBillChange();
-  uni.showToast({ title: saved.length > 1 ? `已记账${saved.length}笔` : '已记账', icon: 'success' });
 }
 
 function editSavedBill() {
@@ -849,7 +848,6 @@ async function deleteSavedBill() {
         savedBillPanelVisible.value = false;
         savedBill.value = null;
         await refreshAfterBillChange();
-        uni.showToast({ title: '已删除', icon: 'success' });
       } catch {
         uni.showToast({ title: '删除失败', icon: 'none' });
       }
