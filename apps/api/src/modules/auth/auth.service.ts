@@ -68,10 +68,11 @@ export class AuthService {
   async wxLogin(headerOpenid?: string, code?: string) {
     try {
       let openid = headerOpenid;
+      let sessionKey: string | undefined;
 
       this.logger.log(`wxLogin called, headerOpenid=${openid ? 'YES' : 'NO'}, code=${code ? 'YES' : 'NO'}`);
 
-      if (!openid && code) {
+      if (code) {
         const appId = this.configService.get<string>('WX_APPID');
         const appSecret = this.configService.get<string>('WX_APP_SECRET');
         if (!appId || !appSecret) {
@@ -84,7 +85,11 @@ export class AuthService {
         if (data.errcode) {
           throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
         }
-        openid = data.openid;
+        if (openid && data.openid && openid !== data.openid) {
+          throw new UnauthorizedException('微信登录态不匹配');
+        }
+        openid = openid || data.openid;
+        sessionKey = data.session_key;
       }
 
       if (!openid) {
@@ -99,11 +104,17 @@ export class AuthService {
           data: {
             phone: randomPhone,
             openid,
+            wxSessionKey: sessionKey,
             nickname: '',
             streakDays: 0,
           },
         });
         this.logger.log('New user created for openid');
+      } else if (sessionKey) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: { wxSessionKey: sessionKey },
+        });
       }
 
       return this.buildResult(user);

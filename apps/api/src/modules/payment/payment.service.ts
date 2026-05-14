@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { createDecipheriv, createHash, createPrivateKey, createPublicKey, createSign, createVerify, randomBytes } from 'crypto';
-import { Order, OrderStatus, OrderType, MemberLevel } from '@prisma/client';
+import { createHmac } from 'crypto';
+import { MemberLevel, Order, OrderStatus, OrderType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../membership/membership.service';
 
@@ -16,7 +16,7 @@ interface MemberPlan {
   id: string;
   level: MemberLevel;
   amount: number;
-  months: number;
+  months: number | null;
   description: string;
 }
 
@@ -24,7 +24,7 @@ const MEMBER_PLANS: Record<string, MemberPlan> = {
   monthly_pro: { id: 'monthly_pro', level: MemberLevel.pro, amount: 8, months: 1, description: 'Moona Pro 月卡' },
   quarterly_pro: { id: 'quarterly_pro', level: MemberLevel.pro, amount: 18, months: 3, description: 'Moona Pro 季卡' },
   yearly_pro: { id: 'yearly_pro', level: MemberLevel.pro, amount: 68, months: 12, description: 'Moona Pro 年卡' },
-  yearly_premium: { id: 'yearly_premium', level: MemberLevel.premium, amount: 98, months: 12, description: 'Moona Premium 年卡' },
+  yearly_premium: { id: 'yearly_premium', level: MemberLevel.premium, amount: 288, months: null, description: 'Moona Premium 永久会员' },
 };
 
 @Injectable()
@@ -33,41 +33,26 @@ export class PaymentService {
 
   private readonly configured: boolean;
   private readonly appId = this.readEnv('WX_APPID') || this.readEnv('WX_APP_ID');
-  private readonly mchId = this.readEnv('WX_PAY_MCH_ID');
-  private readonly apiV3Key = this.readEnv('WX_PAY_API_V3_KEY') || this.readEnv('WX_PAY_API_KEY');
-  private readonly certSerialNo = this.readEnv('WX_PAY_CERT_SERIAL');
-  private readonly privateKey = this.normalizePrivateKey(
-    this.readEnv('WX_PAY_PRIVATE_KEY') || this.readEnv('WX_PAY_PRIVATE_KEY_BASE64'),
-  );
-  private readonly wxPayPublicKeyId = this.readEnv('WX_PAY_PUBLIC_KEY_ID');
-  private readonly wxPayPublicKey = this.normalizePrivateKey(
-    this.readEnv('WX_PAY_PUBLIC_KEY') || this.readEnv('WX_PAY_PUBLIC_KEY_BASE64'),
-  );
+  private readonly offerId = this.readEnv('WX_VIRTUAL_PAY_OFFER_ID') || this.readEnv('WX_PAY_OFFER_ID');
+  private readonly env = Number(this.readEnv('WX_VIRTUAL_PAY_ENV') || '0');
+  private readonly appKey =
+    this.env === 1
+      ? this.readEnv('WX_VIRTUAL_PAY_SANDBOX_APP_KEY') || this.readEnv('WX_VIRTUAL_PAY_APP_KEY')
+      : this.readEnv('WX_VIRTUAL_PAY_APP_KEY') || this.readEnv('WX_VIRTUAL_PAY_PROD_APP_KEY');
+  private readonly trustClientSuccess = this.readEnv('WX_VIRTUAL_PAY_TRUST_CLIENT_SUCCESS') === 'true';
+  private readonly notifySecret = this.readEnv('WX_VIRTUAL_PAY_NOTIFY_SECRET');
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly membershipService: MembershipService,
   ) {
-    this.configured = !!(
-      this.appId &&
-      this.mchId &&
-      this.apiV3Key &&
-      this.certSerialNo &&
-      this.privateKey
-    );
+    this.configured = !!(this.appId && this.offerId && this.appKey);
     if (!this.configured) {
-      this.logger.warn('微信支付未完整配置，将使用模拟模式');
-    }
-    if (this.configured && !this.wxPayPublicKey) {
-      this.logger.warn('微信支付公钥未配置，将跳过微信应答和回调验签');
-    }
-    if (this.configured) {
-      this.validateMerchantSerialNo();
+      this.logger.warn('微信虚拟支付未完整配置，将使用模拟模式');
+    } else {
       this.logger.log(
-        `微信支付配置已加载 appId=${this.mask(this.appId)} mchId=${this.mask(this.mchId)} ` +
-          `certSerial=${this.mask(this.certSerialNo)} privateKeyHash=${this.hashText(this.privateKey)}`,
+        `微信虚拟支付配置已加载 appId=${this.mask(this.appId)} offerId=${this.mask(this.offerId)} env=${this.env}`,
       );
-      this.verifyLocalPrivateKey();
     }
   }
 
@@ -77,6 +62,9 @@ export class PaymentService {
     if (!user) throw new BadRequestException('用户不存在');
     if (this.configured && !user.openid) {
       throw new BadRequestException('当前账号缺少微信 openid，无法发起小程序支付');
+    }
+    if (this.configured && !user.wxSessionKey) {
+      throw new BadRequestException('当前微信登录态已过期，请重新登录后再支付');
     }
 
     const order = await this.prisma.order.create({
@@ -93,41 +81,51 @@ export class PaymentService {
       return {
         orderId: order.id,
         mock: true,
-        message:
-          '微信支付未配置，请设置 WX_APPID、WX_PAY_MCH_ID、WX_PAY_CERT_SERIAL、WX_PAY_PRIVATE_KEY、WX_PAY_API_V3_KEY',
+        message: '微信虚拟支付未配置，请设置 WX_APPID、WX_VIRTUAL_PAY_OFFER_ID、WX_VIRTUAL_PAY_APP_KEY',
       };
     }
 
-    const wxParams = await this.callWxPayApi(order, user.openid!);
-    return { orderId: order.id, wxParams };
+    return {
+      orderId: order.id,
+      virtualPayParams: this.buildVirtualPayParams(order, user.wxSessionKey!),
+    };
   }
 
-  async handleNotify(body: any, rawBody?: string, headers?: Record<string, string>) {
+  async handleNotify(body: any, rawBody?: string, secret?: string) {
     if (!this.configured) {
-      return { code: 'SUCCESS', message: '模拟模式' };
+      return { ErrCode: 0, ErrMsg: '模拟模式' };
     }
-    if (this.wxPayPublicKey && !this.verifyWxPaySignature(rawBody || JSON.stringify(body), headers || {})) {
-      throw new BadRequestException('微信支付回调验签失败');
+    if (this.notifySecret && secret !== this.notifySecret) {
+      return { ErrCode: 1, ErrMsg: '无效的回调地址' };
     }
 
-    const payload = this.decryptNotifyResource(body?.resource);
-    const orderId = payload?.out_trade_no;
+    const payload = this.parseVirtualPayNotify(body, rawBody);
+    const event = payload?.Event || payload?.event;
+    const orderId = payload?.OutTradeNo || payload?.outTradeNo || payload?.out_trade_no || payload?.MchOrderId;
     if (!orderId) {
-      return { code: 'FAIL', message: '无效的回调数据' };
+      return { ErrCode: 1, ErrMsg: '无效的回调数据' };
     }
 
-    const order = await this.prisma.order.findFirst({
-      where: { id: orderId },
-    });
+    const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) {
-      return { code: 'FAIL', message: '订单不存在' };
+      return { ErrCode: 1, ErrMsg: '订单不存在' };
+    }
+    const expectedPrice = Math.round(Number(order.amount) * 100);
+    const actualPrice = this.getNotifyActualPrice(payload);
+    if (actualPrice !== undefined && actualPrice !== expectedPrice) {
+      return { ErrCode: 1, ErrMsg: '订单金额不匹配' };
+    }
+    const notifyEnv = Number(payload?.Env ?? payload?.env);
+    if (!Number.isNaN(notifyEnv) && notifyEnv !== this.env) {
+      return { ErrCode: 1, ErrMsg: '支付环境不匹配' };
     }
 
-    if (payload.trade_state === 'SUCCESS') {
-      await this.completePaidOrder(order, payload.transaction_id);
+    if (event === 'xpay_goods_deliver_notify' || event === 'xpay_coin_pay_notify') {
+      const wxPayInfo = payload.WeChatPayInfo || payload.weChatPayInfo || {};
+      await this.completePaidOrder(order, wxPayInfo.TransactionId || wxPayInfo.transactionId);
     }
 
-    return { code: 'SUCCESS', message: '成功' };
+    return { ErrCode: 0, ErrMsg: 'success' };
   }
 
   async mockPaySuccess(orderId: string) {
@@ -144,19 +142,16 @@ export class PaymentService {
     return this.prisma.order.findUnique({ where: { id: orderId } });
   }
 
-  async syncOrder(orderId: string, userId: string) {
+  async syncOrder(orderId: string, userId: string, clientPaid = false) {
     const order = await this.prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw new BadRequestException('订单不存在');
     if (order.userId !== userId) throw new ForbiddenException('无权访问此订单');
     if (order.status === OrderStatus.paid) return { paid: true, order };
-    if (!this.configured) return { paid: false, order };
-
-    const wxOrder = await this.queryWxPayOrder(order.id);
-    if (wxOrder?.trade_state === 'SUCCESS') {
-      const paidOrder = await this.completePaidOrder(order, wxOrder.transaction_id);
+    if (clientPaid && this.trustClientSuccess) {
+      const paidOrder = await this.completePaidOrder(order);
       return { paid: true, order: paidOrder };
     }
-    return { paid: false, tradeState: wxOrder?.trade_state, order };
+    return { paid: false, order };
   }
 
   async listOrders(userId: string) {
@@ -167,38 +162,24 @@ export class PaymentService {
     });
   }
 
-  private async callWxPayApi(order: Order, openid: string) {
-    const url = 'https://api.mch.weixin.qq.com/v3/pay/transactions/jsapi';
-    const body = {
-      appid: this.appId,
-      mchid: this.mchId,
-      description: order.description || 'Moona 会员服务',
-      out_trade_no: order.id,
-      notify_url: this.getNotifyUrl(),
-      amount: { total: Math.round(Number(order.amount) * 100), currency: 'CNY' },
-      payer: { openid },
-    };
+  private buildVirtualPayParams(order: Order, sessionKey: string) {
+    const plan = this.getPlan(undefined, Number(order.amount));
+    const signData = JSON.stringify({
+      offerId: this.offerId,
+      buyQuantity: 1,
+      env: this.env,
+      currencyType: 'CNY',
+      productId: this.getProductId(plan.id),
+      goodsPrice: Math.round(Number(order.amount) * 100),
+      outTradeNo: order.id,
+      attach: JSON.stringify({ userId: order.userId, planId: plan.id }),
+    });
 
-    const res = await this.wxPayRequest<{ prepay_id: string }>('POST', url, body);
-    if (!res.prepay_id) throw new BadRequestException('微信预支付下单失败');
-
-    const timeStamp = String(Math.floor(Date.now() / 1000));
-    const nonceStr = randomBytes(16).toString('hex');
-    const pkg = `prepay_id=${res.prepay_id}`;
-    const paySign = this.sign(`${this.appId}\n${timeStamp}\n${nonceStr}\n${pkg}\n`);
     return {
-      appId: this.appId,
-      timeStamp,
-      nonceStr,
-      package: pkg,
-      signType: 'RSA',
-      paySign,
+      signData,
+      paySig: this.hmacSha256(this.appKey, `requestVirtualPayment&${signData}`),
+      signature: this.hmacSha256(sessionKey, signData),
     };
-  }
-
-  private async queryWxPayOrder(orderId: string) {
-    const url = `https://api.mch.weixin.qq.com/v3/pay/transactions/out-trade-no/${orderId}?mchid=${this.mchId}`;
-    return this.wxPayRequest<{ trade_state: string; transaction_id?: string }>('GET', url);
   }
 
   private async completePaidOrder(order: Order, wxTransactionId?: string) {
@@ -228,150 +209,35 @@ export class PaymentService {
     throw new BadRequestException('无效的会员套餐');
   }
 
-  private getNotifyUrl() {
-    const notifyUrl = this.readEnv('WX_PAY_NOTIFY_URL');
-    if (notifyUrl) return notifyUrl;
-    const baseUrl = this.readEnv('API_PUBLIC_BASE_URL');
-    if (!baseUrl) throw new BadRequestException('请配置 WX_PAY_NOTIFY_URL 或 API_PUBLIC_BASE_URL');
-    return `${baseUrl.replace(/\/$/, '')}/api/payment/notify`;
+  private getProductId(planId: string) {
+    return this.readEnv(`WX_VIRTUAL_PAY_PRODUCT_${planId.toUpperCase()}`) || planId;
   }
 
-  private async wxPayRequest<T>(method: 'GET' | 'POST', url: string, body?: unknown): Promise<T> {
-    const bodyText = body ? JSON.stringify(body) : '';
-    const timestamp = String(Math.floor(Date.now() / 1000));
-    const nonceStr = randomBytes(16).toString('hex');
-    const urlPath = new URL(url).pathname + new URL(url).search;
-    const signature = this.sign(`${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${bodyText}\n`);
-    const authorization =
-      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonceStr}",` +
-      `timestamp="${timestamp}",serial_no="${this.certSerialNo}",signature="${signature}"`;
-
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: authorization,
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
-      body: bodyText || undefined,
-    });
-    const responseText = await res.text();
-    const responseHeaders = Object.fromEntries(res.headers.entries());
-    if (this.wxPayPublicKey) {
-      if (this.hasWxPaySignatureHeaders(responseHeaders)) {
-        if (!this.verifyWxPaySignature(responseText, responseHeaders)) {
-          this.logger.error('微信支付应答验签失败');
-          throw new BadRequestException('微信支付应答验签失败');
-        }
-      } else {
-        this.logger.warn('微信支付应答缺少 Wechatpay 签名头，已跳过应答验签；请检查代理/CDN 是否过滤响应头');
-      }
-    }
-    let data: any = {};
-    if (responseText) {
-      try {
-        data = JSON.parse(responseText);
-      } catch {
-        data = { raw: responseText };
-      }
-    }
-    const requestId = res.headers.get('Request-ID') || res.headers.get('Wechatpay-Request-Id');
-    if (!res.ok) {
-      this.logger.error(`微信支付请求失败 requestId=${requestId || '-'} status=${res.status} body=${responseText}`);
-      throw new BadRequestException(data?.message || '微信支付请求失败');
-    }
-    this.logger.log(`微信支付请求成功 requestId=${requestId || '-'}`);
-    return data as T;
-  }
-
-  private verifyWxPaySignature(bodyText: string, headers: Record<string, string>) {
-    const timestamp = this.getHeader(headers, 'wechatpay-timestamp');
-    const nonce = this.getHeader(headers, 'wechatpay-nonce');
-    const signature = this.getHeader(headers, 'wechatpay-signature');
-    const serial = this.getHeader(headers, 'wechatpay-serial');
-
-    if (!timestamp || !nonce || !signature) {
-      this.logger.warn('微信支付验签失败：缺少 Wechatpay 签名头');
-      return false;
-    }
-    if (this.wxPayPublicKeyId && serial && serial !== this.wxPayPublicKeyId) {
-      this.logger.warn(`微信支付验签失败：公钥ID不匹配 header=${serial}`);
-      return false;
-    }
-    if (signature.includes('WECHATPAY/SIGNTEST/')) {
-      this.logger.warn('微信支付验签失败：收到签名探测流量');
-      return false;
-    }
-
-    const message = `${timestamp}\n${nonce}\n${bodyText}\n`;
-    return createVerify('RSA-SHA256')
-      .update(message)
-      .verify(this.wxPayPublicKey, signature, 'base64');
-  }
-
-  private hasWxPaySignatureHeaders(headers: Record<string, string>) {
-    return !!(
-      this.getHeader(headers, 'wechatpay-timestamp') &&
-      this.getHeader(headers, 'wechatpay-nonce') &&
-      this.getHeader(headers, 'wechatpay-signature')
-    );
-  }
-
-  private getHeader(headers: Record<string, string>, name: string) {
-    const found = Object.entries(headers).find(([key]) => key.toLowerCase() === name);
-    return found?.[1];
-  }
-
-  private decryptNotifyResource(resource: any) {
-    if (!resource?.ciphertext || !resource?.nonce) return null;
-    const key = Buffer.from(this.apiV3Key, 'utf8');
-    const ciphertext = Buffer.from(resource.ciphertext, 'base64');
-    const authTag = ciphertext.subarray(ciphertext.length - 16);
-    const data = ciphertext.subarray(0, ciphertext.length - 16);
-    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(resource.nonce, 'utf8'));
-    if (resource.associated_data) {
-      decipher.setAAD(Buffer.from(resource.associated_data, 'utf8'));
-    }
-    decipher.setAuthTag(authTag);
-    const decrypted = Buffer.concat([decipher.update(data), decipher.final()]).toString('utf8');
-    return JSON.parse(decrypted);
-  }
-
-  private sign(message: string) {
-    return createSign('RSA-SHA256').update(message).sign(this.privateKey, 'base64');
-  }
-
-  private verifyLocalPrivateKey() {
+  private parseVirtualPayNotify(body: any, rawBody?: string) {
+    if (body && Object.keys(body).length > 0) return body;
+    if (!rawBody) return {};
     try {
-      const privateKey = createPrivateKey(this.privateKey);
-      const publicKey = createPublicKey(privateKey);
-      const message = 'moona-wechat-pay-sign-test';
-      const signature = createSign('RSA-SHA256').update(message).sign(privateKey);
-      const verified = createVerify('RSA-SHA256').update(message).verify(publicKey, signature);
-      if (!verified) {
-        this.logger.error('微信支付商户私钥本地验签失败，请检查 WX_PAY_PRIVATE_KEY');
-        return;
+      return JSON.parse(rawBody);
+    } catch {
+      const result: Record<string, string> = {};
+      for (const [, key, value] of rawBody.matchAll(/<([^/][^>]*)>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/\1>/g)) {
+        result[key] = value;
       }
-      this.logger.log('微信支付商户私钥本地验签通过');
-    } catch (error: any) {
-      this.logger.error(`微信支付商户私钥格式不可用：${error?.message || error}`);
+      return result;
     }
   }
 
-  private validateMerchantSerialNo() {
-    if (this.certSerialNo.startsWith('PUB_KEY_ID_')) {
-      this.logger.error('WX_PAY_CERT_SERIAL 当前是微信支付公钥ID。这里必须填写商户API证书序列号，不是 WX_PAY_PUBLIC_KEY_ID');
-      return;
-    }
-    if (!/^[0-9A-Fa-f]{32,64}$/.test(this.certSerialNo)) {
-      this.logger.warn('WX_PAY_CERT_SERIAL 格式不像商户API证书序列号，请核对商户平台「API证书」页面');
-    }
+  private getNotifyActualPrice(payload: any) {
+    const goodsInfo = payload?.GoodsInfo || payload?.goodsInfo;
+    const coinInfo = payload?.CoinInfo || payload?.coinInfo;
+    const value = goodsInfo?.ActualPrice ?? goodsInfo?.actualPrice ?? coinInfo?.ActualPrice ?? coinInfo?.actualPrice;
+    if (value === undefined || value === null || value === '') return undefined;
+    const price = Number(value);
+    return Number.isNaN(price) ? undefined : price;
   }
 
-  private normalizePrivateKey(value: string) {
-    if (!value) return '';
-    const decoded = value.includes('BEGIN') ? value : Buffer.from(value, 'base64').toString('utf8');
-    return decoded.replace(/\\n/g, '\n');
+  private hmacSha256(key: string, message: string) {
+    return createHmac('sha256', key).update(message).digest('hex');
   }
 
   private readEnv(name: string) {
@@ -382,10 +248,5 @@ export class PaymentService {
     if (!value) return '-';
     if (value.length <= 8) return `${value.slice(0, 2)}***`;
     return `${value.slice(0, 4)}***${value.slice(-4)}`;
-  }
-
-  private hashText(value: string) {
-    if (!value) return '-';
-    return createHash('sha256').update(value).digest('hex').slice(0, 12);
   }
 }

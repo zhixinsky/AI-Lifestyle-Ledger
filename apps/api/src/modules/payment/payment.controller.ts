@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Headers, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Headers, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { OrderType } from '@prisma/client';
 import { CurrentUser, AuthUser } from '../../common/current-user.decorator';
@@ -24,9 +24,14 @@ export class PaymentController {
   }
 
   @Post('notify')
-  async handleNotify(@Body() body: any, @Headers() headers: Record<string, string>, @Req() req: any) {
+  async handleNotify(
+    @Body() body: any,
+    @Headers() headers: Record<string, string>,
+    @Query('secret') secret: string,
+    @Req() req: any,
+  ) {
     const rawBody = req.rawBody ? req.rawBody.toString('utf8') : JSON.stringify(body);
-    return this.paymentService.handleNotify(body, rawBody, headers);
+    return this.paymentService.handleNotify(body, rawBody, secret);
   }
 
   @Post('mock-pay/:orderId')
@@ -37,8 +42,12 @@ export class PaymentController {
 
   @Post('sync/:orderId')
   @UseGuards(AuthGuard('jwt'))
-  async syncOrder(@CurrentUser() user: AuthUser, @Param('orderId') orderId: string) {
-    return this.paymentService.syncOrder(orderId, user.sub);
+  async syncOrder(
+    @CurrentUser() user: AuthUser,
+    @Param('orderId') orderId: string,
+    @Body() body: { clientPaid?: boolean },
+  ) {
+    return this.paymentService.syncOrder(orderId, user.sub, body.clientPaid === true);
   }
 
   @Get('orders')

@@ -1,20 +1,17 @@
 import { request } from '@/utils/request';
 import type { MembershipStatus, Order } from '@/types/domain';
 
-export interface WxPaymentParams {
-  appId: string;
-  timeStamp: string;
-  nonceStr: string;
-  package: string;
-  signType: 'RSA' | 'MD5' | string;
-  paySign: string;
+export interface VirtualPaymentParams {
+  signData: string;
+  paySig: string;
+  signature: string;
 }
 
 export interface CreateOrderResponse {
   orderId: string;
   mock?: boolean;
   message?: string;
-  wxParams?: WxPaymentParams;
+  virtualPayParams?: VirtualPaymentParams;
 }
 
 export const membershipApi = {
@@ -34,8 +31,8 @@ export const membershipApi = {
     return request(`/payment/mock-pay/${orderId}`, { method: 'POST' });
   },
 
-  syncOrder(orderId: string) {
-    return request<{ paid: boolean; tradeState?: string; order?: Order }>(`/payment/sync/${orderId}`, { method: 'POST' });
+  syncOrder(orderId: string, clientPaid = false) {
+    return request<{ paid: boolean; order?: Order }>(`/payment/sync/${orderId}`, { method: 'POST', data: { clientPaid } });
   },
 
   listOrders() {

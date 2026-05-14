@@ -34,7 +34,15 @@ export class MembershipService {
     return status.isPro;
   }
 
-  async activate(userId: string, level: MemberLevel, months: number) {
+  async activate(userId: string, level: MemberLevel, months: number | null) {
+    if (months === null) {
+      await this.getOrCreate(userId);
+      return this.prisma.membership.update({
+        where: { userId },
+        data: { level, expireAt: null },
+      });
+    }
+
     const now = new Date();
     const m = await this.getOrCreate(userId);
     const currentExpire = m.expireAt && m.expireAt > now ? m.expireAt : now;

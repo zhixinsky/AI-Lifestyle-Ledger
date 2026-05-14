@@ -16,7 +16,7 @@
         <view class="level-info">
           <text class="level-name">{{ levelName }}</text>
           <text class="level-expire" v-if="status?.expireAt">有效期至 {{ formatDate(status.expireAt) }}</text>
-          <text class="level-expire" v-else>免费版</text>
+          <text class="level-expire" v-else>{{ status?.level === 'premium' ? '永久有效' : '免费版' }}</text>
         </view>
       </view>
     </view>
@@ -59,7 +59,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
-import { membershipApi, type WxPaymentParams } from '@/api/membership';
+import { membershipApi, type VirtualPaymentParams } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
 
 const status = ref<MembershipStatus | null>(null);
@@ -89,7 +89,7 @@ const plans = [
   { id: 'monthly_pro', name: 'Pro 月卡', price: 8, unit: '/月', tag: '' },
   { id: 'quarterly_pro', name: 'Pro 季卡', price: 18, unit: '/3月', tag: '省6元' },
   { id: 'yearly_pro', name: 'Pro 年卡', price: 68, unit: '/年', tag: '最划算' },
-  { id: 'yearly_premium', name: 'Premium', price: 98, unit: '/年', tag: '尊享' },
+  { id: 'yearly_premium', name: '永久会员', price: 288, unit: '一次买断', tag: 'Premium' },
 ];
 
 function formatDate(iso: string) {
@@ -131,14 +131,14 @@ async function handleSubscribe() {
       });
       return;
     }
-    if (!res.wxParams) throw new Error('缺少微信支付参数');
-    await requestWechatPayment(res.wxParams);
-    const syncResult = await membershipApi.syncOrder(res.orderId);
+    if (!res.virtualPayParams) throw new Error('缺少微信虚拟支付参数');
+    await requestWechatVirtualPayment(res.virtualPayParams);
+    const syncResult = await membershipApi.syncOrder(res.orderId, true);
     if (syncResult.paid) {
       uni.showToast({ title: '开通成功！', icon: 'success' });
       await loadStatus();
     } else {
-      uni.showToast({ title: '支付处理中，请稍后刷新', icon: 'none' });
+      uni.showToast({ title: '支付成功，等待到账确认', icon: 'none' });
       setTimeout(loadStatus, 1500);
     }
   } catch (error: any) {
@@ -153,17 +153,22 @@ async function handleSubscribe() {
   }
 }
 
-function requestWechatPayment(params: WxPaymentParams) {
+function requestWechatVirtualPayment(params: VirtualPaymentParams) {
   return new Promise<void>((resolve, reject) => {
-    uni.requestPayment({
-      timeStamp: params.timeStamp,
-      nonceStr: params.nonceStr,
-      package: params.package,
-      signType: params.signType,
-      paySign: params.paySign,
+    // #ifdef MP-WEIXIN
+    // @ts-ignore
+    wx.requestVirtualPayment({
+      signData: params.signData,
+      paySig: params.paySig,
+      signature: params.signature,
       success: () => resolve(),
-      fail: (err) => reject(err),
+      fail: (err: UniApp.GeneralCallbackResult) => reject(err),
     });
+    // #endif
+
+    // #ifndef MP-WEIXIN
+    reject(new Error('请在微信小程序内使用虚拟支付'));
+    // #endif
   });
 }
 

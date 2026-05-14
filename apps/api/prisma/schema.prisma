@@ -16,6 +16,7 @@ model User {
   id           String        @id @default(cuid())
   phone        String        @unique
   openid       String?       @unique
+  wxSessionKey String?
   nickname     String        @default("")
   avatarUrl    String?       @db.Text // 可为 cloud:// fileID 或外链，需长于默认 VARCHAR
   passwordHash String?

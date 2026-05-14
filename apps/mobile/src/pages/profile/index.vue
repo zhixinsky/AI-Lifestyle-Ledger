@@ -88,7 +88,7 @@
         <text class="vip-level-icon">{{ memberLevelIcon }}</text>
         <view class="vip-level-info">
           <text class="vip-level-name">{{ memberLevelName }}</text>
-          <text class="vip-level-expire">有效期至 {{ memberExpire }}</text>
+          <text class="vip-level-expire">{{ memberExpire }}</text>
         </view>
       </view>
       <button v-if="canUpgrade" class="vip-upgrade-btn">{{ upgradeText }}</button>
@@ -338,8 +338,9 @@ const memberLevelNum = computed(() => {
 const memberLevelIcon = computed(() => ['🌱', '⭐', '💎'][memberLevelNum.value]);
 const memberLevelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][memberLevelNum.value]);
 const memberExpire = computed(() => {
+  if (memberStatus.value?.level === 'premium' && !memberStatus.value.expireAt) return '永久有效';
   if (!memberStatus.value?.expireAt) return '';
-  return memberStatus.value.expireAt.substring(0, 10);
+  return `有效期至 ${memberStatus.value.expireAt.substring(0, 10)}`;
 });
 
 async function refreshProfileData() {
