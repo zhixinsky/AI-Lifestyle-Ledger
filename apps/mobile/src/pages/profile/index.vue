@@ -382,12 +382,21 @@ const menuGroups = [
 ];
 
 const tabBarPages = ['/pages/overview/index', '/pages/bills/index', '/pages/index/index', '/pages/discover/index', '/pages/profile/index'];
+const protectedPages = [
+  '/pages/account-security/index',
+  '/pages/budget/index',
+  '/pages/saving-goals/index',
+  '/pages/shared-book/index',
+  '/pages/growth/index',
+  '/pages/category-settings/index',
+];
 
 function onMenuTap(item: { label: string; url: string }) {
   if (!item.url) {
     uni.showToast({ title: `${item.label} 即将上线`, icon: 'none' });
     return;
   }
+  if (protectedPages.includes(item.url) && !ensureLoggedIn()) return;
   if (tabBarPages.includes(item.url)) {
     uni.switchTab({ url: item.url });
   } else {
