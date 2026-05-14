@@ -12,8 +12,8 @@
     <MemberProfileCard
       :level="status?.level || 'free'"
       :title="levelName"
+      :avatar-url="avatarUrl"
       :expire-at="status?.expireAt || null"
-      :show-avatar="false"
       :action-text="status?.isPro ? '续费会员' : '开通会员'"
       @tap="focusPlans"
       @action="focusPlans"
@@ -54,7 +54,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import MemberProfileCard from '@/components/MemberProfileCard.vue';
@@ -62,6 +63,7 @@ import { membershipApi, type VirtualPaymentParams } from '@/api/membership';
 import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
 import { useLoginSheetStore } from '@/stores/login-sheet';
+import { getApiBase } from '@/utils/request';
 import type { MembershipStatus } from '@/types/domain';
 
 const status = ref<MembershipStatus | null>(null);
@@ -77,6 +79,12 @@ const currentLevelNum = computed(() => {
 });
 
 const levelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][currentLevelNum.value]);
+const avatarUrl = computed(() => {
+  const url = authStore.user?.avatarUrl || '';
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('cloud://')) return url;
+  return `${getApiBase().replace('/api', '')}${url}`;
+});
 
 const benefits = [
   { icon: '🤖', label: 'AI 智能对话', desc: '无限次 AI 财务对话', level: 0 },
@@ -202,7 +210,14 @@ async function loadStatus() {
   } catch {}
 }
 
-onMounted(loadStatus);
+async function loadMembershipPage() {
+  if (authStore.isLoggedIn) {
+    await authStore.loadProfile().catch(() => {});
+  }
+  await loadStatus();
+}
+
+onShow(loadMembershipPage);
 </script>
 
 <style scoped>
