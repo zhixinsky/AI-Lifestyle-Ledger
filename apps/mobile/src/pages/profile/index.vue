@@ -37,16 +37,17 @@
       </view>
     </view>
 
-    <MemberProfileCard
-      class="profile-member-card"
-      :level="memberStatus?.level || 'free'"
-      :title="userName"
-      :avatar-url="avatarUrl"
-      :expire-at="memberStatus?.expireAt || null"
-      :action-text="memberStatus?.isPro ? '会员中心' : '开通会员'"
-      @tap="onUserSectionTap"
-      @action="goMembership"
-    />
+    <view class="profile-member-card-wrap">
+      <MemberProfileCard
+        :level="memberStatus?.level || 'free'"
+        :title="userName"
+        :avatar-url="avatarUrl"
+        :expire-at="memberStatus?.expireAt || null"
+        :action-text="memberStatus?.isPro ? '会员中心' : '开通会员'"
+        @tap="onUserSectionTap"
+        @action="goMembership"
+      />
+    </view>
 
     <!-- 菜单列表 -->
     <MoonaCard class="menu-card">
@@ -359,7 +360,7 @@ function handleLogout() {
   font-weight: 700;
 }
 
-.profile-member-card {
+.profile-member-card-wrap {
   margin-top: 64rpx;
 }
 
