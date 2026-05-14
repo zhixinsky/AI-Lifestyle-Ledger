@@ -165,7 +165,7 @@ const sheetTitle = computed(() => {
   return profile.value?.hasPassword ? '修改密码' : '设置登录密码';
 });
 const sheetKeyboardStyle = computed(() => ({
-  paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 42rpx + ${keyboardHeight.value}px)`,
+  transform: keyboardHeight.value ? `translateY(-${keyboardHeight.value}px)` : 'translateY(0)',
 }));
 
 function goBack() {
@@ -322,7 +322,9 @@ async function handleDeleteAccount() {
 }
 
 function handleKeyboardHeightChange(res: { height?: number }) {
-  keyboardHeight.value = Math.max(0, Number(res.height || 0));
+  const height = Math.max(0, Number(res.height || 0));
+  const safeHeight = height > 40 ? height : 0;
+  keyboardHeight.value = Math.min(safeHeight, 360);
 }
 
 onMounted(() => {
@@ -487,7 +489,7 @@ onUnmounted(() => {
   border-radius: 30rpx 30rpx 0 0;
   background: #fff;
   box-sizing: border-box;
-  transition: padding-bottom 0.18s ease;
+  will-change: transform;
 }
 .sheet-header {
   display: flex;
