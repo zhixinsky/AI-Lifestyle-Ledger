@@ -20,8 +20,9 @@ export class AuthController {
   @Post('wx-login')
   wxLogin(
     @Headers('x-wx-openid') openid: string,
+    @Headers('x-wx-unionid') unionid: string,
     @Body() body: { code?: string },
   ) {
-    return this.authService.wxLogin(openid, body.code);
+    return this.authService.wxLogin(openid, body.code, unionid);
   }
 }

@@ -75,14 +75,22 @@ export class AuthService {
     return this.buildResult(user);
   }
 
-  async wxLogin(headerOpenid?: string, code?: string) {
+  async wxLogin(headerOpenid?: string, code?: string, headerUnionid?: string) {
     try {
-      let openid = headerOpenid;
+      const rawHeaderOpenid = this.normalizeHeaderValue(headerOpenid);
+      const unionid = this.normalizeHeaderValue(headerUnionid);
+      let openid = rawHeaderOpenid || unionid;
+      const headerIdentitySource = rawHeaderOpenid ? 'x-wx-openid' : unionid ? 'x-wx-unionid' : '-';
       let sessionKey: string | undefined;
 
-      this.logger.log(`wxLogin called, headerOpenid=${openid ? 'YES' : 'NO'}, code=${code ? 'YES' : 'NO'}`);
+      this.logger.log(
+        `wxLogin called, headerOpenid=${openid ? 'YES' : 'NO'}, headerUnionid=${unionid ? 'YES' : 'NO'}, code=${code ? 'YES' : 'NO'}`,
+      );
 
-      if (code) {
+      if (openid) {
+        this.logger.log(`wxLogin 使用云托管 ${headerIdentitySource} 登录，跳过 code2Session`);
+      } else if (code) {
+        this.logger.log('wxLogin 未收到 headerOpenid，开始调用 code2Session');
         const appId = this.configService.get<string>('WX_APPID');
         const appSecret = this.configService.get<string>('WX_APP_SECRET');
         if (!appId || !appSecret) {
@@ -94,19 +102,20 @@ export class AuthService {
           if (data.errcode) {
             throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
           }
-          if (openid && data.openid && openid !== data.openid) {
+          if (!data.openid) {
+            throw new UnauthorizedException('微信登录失败: code2Session 未返回 openid');
+          }
+          if (openid && openid !== data.openid) {
             throw new UnauthorizedException('微信登录态不匹配');
           }
-          openid = openid || data.openid;
+          openid = data.openid;
           sessionKey = data.session_key;
         } catch (error: any) {
-          if (!openid || error instanceof UnauthorizedException) {
-            throw error;
-          }
-          this.logger.warn(
-            `code2Session 请求失败，已使用云托管 openid 继续登录: ${this.describeRequestError(error)}`,
-          );
+          this.logger.warn(`code2Session 请求失败: ${this.describeRequestError(error)}`);
+          throw error;
         }
+      } else {
+        this.logger.warn('wxLogin 缺少 headerOpenid 且缺少 code，无法登录');
       }
 
       if (!openid) {
@@ -205,6 +214,11 @@ export class AuthService {
       cause?.hostname,
     ].filter(Boolean);
     return parts.length ? parts.join(' | ') : String(error);
+  }
+
+  private normalizeHeaderValue(value?: string) {
+    if (!value) return '';
+    return String(value).trim();
   }
 
   private async buildResult(user: { id: string; phone: string; nickname: string; avatarUrl: string | null; streakDays: number }) {
