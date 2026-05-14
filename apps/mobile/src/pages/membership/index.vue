@@ -87,10 +87,10 @@ const benefits = [
 ];
 
 const plans = [
-  { id: 'monthly_pro', name: 'Pro 月卡', price: 28, unit: '/月', tag: '' },
-  { id: 'quarterly_pro', name: 'Pro 季卡', price: 68, unit: '/3月', tag: '省16元' },
-  { id: 'yearly_pro', name: 'Pro 年卡', price: 198, unit: '/年', tag: '最划算' },
-  { id: 'yearly_premium', name: 'Premium', price: 298, unit: '/年', tag: '尊享' },
+  { id: 'monthly_pro', name: 'Pro 月卡', price: 8, unit: '/月', tag: '' },
+  { id: 'quarterly_pro', name: 'Pro 季卡', price: 18, unit: '/3月', tag: '省6元' },
+  { id: 'yearly_pro', name: 'Pro 年卡', price: 68, unit: '/年', tag: '最划算' },
+  { id: 'yearly_premium', name: 'Premium', price: 98, unit: '/年', tag: '尊享' },
 ];
 
 function formatDate(iso: string) {

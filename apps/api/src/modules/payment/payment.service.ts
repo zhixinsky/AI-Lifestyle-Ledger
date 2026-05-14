@@ -21,10 +21,10 @@ interface MemberPlan {
 }
 
 const MEMBER_PLANS: Record<string, MemberPlan> = {
-  monthly_pro: { id: 'monthly_pro', level: MemberLevel.pro, amount: 28, months: 1, description: 'Moona Pro 月卡' },
-  quarterly_pro: { id: 'quarterly_pro', level: MemberLevel.pro, amount: 68, months: 3, description: 'Moona Pro 季卡' },
-  yearly_pro: { id: 'yearly_pro', level: MemberLevel.pro, amount: 198, months: 12, description: 'Moona Pro 年卡' },
-  yearly_premium: { id: 'yearly_premium', level: MemberLevel.premium, amount: 298, months: 12, description: 'Moona Premium 年卡' },
+  monthly_pro: { id: 'monthly_pro', level: MemberLevel.pro, amount: 8, months: 1, description: 'Moona Pro 月卡' },
+  quarterly_pro: { id: 'quarterly_pro', level: MemberLevel.pro, amount: 18, months: 3, description: 'Moona Pro 季卡' },
+  yearly_pro: { id: 'yearly_pro', level: MemberLevel.pro, amount: 68, months: 12, description: 'Moona Pro 年卡' },
+  yearly_premium: { id: 'yearly_premium', level: MemberLevel.premium, amount: 98, months: 12, description: 'Moona Premium 年卡' },
 };
 
 @Injectable()
