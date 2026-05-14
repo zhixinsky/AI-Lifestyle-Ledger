@@ -35,6 +35,7 @@ export class PaymentService {
   private readonly appId = this.readEnv('WX_APPID') || this.readEnv('WX_APP_ID');
   private readonly offerId = this.readEnv('WX_VIRTUAL_PAY_OFFER_ID') || this.readEnv('WX_PAY_OFFER_ID');
   private readonly env = Number(this.readEnv('WX_VIRTUAL_PAY_ENV') || '0');
+  private readonly mode = this.readEnv('WX_VIRTUAL_PAY_MODE') || 'short_series_goods';
   private readonly appKey =
     this.env === 1
       ? this.readEnv('WX_VIRTUAL_PAY_SANDBOX_APP_KEY') || this.readEnv('WX_VIRTUAL_PAY_APP_KEY')
@@ -176,6 +177,7 @@ export class PaymentService {
     });
 
     return {
+      mode: this.mode,
       signData,
       paySig: this.hmacSha256(this.appKey, `requestVirtualPayment&${signData}`),
       signature: this.hmacSha256(sessionKey, signData),

@@ -2,6 +2,7 @@ import { request } from '@/utils/request';
 import type { MembershipStatus, Order } from '@/types/domain';
 
 export interface VirtualPaymentParams {
+  mode: string;
   signData: string;
   paySig: string;
   signature: string;

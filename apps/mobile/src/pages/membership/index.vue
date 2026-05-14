@@ -170,6 +170,7 @@ function requestWechatVirtualPayment(params: VirtualPaymentParams) {
     // #ifdef MP-WEIXIN
     // @ts-ignore
     wx.requestVirtualPayment({
+      mode: params.mode,
       signData: params.signData,
       paySig: params.paySig,
       signature: params.signature,
