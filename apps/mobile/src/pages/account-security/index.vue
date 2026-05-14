@@ -9,24 +9,15 @@
       <view class="nav-placeholder" />
     </view>
 
-    <view :class="['profile-card', `profile-card--${memberTone}`]" @tap="openProfileForm">
-      <view class="card-lines" />
-      <image v-if="avatarUrl" class="avatar" :src="avatarUrl" mode="aspectFill" />
-      <view v-else :class="['avatar-placeholder', `avatar-placeholder--${memberTone}`]">
-        <text>{{ firstNameChar }}</text>
-      </view>
-      <view class="profile-info">
-        <view class="name-row">
-          <text class="nickname">{{ profile?.nickname || authStore.user?.nickname || '用户' }}</text>
-          <text :class="['member-badge', `member-badge--${memberTone}`]">{{ memberBadgeText }}</text>
-        </view>
-        <text class="member-line">{{ memberLineText }}</text>
-      </view>
-      <view :class="['member-pill', `member-pill--${memberTone}`]" @tap.stop="goMembership">
-        <text>{{ memberActionText }}</text>
-        <text class="member-pill-arrow">›</text>
-      </view>
-    </view>
+    <MemberProfileCard
+      :level="membership?.level || 'free'"
+      :title="profile?.nickname || authStore.user?.nickname || '用户'"
+      :avatar-url="avatarUrl"
+      :expire-at="membership?.expireAt || null"
+      :action-text="memberActionText"
+      @tap="openProfileForm"
+      @action="goMembership"
+    />
 
     <view class="section-title">账号绑定</view>
     <view class="ios-card">
@@ -145,6 +136,7 @@
 <script setup lang="ts">
 import { computed, onMounted, reactive, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
+import MemberProfileCard from '@/components/MemberProfileCard.vue';
 import { backIcon } from '@/utils/icons';
 import { getApiBase } from '@/utils/request';
 import { uploadWxCloudAvatar } from '@/utils/request';
@@ -183,22 +175,6 @@ const maskedEmail = computed(() => {
   const [name, domain] = email.split('@');
   if (!domain) return email;
   return `${name.slice(0, 1)}***@${domain}`;
-});
-const memberTone = computed(() => {
-  if (membership.value?.level === 'premium') return 'premium';
-  if (membership.value?.level === 'pro') return 'pro';
-  return 'free';
-});
-const memberBadgeText = computed(() => {
-  if (memberTone.value === 'premium') return '尊享';
-  if (memberTone.value === 'pro') return 'Pro';
-  return '免费';
-});
-const memberLineText = computed(() => {
-  if (!membership.value || membership.value.level === 'free') return '免费会员 | 开通后解锁更多 AI 能力';
-  if (membership.value.level === 'premium' && !membership.value.expireAt) return '永久有效 | 尊享会员权益';
-  if (membership.value.expireAt) return `${membership.value.expireAt.substring(0, 10)} 到期 | 立即续费`;
-  return '会员权益已生效';
 });
 const memberActionText = computed(() => (membership.value?.level === 'free' ? '开通会员' : '会员中心'));
 const sheetTitle = computed(() => {
@@ -448,169 +424,6 @@ onMounted(loadProfile);
   color: #1e1e1e;
 }
 .nav-placeholder { width: 60rpx; }
-.profile-card {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  min-height: 180rpx;
-  padding: 34rpx 28rpx;
-  border-radius: 28rpx;
-  box-shadow: 0 14rpx 42rpx rgba(78, 66, 55, 0.08);
-}
-.profile-card--free {
-  background:
-    linear-gradient(110deg, rgba(255, 247, 238, 0.96) 0%, rgba(255, 231, 210, 0.88) 100%);
-}
-.profile-card--pro {
-  background:
-    linear-gradient(110deg, rgba(231, 250, 246, 0.96) 0%, rgba(207, 238, 255, 0.9) 100%);
-  box-shadow: 0 14rpx 42rpx rgba(31, 142, 132, 0.1);
-}
-.profile-card--premium {
-  background:
-    linear-gradient(110deg, #242229 0%, #111115 58%, #31281f 100%);
-  box-shadow: 0 18rpx 48rpx rgba(17, 17, 21, 0.2);
-}
-.card-lines {
-  position: absolute;
-  top: -80rpx;
-  left: 255rpx;
-  width: 260rpx;
-  height: 260rpx;
-  border: 2rpx solid rgba(200, 156, 118, 0.14);
-  border-radius: 60rpx;
-  box-shadow:
-    0 0 0 12rpx rgba(200, 156, 118, 0.08),
-    0 0 0 24rpx rgba(200, 156, 118, 0.06),
-    0 0 0 36rpx rgba(200, 156, 118, 0.04);
-  transform: rotate(45deg);
-}
-.profile-card--premium .card-lines {
-  border-color: rgba(242, 199, 132, 0.16);
-  box-shadow:
-    0 0 0 12rpx rgba(242, 199, 132, 0.1),
-    0 0 0 24rpx rgba(242, 199, 132, 0.06),
-    0 0 0 36rpx rgba(242, 199, 132, 0.04);
-}
-.avatar, .avatar-placeholder {
-  position: relative;
-  z-index: 1;
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 50%;
-  flex-shrink: 0;
-  border: 4rpx solid rgba(255, 255, 255, 0.62);
-}
-.avatar-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #00d4c8, #7cbcff);
-  color: #fff;
-  font-size: 36rpx;
-  font-weight: 800;
-}
-.avatar-placeholder--premium {
-  background: linear-gradient(135deg, #f3d28d, #9b7438);
-  color: #1c1712;
-}
-.profile-info {
-  position: relative;
-  z-index: 1;
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-.name-row {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-  min-width: 0;
-}
-.nickname {
-  max-width: 280rpx;
-  font-size: 36rpx;
-  font-weight: 800;
-  color: #1e1e1e;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.profile-card--premium .nickname {
-  color: #f9e3bb;
-}
-.member-badge {
-  flex-shrink: 0;
-  height: 36rpx;
-  line-height: 34rpx;
-  padding: 0 14rpx;
-  border-radius: 10rpx;
-  font-size: 22rpx;
-  font-weight: 700;
-  box-sizing: border-box;
-}
-.member-badge--free {
-  color: #9b6f4d;
-  border: 2rpx solid rgba(155, 111, 77, 0.32);
-  background: rgba(255, 255, 255, 0.32);
-}
-.member-badge--pro {
-  color: #137d73;
-  border: 2rpx solid rgba(19, 125, 115, 0.28);
-  background: rgba(255, 255, 255, 0.38);
-}
-.member-badge--premium {
-  color: #24170b;
-  background: linear-gradient(135deg, #ffe7ad, #b88943);
-}
-.member-line {
-  max-width: 420rpx;
-  font-size: 27rpx;
-  color: #2b2724;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.profile-card--pro .member-line {
-  color: #245651;
-}
-.profile-card--premium .member-line {
-  color: rgba(255, 228, 183, 0.78);
-}
-.member-pill {
-  position: relative;
-  z-index: 1;
-  flex-shrink: 0;
-  height: 60rpx;
-  padding: 0 22rpx;
-  border-radius: 30rpx;
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  font-size: 25rpx;
-  font-weight: 700;
-}
-.member-pill--free {
-  color: #6f4b31;
-  background: rgba(255, 255, 255, 0.6);
-}
-.member-pill--pro {
-  color: #0e6f66;
-  background: rgba(255, 255, 255, 0.62);
-}
-.member-pill--premium {
-  color: #ffe4ad;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1rpx solid rgba(255, 224, 170, 0.22);
-}
-.member-pill-arrow {
-  font-size: 32rpx;
-  line-height: 1;
-}
 .section-title {
   margin: 28rpx 8rpx 12rpx;
   font-size: 26rpx;

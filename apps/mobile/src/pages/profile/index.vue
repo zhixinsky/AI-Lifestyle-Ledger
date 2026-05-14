@@ -51,24 +51,16 @@
       </view>
     </view>
 
-    <!-- VIP 卡片 -->
-    <view v-if="isPro" :class="['vip-card', `vip-level-${memberStatus?.level}`]" @tap="goMembership">
-      <view class="vip-level-top">
-        <text class="vip-level-icon">{{ memberLevelIcon }}</text>
-        <view class="vip-level-info">
-          <text class="vip-level-name">{{ memberLevelName }}</text>
-          <text class="vip-level-expire">{{ memberExpire }}</text>
-        </view>
-      </view>
-      <button v-if="canUpgrade" class="vip-upgrade-btn">{{ upgradeText }}</button>
-    </view>
-    <view v-else class="vip-card" @tap="goMembership">
-      <view class="vip-left">
-        <text class="vip-title">AI 高级会员</text>
-        <text class="vip-desc">享受更多 AI 分析功能</text>
-      </view>
-      <button class="vip-btn">开通</button>
-    </view>
+    <MemberProfileCard
+      class="profile-member-card"
+      :level="memberStatus?.level || 'free'"
+      :title="userName"
+      :avatar-url="avatarUrl"
+      :expire-at="memberStatus?.expireAt || null"
+      :action-text="memberStatus?.isPro ? '会员中心' : '开通会员'"
+      @tap="onUserSectionTap"
+      @action="goMembership"
+    />
 
     <!-- 菜单列表 -->
     <MoonaCard class="menu-card">
@@ -97,6 +89,7 @@
 import { computed, ref } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
+import MemberProfileCard from '@/components/MemberProfileCard.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
 import AppTabbar from '@/components/AppTabbar.vue';
 import { useAuthStore } from '@/stores/auth';
@@ -175,29 +168,6 @@ async function saveProfile() {
 }
 
 const memberStatus = ref<MembershipStatus | null>(null);
-const isPro = computed(() => memberStatus.value?.isPro ?? false);
-const upgradeText = computed(() => {
-  if (!isPro.value) return '';
-  const s = memberStatus.value!;
-  if (s.level === 'premium') return '';
-  if (s.level === 'pro' && s.expireAt) {
-    const remain = (new Date(s.expireAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-    if (remain <= 93) return '升级年卡';
-  }
-  return '升级会员';
-});
-const canUpgrade = computed(() => !!upgradeText.value);
-const memberLevelNum = computed(() => {
-  if (!memberStatus.value) return 0;
-  return memberStatus.value.level === 'premium' ? 2 : memberStatus.value.level === 'pro' ? 1 : 0;
-});
-const memberLevelIcon = computed(() => ['🌱', '⭐', '💎'][memberLevelNum.value]);
-const memberLevelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][memberLevelNum.value]);
-const memberExpire = computed(() => {
-  if (memberStatus.value?.level === 'premium' && !memberStatus.value.expireAt) return '永久有效';
-  if (!memberStatus.value?.expireAt) return '';
-  return `有效期至 ${memberStatus.value.expireAt.substring(0, 10)}`;
-});
 
 async function refreshProfileData() {
   if (!authStore.isLoggedIn) return;
@@ -481,85 +451,8 @@ function handleLogout() {
   font-weight: 700;
 }
 
-/* VIP */
-.vip-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 32rpx;
+.profile-member-card {
   margin-top: 20rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d3748 100%);
-  box-shadow: 0 8rpx 32rpx rgba(30, 30, 30, 0.15);
-}
-
-.vip-card.vip-level-pro {
-  background: linear-gradient(135deg, #2d3748, #4a5568);
-}
-.vip-card.vip-level-premium {
-  background: linear-gradient(135deg, #44337a, #6b46c1);
-}
-
-.vip-level-top {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-.vip-level-icon { font-size: 52rpx; }
-.vip-level-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-.vip-level-name {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #ffd700;
-}
-.vip-level-expire {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.vip-left {
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-}
-
-.vip-title {
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #ffd700;
-}
-
-.vip-desc {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
-}
-
-.vip-btn {
-  padding: 0 36rpx;
-  height: 60rpx;
-  line-height: 60rpx;
-  border-radius: 30rpx;
-  background: linear-gradient(135deg, #ffd700, #ffb86b);
-  color: #1e1e1e;
-  font-size: 26rpx;
-  font-weight: 700;
-  margin-right: 8rpx;
-}
-
-.vip-upgrade-btn {
-  padding: 0 28rpx;
-  height: 56rpx;
-  line-height: 56rpx;
-  border-radius: 28rpx;
-  background: linear-gradient(135deg, #ffd700, #ffb86b);
-  color: #1e1e1e;
-  font-size: 24rpx;
-  font-weight: 700;
-  flex-shrink: 0;
 }
 
 /* 菜单 */

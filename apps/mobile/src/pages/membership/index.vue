@@ -9,17 +9,15 @@
       <view class="nav-placeholder" />
     </view>
 
-    <!-- 当前等级卡片 -->
-    <view :class="['level-card', `level-${status?.level || 'free'}`]">
-      <view class="level-top">
-        <text class="level-icon">{{ levelIcon }}</text>
-        <view class="level-info">
-          <text class="level-name">{{ levelName }}</text>
-          <text class="level-expire" v-if="status?.expireAt">有效期至 {{ formatDate(status.expireAt) }}</text>
-          <text class="level-expire" v-else>{{ status?.level === 'premium' ? '永久有效' : '免费版' }}</text>
-        </view>
-      </view>
-    </view>
+    <MemberProfileCard
+      :level="status?.level || 'free'"
+      :title="levelName"
+      :expire-at="status?.expireAt || null"
+      :show-avatar="false"
+      :action-text="status?.isPro ? '续费会员' : '开通会员'"
+      @tap="focusPlans"
+      @action="focusPlans"
+    />
 
     <!-- 会员权益 -->
     <view class="section-title benefits-title">会员权益</view>
@@ -59,6 +57,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
+import MemberProfileCard from '@/components/MemberProfileCard.vue';
 import { membershipApi, type VirtualPaymentParams } from '@/api/membership';
 import { authApi } from '@/api/auth';
 import { useAuthStore } from '@/stores/auth';
@@ -77,7 +76,6 @@ const currentLevelNum = computed(() => {
   return status.value.level === 'premium' ? 2 : status.value.level === 'pro' ? 1 : 0;
 });
 
-const levelIcon = computed(() => ['🌱', '⭐', '💎'][currentLevelNum.value]);
 const levelName = computed(() => ['免费版', 'Pro 会员', 'Premium 会员'][currentLevelNum.value]);
 
 const benefits = [
@@ -108,6 +106,10 @@ function goBack() {
   } else {
     uni.switchTab({ url: '/pages/profile/index' });
   }
+}
+
+function focusPlans() {
+  uni.pageScrollTo({ selector: '.plan-title', duration: 240 });
 }
 
 async function handleSubscribe() {
@@ -240,40 +242,6 @@ onMounted(loadStatus);
   color: #1e1e1e;
 }
 .nav-placeholder { width: 60rpx; }
-
-.level-card {
-  padding: 40rpx 32rpx;
-  margin-top: 20rpx;
-  border-radius: 24rpx;
-  background: linear-gradient(135deg, #1e1e1e 0%, #2d3748 100%);
-  box-shadow: 0 8rpx 32rpx rgba(30, 30, 30, 0.15);
-}
-.level-card.level-pro {
-  background: linear-gradient(135deg, #2d3748, #4a5568);
-}
-.level-card.level-premium {
-  background: linear-gradient(135deg, #44337a, #6b46c1);
-}
-.level-top {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-}
-.level-icon { font-size: 56rpx; }
-.level-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-.level-name {
-  font-size: 36rpx;
-  font-weight: 800;
-  color: #ffd700;
-}
-.level-expire {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.6);
-}
 
 .section-title {
   font-size: 30rpx;
