@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger } from '@nestjs/common';
-import { createDecipheriv, createSign, createVerify, randomBytes } from 'crypto';
+import { createDecipheriv, createHash, createSign, createVerify, randomBytes } from 'crypto';
 import { Order, OrderStatus, OrderType, MemberLevel } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { MembershipService } from '../membership/membership.service';
@@ -32,16 +32,16 @@ export class PaymentService {
   private readonly logger = new Logger(PaymentService.name);
 
   private readonly configured: boolean;
-  private readonly appId = process.env.WX_APPID || process.env.WX_APP_ID || '';
-  private readonly mchId = process.env.WX_PAY_MCH_ID || '';
-  private readonly apiV3Key = process.env.WX_PAY_API_V3_KEY || process.env.WX_PAY_API_KEY || '';
-  private readonly certSerialNo = process.env.WX_PAY_CERT_SERIAL || '';
+  private readonly appId = this.readEnv('WX_APPID') || this.readEnv('WX_APP_ID');
+  private readonly mchId = this.readEnv('WX_PAY_MCH_ID');
+  private readonly apiV3Key = this.readEnv('WX_PAY_API_V3_KEY') || this.readEnv('WX_PAY_API_KEY');
+  private readonly certSerialNo = this.readEnv('WX_PAY_CERT_SERIAL');
   private readonly privateKey = this.normalizePrivateKey(
-    process.env.WX_PAY_PRIVATE_KEY || process.env.WX_PAY_PRIVATE_KEY_BASE64 || '',
+    this.readEnv('WX_PAY_PRIVATE_KEY') || this.readEnv('WX_PAY_PRIVATE_KEY_BASE64'),
   );
-  private readonly wxPayPublicKeyId = process.env.WX_PAY_PUBLIC_KEY_ID || '';
+  private readonly wxPayPublicKeyId = this.readEnv('WX_PAY_PUBLIC_KEY_ID');
   private readonly wxPayPublicKey = this.normalizePrivateKey(
-    process.env.WX_PAY_PUBLIC_KEY || process.env.WX_PAY_PUBLIC_KEY_BASE64 || '',
+    this.readEnv('WX_PAY_PUBLIC_KEY') || this.readEnv('WX_PAY_PUBLIC_KEY_BASE64'),
   );
 
   constructor(
@@ -60,6 +60,12 @@ export class PaymentService {
     }
     if (this.configured && !this.wxPayPublicKey) {
       this.logger.warn('微信支付公钥未配置，将跳过微信应答和回调验签');
+    }
+    if (this.configured) {
+      this.logger.log(
+        `微信支付配置已加载 appId=${this.mask(this.appId)} mchId=${this.mask(this.mchId)} ` +
+          `certSerial=${this.mask(this.certSerialNo)} privateKeyHash=${this.hashText(this.privateKey)}`,
+      );
     }
   }
 
@@ -221,8 +227,9 @@ export class PaymentService {
   }
 
   private getNotifyUrl() {
-    if (process.env.WX_PAY_NOTIFY_URL) return process.env.WX_PAY_NOTIFY_URL;
-    const baseUrl = process.env.API_PUBLIC_BASE_URL;
+    const notifyUrl = this.readEnv('WX_PAY_NOTIFY_URL');
+    if (notifyUrl) return notifyUrl;
+    const baseUrl = this.readEnv('API_PUBLIC_BASE_URL');
     if (!baseUrl) throw new BadRequestException('请配置 WX_PAY_NOTIFY_URL 或 API_PUBLIC_BASE_URL');
     return `${baseUrl.replace(/\/$/, '')}/api/payment/notify`;
   }
@@ -234,8 +241,8 @@ export class PaymentService {
     const urlPath = new URL(url).pathname + new URL(url).search;
     const signature = this.sign(`${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${bodyText}\n`);
     const authorization =
-      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonceStr}",` +
-      `signature="${signature}",timestamp="${timestamp}",serial_no="${this.certSerialNo}"`;
+      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}", nonce_str="${nonceStr}", ` +
+      `signature="${signature}", timestamp="${timestamp}", serial_no="${this.certSerialNo}"`;
 
     const res = await fetch(url, {
       method,
@@ -336,5 +343,20 @@ export class PaymentService {
     if (!value) return '';
     const decoded = value.includes('BEGIN') ? value : Buffer.from(value, 'base64').toString('utf8');
     return decoded.replace(/\\n/g, '\n');
+  }
+
+  private readEnv(name: string) {
+    return (process.env[name] || '').trim();
+  }
+
+  private mask(value: string) {
+    if (!value) return '-';
+    if (value.length <= 8) return `${value.slice(0, 2)}***`;
+    return `${value.slice(0, 4)}***${value.slice(-4)}`;
+  }
+
+  private hashText(value: string) {
+    if (!value) return '-';
+    return createHash('sha256').update(value).digest('hex').slice(0, 12);
   }
 }

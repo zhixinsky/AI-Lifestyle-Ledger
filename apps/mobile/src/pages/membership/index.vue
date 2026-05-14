@@ -253,10 +253,13 @@ onMounted(loadStatus);
   font-size: 30rpx;
   font-weight: 700;
   color: #1e1e1e;
-  margin: 32rpx 0 12rpx 8rpx;
+  margin: 18rpx 0 4rpx 8rpx;
 }
 
-.benefits-card { padding: 16rpx 28rpx !important; }
+.benefits-card {
+  padding: 16rpx 28rpx !important;
+  margin-bottom: 4rpx;
+}
 .benefit-row {
   display: flex;
   align-items: center;
