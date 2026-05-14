@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException, BadRequestException, Logger } from '
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Resolver } from 'dns/promises';
+import { request as httpRequest } from 'http';
 import { request as httpsRequest } from 'https';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
@@ -205,8 +206,17 @@ export class AuthService {
       js_code: code,
       grant_type: 'authorization_code',
     });
+    const fromAppId = this.configService.get<string>('WX_OPENAPI_FROM_APPID')?.trim();
+    if (fromAppId) params.set('from_appid', fromAppId);
     const path = `/sns/jscode2session?${params.toString()}`;
     const errors: string[] = [];
+
+    try {
+      this.logger.log('code2Session 使用云托管开放接口服务 HTTP 调用 api.weixin.qq.com');
+      return await this.requestWeChatSessionViaCloudOpenApi(path);
+    } catch (error: any) {
+      errors.push(`cloud-openapi-http: ${this.describeRequestError(error)}`);
+    }
 
     try {
       this.logger.log('code2Session 使用公网 DNS 直连 api.weixin.qq.com');
@@ -223,6 +233,50 @@ export class AuthService {
     }
 
     throw new Error(errors.join(' ; '));
+  }
+
+  private requestWeChatSessionViaCloudOpenApi(path: string): Promise<WeChatSessionResponse> {
+    return new Promise((resolve, reject) => {
+      const req = httpRequest(
+        {
+          hostname: 'api.weixin.qq.com',
+          path,
+          method: 'GET',
+          timeout: 8000,
+          headers: {
+            Accept: 'application/json',
+            'User-Agent': 'MoonaCloudRun/1.0',
+          },
+        },
+        (res) => {
+          let text = '';
+          const seqId = res.headers['x-openapi-seqid'];
+          if (seqId) this.logger.log(`code2Session 命中开放接口服务 x-openapi-seqid=${seqId}`);
+          res.setEncoding('utf8');
+          res.on('data', (chunk) => {
+            text += chunk;
+          });
+          res.on('end', () => {
+            try {
+              const data = JSON.parse(text || '{}') as WeChatSessionResponse;
+              if ((res.statusCode || 0) >= 400) {
+                reject(new Error(`HTTP ${res.statusCode}: ${text.slice(0, 300)}`));
+                return;
+              }
+              resolve(data);
+            } catch (error: any) {
+              reject(new Error(`Invalid JSON from WeChat OpenAPI: ${error?.message || error}; body=${text.slice(0, 300)}`));
+            }
+          });
+        },
+      );
+
+      req.on('timeout', () => {
+        req.destroy(new Error('cloud openapi code2Session timeout'));
+      });
+      req.on('error', reject);
+      req.end();
+    });
   }
 
   private async requestWeChatSession(path: string, usePublicDns: boolean): Promise<WeChatSessionResponse> {
