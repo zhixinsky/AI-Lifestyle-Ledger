@@ -247,9 +247,16 @@ export class PaymentService {
       body: bodyText || undefined,
     });
     const responseText = await res.text();
-    if (this.wxPayPublicKey && !this.verifyWxPaySignature(responseText, Object.fromEntries(res.headers.entries()))) {
-      this.logger.error('微信支付应答验签失败');
-      throw new BadRequestException('微信支付应答验签失败');
+    const responseHeaders = Object.fromEntries(res.headers.entries());
+    if (this.wxPayPublicKey) {
+      if (this.hasWxPaySignatureHeaders(responseHeaders)) {
+        if (!this.verifyWxPaySignature(responseText, responseHeaders)) {
+          this.logger.error('微信支付应答验签失败');
+          throw new BadRequestException('微信支付应答验签失败');
+        }
+      } else {
+        this.logger.warn('微信支付应答缺少 Wechatpay 签名头，已跳过应答验签；请检查代理/CDN 是否过滤响应头');
+      }
     }
     let data: any = {};
     if (responseText) {
@@ -291,6 +298,14 @@ export class PaymentService {
     return createVerify('RSA-SHA256')
       .update(message)
       .verify(this.wxPayPublicKey, signature, 'base64');
+  }
+
+  private hasWxPaySignatureHeaders(headers: Record<string, string>) {
+    return !!(
+      this.getHeader(headers, 'wechatpay-timestamp') &&
+      this.getHeader(headers, 'wechatpay-nonce') &&
+      this.getHeader(headers, 'wechatpay-signature')
+    );
   }
 
   private getHeader(headers: Record<string, string>, name: string) {
