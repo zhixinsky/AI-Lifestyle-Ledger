@@ -9,7 +9,7 @@
       <view class="nav-placeholder" />
     </view>
 
-    <view class="profile-card">
+    <view class="profile-card" @tap="openProfileForm">
       <image v-if="avatarUrl" class="avatar" :src="avatarUrl" mode="aspectFill" />
       <view v-else class="avatar-placeholder">
         <text>{{ firstNameChar }}</text>
@@ -18,6 +18,7 @@
         <text class="nickname">{{ profile?.nickname || authStore.user?.nickname || '用户' }}</text>
         <text class="user-id">ID {{ profile?.id || '-' }}</text>
       </view>
+      <text class="profile-arrow">›</text>
     </view>
 
     <view class="section-title">账号绑定</view>
@@ -93,6 +94,18 @@
           <text class="modal-close" @tap="closeForm">×</text>
         </view>
 
+        <view v-if="activeForm === 'profile'" class="form">
+          <button class="profile-avatar-btn" open-type="chooseAvatar" @chooseavatar="onProfileAvatarChoose">
+            <image v-if="profileForm.avatarPreview" class="profile-avatar-preview" :src="profileForm.avatarPreview" mode="aspectFill" />
+            <view v-else class="profile-avatar-preview profile-avatar-empty">
+              <text>{{ firstNameChar }}</text>
+            </view>
+            <text class="profile-avatar-tip">点击更换头像</text>
+          </button>
+          <input class="input" v-model="profileForm.nickname" type="nickname" placeholder="请输入昵称" />
+          <button class="primary-btn" :disabled="submitting" @tap="submitProfile">保存资料</button>
+        </view>
+
         <view v-if="activeForm === 'phone'" class="form">
           <input class="input" v-model="phoneForm.phone" type="number" maxlength="11" placeholder="请输入手机号" />
           <view class="code-row">
@@ -127,21 +140,24 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import { backIcon } from '@/utils/icons';
 import { getApiBase } from '@/utils/request';
+import { uploadWxCloudAvatar } from '@/utils/request';
 import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 import { useAuthStore } from '@/stores/auth';
 import { useFinanceStore } from '@/stores/finance';
 import { accountApi, type AccountProfile } from '@/api/account';
+import { authApi } from '@/api/auth';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
 const profile = ref<AccountProfile | null>(null);
-const activeForm = ref<'phone' | 'email' | 'password' | ''>('');
+const activeForm = ref<'profile' | 'phone' | 'email' | 'password' | ''>('');
 const sendingCode = ref(false);
 const submitting = ref(false);
 
 const phoneForm = reactive({ phone: '', code: '' });
 const emailForm = reactive({ email: '', code: '' });
 const passwordForm = reactive({ oldPassword: '', password: '', confirmPassword: '' });
+const profileForm = reactive({ nickname: '', avatarPreview: '', avatarFilePath: '' });
 
 const avatarUrl = computed(() => {
   const url = profile.value?.avatarUrl || authStore.user?.avatarUrl || '';
@@ -159,6 +175,7 @@ const maskedEmail = computed(() => {
   return `${name.slice(0, 1)}***@${domain}`;
 });
 const sheetTitle = computed(() => {
+  if (activeForm.value === 'profile') return '编辑个人资料';
   if (activeForm.value === 'phone') return profile.value?.phone ? '更换手机号' : '绑定手机号';
   if (activeForm.value === 'email') return profile.value?.email ? '修改邮箱' : '绑定邮箱';
   return profile.value?.hasPassword ? '修改密码' : '设置登录密码';
@@ -173,6 +190,13 @@ function goBack() {
 async function loadProfile() {
   if (!ensureLoggedIn()) return;
   profile.value = await accountApi.profile();
+}
+
+function openProfileForm() {
+  profileForm.nickname = profile.value?.nickname || authStore.user?.nickname || '';
+  profileForm.avatarPreview = avatarUrl.value;
+  profileForm.avatarFilePath = '';
+  activeForm.value = 'profile';
 }
 
 function openPhoneForm() {
@@ -196,6 +220,40 @@ function openPasswordForm() {
 
 function closeForm() {
   activeForm.value = '';
+}
+
+function onProfileAvatarChoose(e: any) {
+  const avatar = e?.detail?.avatarUrl || '';
+  if (!avatar) return;
+  profileForm.avatarPreview = avatar;
+  profileForm.avatarFilePath = avatar;
+}
+
+async function submitProfile() {
+  const nickname = profileForm.nickname.trim();
+  if (!nickname) return uni.showToast({ title: '请输入昵称', icon: 'none' });
+
+  submitting.value = true;
+  try {
+    let uploadedAvatar = '';
+    if (profileForm.avatarFilePath) {
+      uploadedAvatar = await uploadWxCloudAvatar(profileForm.avatarFilePath);
+    }
+    const updated = await authApi.updateProfile({
+      nickname,
+      ...(uploadedAvatar ? { avatarUrl: uploadedAvatar } : {}),
+    });
+    authStore.user = updated;
+    profile.value = profile.value
+      ? { ...profile.value, nickname: updated.nickname, avatarUrl: updated.avatarUrl }
+      : await accountApi.profile();
+    closeForm();
+    uni.showToast({ title: '保存成功', icon: 'success' });
+  } catch (error: any) {
+    uni.showToast({ title: error?.message || '保存失败', icon: 'none' });
+  } finally {
+    submitting.value = false;
+  }
 }
 
 async function sendPhoneCode() {
@@ -378,10 +436,16 @@ onMounted(loadProfile);
   font-weight: 800;
 }
 .profile-info {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 6rpx;
+}
+.profile-arrow {
+  flex-shrink: 0;
+  color: #b7bfbc;
+  font-size: 42rpx;
 }
 .nickname {
   font-size: 34rpx;
@@ -497,6 +561,36 @@ onMounted(loadProfile);
   display: flex;
   flex-direction: column;
   gap: 18rpx;
+}
+.profile-avatar-btn {
+  width: 100%;
+  padding: 0;
+  margin: 0 0 6rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12rpx;
+  background: transparent;
+  line-height: normal;
+}
+.profile-avatar-preview {
+  width: 136rpx;
+  height: 136rpx;
+  border-radius: 50%;
+  background: #f0f3f2;
+}
+.profile-avatar-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #00d4c8, #7cbcff);
+  color: #fff;
+  font-size: 42rpx;
+  font-weight: 800;
+}
+.profile-avatar-tip {
+  font-size: 24rpx;
+  color: #7b8783;
 }
 .input {
   height: 88rpx;

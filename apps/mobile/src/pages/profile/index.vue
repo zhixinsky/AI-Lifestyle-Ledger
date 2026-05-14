@@ -24,7 +24,7 @@
         <text class="editor-title">编辑个人资料</text>
 
         <!-- 头像预览 + 更换 -->
-        <view class="editor-avatar-wrap" @tap="chooseAvatar">
+        <button class="editor-avatar-wrap" open-type="chooseAvatar" @chooseavatar="onChooseAvatar">
           <image v-if="previewAvatar" class="editor-avatar" :src="previewAvatar" mode="aspectFill" />
           <view v-else class="editor-avatar editor-avatar-placeholder">
             <view class="avatar-face-sm">
@@ -35,7 +35,7 @@
           <view class="editor-avatar-badge">
             <text>📷</text>
           </view>
-        </view>
+        </button>
         <text class="editor-avatar-hint">点击更换头像</text>
 
         <!-- 昵称输入 -->
@@ -49,37 +49,6 @@
           {{ saving ? '保存中...' : '保存' }}
         </button>
       </view>
-    </view>
-
-    <!-- 全屏裁剪遮罩 -->
-    <view v-if="showCrop" class="crop-overlay">
-      <view class="crop-header">
-        <text class="crop-header-title">移动和缩放</text>
-      </view>
-      <view class="crop-body">
-        <view class="crop-image-area">
-          <movable-area class="crop-movable-area">
-            <movable-view
-              class="crop-movable-img"
-              direction="all"
-              :scale="true"
-              :scale-min="1"
-              :scale-max="4"
-              :x="imgX" :y="imgY"
-              @change="onImgMove"
-              @scale="onImgScale"
-            >
-              <image :src="cropSourcePath" class="crop-source-img" mode="widthFix" />
-            </movable-view>
-          </movable-area>
-          <view class="crop-mask-ring" />
-        </view>
-      </view>
-      <view class="crop-footer">
-        <button class="crop-btn crop-cancel" @tap="showCrop = false">取消</button>
-        <button class="crop-btn crop-confirm" @tap="confirmCrop">选取</button>
-      </view>
-      <canvas canvas-id="cropCanvas" class="crop-hidden-canvas" />
     </view>
 
     <!-- VIP 卡片 -->
@@ -120,7 +89,7 @@
       <button class="logout-btn" @tap="handleLogout">退出登录</button>
     </view>
 
-    <AppTabbar v-show="!showEditor && !showCrop" current="profile" />
+    <AppTabbar v-show="!showEditor" current="profile" />
   </PageShell>
 </template>
 
@@ -157,16 +126,6 @@ const previewAvatar = ref('');
 const pendingAvatarUrl = ref('');
 const saving = ref(false);
 
-const showCrop = ref(false);
-const cropSourcePath = ref('');
-const imgX = ref(0);
-const imgY = ref(0);
-const imgScale = ref(1);
-const imgW = ref(300);
-const imgH = ref(300);
-const AREA_SIZE = 300;
-const RING_SIZE = 240;
-
 function onUserSectionTap() {
   if (!ensureLoggedIn()) return;
   openEditor();
@@ -184,115 +143,12 @@ function openEditor() {
   showEditor.value = true;
 }
 
-function chooseAvatar() {
-  uni.chooseImage({
-    count: 1,
-    sizeType: ['compressed'],
-    sourceType: ['album', 'camera'],
-    success: (res) => {
-      const path = res.tempFilePaths[0];
-      cropSourcePath.value = path;
-      uni.getImageInfo({
-        src: path,
-        success: (info) => {
-          const ratio = info.width / info.height;
-          if (ratio > 1) {
-            imgW.value = AREA_SIZE * ratio;
-            imgH.value = AREA_SIZE;
-          } else {
-            imgW.value = AREA_SIZE;
-            imgH.value = AREA_SIZE / ratio;
-          }
-          imgX.value = (AREA_SIZE - imgW.value) / 2;
-          imgY.value = (AREA_SIZE - imgH.value) / 2;
-          imgScale.value = 1;
-          showCrop.value = true;
-        },
-        fail: () => {
-          imgW.value = AREA_SIZE;
-          imgH.value = AREA_SIZE;
-          imgX.value = 0;
-          imgY.value = 0;
-          showCrop.value = true;
-        },
-      });
-    },
-  });
-}
-
-function onImgMove(e: any) {
-  imgX.value = e.detail.x;
-  imgY.value = e.detail.y;
-}
-
-function onImgScale(e: any) {
-  imgScale.value = e.detail.scale;
-}
-
-function confirmCrop() {
-  const canvasSize = 400;
-  const ctx = uni.createCanvasContext('cropCanvas');
-
-  const scaledW = imgW.value * imgScale.value;
-  const scaledH = imgH.value * imgScale.value;
-  const offset = (AREA_SIZE - RING_SIZE) / 2;
-  const cropLeft = offset - imgX.value;
-  const cropTop = offset - imgY.value;
-
-  const sx = (cropLeft / scaledW);
-  const sy = (cropTop / scaledH);
-  const sSize = RING_SIZE / scaledW;
-
-  ctx.drawImage(
-    cropSourcePath.value,
-    0, 0, canvasSize, canvasSize,
-  );
-  ctx.draw(false, () => {
-    setTimeout(() => {
-      const drawCtx = uni.createCanvasContext('cropCanvas');
-      drawCtx.clearRect(0, 0, canvasSize, canvasSize);
-
-      const drawX = -(sx * canvasSize) / sSize;
-      const drawY = -(sy * canvasSize) / sSize;
-      const drawW = canvasSize / sSize;
-      const drawH = (canvasSize * scaledH / scaledW) / sSize;
-
-      drawCtx.drawImage(cropSourcePath.value, drawX, drawY, drawW, drawH);
-      drawCtx.draw(false, () => {
-        setTimeout(() => {
-          uni.canvasToTempFilePath({
-            canvasId: 'cropCanvas',
-            x: 0,
-            y: 0,
-            width: canvasSize,
-            height: canvasSize,
-            destWidth: canvasSize,
-            destHeight: canvasSize,
-            success: async (res) => {
-              showCrop.value = false;
-              previewAvatar.value = res.tempFilePath;
-              try {
-                const uploadRes = await uploadFile('/upload/image', res.tempFilePath);
-                pendingAvatarUrl.value = uploadRes.url;
-              } catch {
-                uni.showToast({ title: '上传失败', icon: 'none' });
-              }
-            },
-            fail: () => {
-              showCrop.value = false;
-              previewAvatar.value = cropSourcePath.value;
-              uploadDirectly();
-            },
-          });
-        }, 300);
-      });
-    }, 100);
-  });
-}
-
-async function uploadDirectly() {
+async function onChooseAvatar(e: any) {
+  const avatar = e?.detail?.avatarUrl || '';
+  if (!avatar) return;
+  previewAvatar.value = avatar;
   try {
-    const uploadRes = await uploadFile('/upload/image', cropSourcePath.value);
+    const uploadRes = await uploadFile('/upload/image', avatar);
     pendingAvatarUrl.value = uploadRes.url;
   } catch {
     uni.showToast({ title: '上传失败', icon: 'none' });
@@ -535,7 +391,11 @@ function handleLogout() {
   width: 160rpx;
   height: 160rpx;
   margin-top: 8rpx;
+  padding: 0;
+  background: transparent;
+  line-height: normal;
 }
+.editor-avatar-wrap::after { border: none; }
 
 .editor-avatar {
   width: 160rpx;
@@ -584,102 +444,6 @@ function handleLogout() {
   font-size: 22rpx;
   color: #88909b;
   margin-top: -8rpx;
-}
-
-/* 全屏裁剪 */
-.crop-overlay {
-  position: fixed;
-  top: 0; right: 0; bottom: 0; left: 0;
-  z-index: 10001;
-  background: #000;
-  display: flex;
-  flex-direction: column;
-}
-
-.crop-header {
-  padding: calc(env(safe-area-inset-top, 44px) + 16rpx) 32rpx 16rpx;
-  text-align: center;
-}
-
-.crop-header-title {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.crop-body {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.crop-image-area {
-  position: relative;
-  width: 300px;
-  height: 300px;
-}
-
-.crop-movable-area {
-  width: 300px;
-  height: 300px;
-  overflow: hidden;
-}
-
-.crop-movable-img {
-  width: 300px;
-  height: 300px;
-}
-
-.crop-source-img {
-  width: 300px;
-  pointer-events: none;
-}
-
-.crop-mask-ring {
-  position: absolute;
-  top: 0; right: 0; bottom: 0; left: 0;
-  pointer-events: none;
-  border-radius: 0;
-  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.7),
-              inset 0 0 0 2000px transparent;
-  background: radial-gradient(circle at center, transparent 120px, rgba(0, 0, 0, 0.6) 120px);
-}
-
-.crop-footer {
-  flex-shrink: 0;
-  display: flex;
-  gap: 24rpx;
-  padding: 32rpx 40rpx calc(env(safe-area-inset-bottom, 0px) + 48rpx);
-  background: #000;
-}
-
-.crop-btn {
-  flex: 1;
-  height: 80rpx;
-  line-height: 80rpx;
-  border-radius: 40rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  text-align: center;
-}
-
-.crop-cancel {
-  background: rgba(255, 255, 255, 0.15);
-  color: #fff;
-}
-
-.crop-confirm {
-  background: linear-gradient(135deg, #00d4c8, #00b8a9);
-  color: #fff;
-}
-
-.crop-hidden-canvas {
-  position: fixed;
-  left: -9999px;
-  top: -9999px;
-  width: 400px;
-  height: 400px;
 }
 
 /* 昵称输入 */
