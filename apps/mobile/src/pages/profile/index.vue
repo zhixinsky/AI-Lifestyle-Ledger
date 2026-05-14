@@ -1,21 +1,7 @@
 <template>
   <PageShell>
-    <!-- 用户信息 -->
-    <view class="user-section" @tap="onUserSectionTap">
-      <view class="user-avatar">
-        <image v-if="avatarUrl" class="avatar-img" :src="avatarUrl" mode="aspectFill" />
-        <view v-else class="avatar-face">
-          <view class="av-eye l" /><view class="av-eye r" />
-          <view class="av-mouth" />
-        </view>
-      </view>
-      <view class="user-info">
-        <view class="user-name-row">
-          <text class="user-name">{{ userName }}</text>
-          <text class="edit-icon">✎</text>
-        </view>
-        <text class="user-sub">连续记账 {{ streakDays }} 天</text>
-      </view>
+    <view class="topbar">
+      <text class="page-title">个人中心</text>
     </view>
 
     <!-- 编辑弹窗 -->
@@ -103,7 +89,6 @@ import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
 const userName = computed(() => authStore.user?.nickname || '用户');
-const streakDays = computed(() => authStore.user?.streakDays || 0);
 const avatarUrl = computed(() => {
   const url = authStore.user?.avatarUrl;
   if (!url) return '';
@@ -246,85 +231,8 @@ function handleLogout() {
 </script>
 
 <style scoped>
-/* 用户信息 */
-.user-section {
-  display: flex;
-  align-items: center;
-  gap: 24rpx;
-  padding-bottom: 8rpx;
-}
-
-.user-avatar {
-  flex-shrink: 0;
-}
-
-.avatar-img {
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  box-shadow: 0 12rpx 32rpx rgba(0, 212, 200, 0.25);
-}
-
-.avatar-face {
-  position: relative;
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #00d4c8, #7cbcff);
-  box-shadow: 0 12rpx 32rpx rgba(0, 212, 200, 0.25);
-}
-
-.av-eye {
-  position: absolute;
-  top: 34rpx;
-  width: 14rpx;
-  height: 18rpx;
-  border-radius: 50%;
-  background: #fff;
-}
-
-.av-eye.l { left: 28rpx; }
-.av-eye.r { right: 28rpx; }
-
-.av-mouth {
-  position: absolute;
-  left: 50%;
-  top: 62rpx;
-  width: 24rpx;
-  height: 12rpx;
-  margin-left: -12rpx;
-  border-radius: 0 0 12rpx 12rpx;
-  background: #fff;
-}
-
-.user-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.user-name-row {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-}
-
-.user-name {
-  font-size: 38rpx;
-  font-weight: 800;
-  color: #1e1e1e;
-}
-
-.edit-icon {
-  font-size: 26rpx;
-  color: #c0c4cc;
-  margin-top: 4rpx;
-}
-
-.user-sub {
-  font-size: 24rpx;
-  color: #88909b;
-}
+.topbar { padding-bottom: 8rpx; }
+.page-title { font-size: 38rpx; font-weight: 800; color: #1e1e1e; }
 
 /* 编辑弹窗 */
 .editor-mask {
