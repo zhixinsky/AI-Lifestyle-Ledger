@@ -62,6 +62,7 @@ export class PaymentService {
       this.logger.warn('微信支付公钥未配置，将跳过微信应答和回调验签');
     }
     if (this.configured) {
+      this.validateMerchantSerialNo();
       this.logger.log(
         `微信支付配置已加载 appId=${this.mask(this.appId)} mchId=${this.mask(this.mchId)} ` +
           `certSerial=${this.mask(this.certSerialNo)} privateKeyHash=${this.hashText(this.privateKey)}`,
@@ -242,8 +243,8 @@ export class PaymentService {
     const urlPath = new URL(url).pathname + new URL(url).search;
     const signature = this.sign(`${method}\n${urlPath}\n${timestamp}\n${nonceStr}\n${bodyText}\n`);
     const authorization =
-      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}", nonce_str="${nonceStr}", ` +
-      `signature="${signature}", timestamp="${timestamp}", serial_no="${this.certSerialNo}"`;
+      `WECHATPAY2-SHA256-RSA2048 mchid="${this.mchId}",nonce_str="${nonceStr}",` +
+      `timestamp="${timestamp}",serial_no="${this.certSerialNo}",signature="${signature}"`;
 
     const res = await fetch(url, {
       method,
@@ -354,6 +355,16 @@ export class PaymentService {
       this.logger.log('微信支付商户私钥本地验签通过');
     } catch (error: any) {
       this.logger.error(`微信支付商户私钥格式不可用：${error?.message || error}`);
+    }
+  }
+
+  private validateMerchantSerialNo() {
+    if (this.certSerialNo.startsWith('PUB_KEY_ID_')) {
+      this.logger.error('WX_PAY_CERT_SERIAL 当前是微信支付公钥ID。这里必须填写商户API证书序列号，不是 WX_PAY_PUBLIC_KEY_ID');
+      return;
+    }
+    if (!/^[0-9A-Fa-f]{32,64}$/.test(this.certSerialNo)) {
+      this.logger.warn('WX_PAY_CERT_SERIAL 格式不像商户API证书序列号，请核对商户平台「API证书」页面');
     }
   }
 
