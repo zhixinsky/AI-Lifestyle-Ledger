@@ -16,6 +16,8 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+RUN apk add --no-cache ca-certificates && update-ca-certificates
+
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json ./
@@ -26,6 +28,7 @@ RUN mkdir -p /app/uploads
 
 ENV PORT=80
 ENV MYSQL_DATABASE=moona
+ENV NODE_EXTRA_CA_CERTS=/app/cert/certificate.crt
 EXPOSE 80
 
 CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && echo 'Running migrate deploy...' && npx prisma migrate deploy 2>&1 ; echo 'Starting node...' && exec node dist/main.js"]
