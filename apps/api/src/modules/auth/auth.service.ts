@@ -92,7 +92,30 @@ export class AuthService {
       );
 
       if (openid) {
-        this.logger.log(`wxLogin 使用云托管 ${headerIdentitySource} 登录，跳过 code2Session`);
+        this.logger.log(`wxLogin 使用云托管 ${headerIdentitySource} 登录，code2Session 不阻塞登录`);
+        if (code) {
+          const appId = this.configService.get<string>('WX_APPID');
+          const appSecret = this.configService.get<string>('WX_APP_SECRET');
+          if (appId && appSecret) {
+            try {
+              this.logger.log('wxLogin 使用 code2Session 尝试刷新支付 session_key');
+              const data = await this.code2Session(appId, appSecret, code);
+              this.logger.log(`wxLogin code2Session response: errcode=${data.errcode}`);
+              if (data.errcode) {
+                this.logger.warn(`wxLogin code2Session 未刷新 session_key: ${data.errmsg}`);
+              } else if (data.openid && data.openid !== openid) {
+                this.logger.warn('wxLogin code2Session openid 与云托管 headerOpenid 不一致，已忽略 session_key');
+              } else {
+                sessionKey = data.session_key;
+                if (sessionKey) this.logger.log('wxLogin 已刷新支付 session_key');
+              }
+            } catch (error: any) {
+              this.logger.warn(`wxLogin code2Session 刷新支付 session_key 失败，继续使用 headerOpenid 登录: ${this.describeRequestError(error)}`);
+            }
+          } else {
+            this.logger.warn('wxLogin 未配置 WX_APPID/WX_APP_SECRET，无法刷新支付 session_key');
+          }
+        }
       } else if (code) {
         this.logger.log('wxLogin 未收到 headerOpenid，开始调用 code2Session');
         const appId = this.configService.get<string>('WX_APPID');
