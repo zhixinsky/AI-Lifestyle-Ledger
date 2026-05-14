@@ -1,7 +1,7 @@
 <template>
   <view :class="['member-card', `member-card--${tone}`]" @tap="emit('tap')">
     <view class="card-lines" />
-    <image v-if="avatarUrl" class="avatar" :src="avatarUrl" mode="aspectFill" />
+    <image v-if="displayAvatarUrl" class="avatar" :src="displayAvatarUrl" mode="aspectFill" />
     <view v-else-if="showAvatar" :class="['avatar avatar-placeholder', `avatar-placeholder--${tone}`]">
       <text>{{ avatarText }}</text>
     </view>
@@ -25,8 +25,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { MemberLevel } from '@/types/domain';
+import { resolveCloudFileUrl } from '@/utils/request';
 
 const props = withDefaults(defineProps<{
   level?: MemberLevel;
@@ -48,6 +49,7 @@ const emit = defineEmits<{
   (e: 'action'): void;
 }>();
 
+const displayAvatarUrl = ref('');
 const tone = computed(() => (props.level === 'premium' ? 'premium' : props.level === 'pro' ? 'pro' : 'free'));
 const badgeText = computed(() => {
   if (tone.value === 'premium') return '尊享';
@@ -62,6 +64,19 @@ const subline = computed(() => {
   if (props.expireAt) return `${props.expireAt.substring(0, 10)} 到期 | 立即续费`;
   return '会员权益已生效';
 });
+
+watch(
+  () => props.avatarUrl,
+  async (url) => {
+    if (!url) {
+      displayAvatarUrl.value = '';
+      return;
+    }
+    const resolved = await resolveCloudFileUrl(url);
+    displayAvatarUrl.value = resolved.startsWith('cloud://') ? '' : resolved;
+  },
+  { immediate: true }
+);
 </script>
 
 <style scoped>

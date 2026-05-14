@@ -35,6 +35,41 @@ export function getApiBase() {
   return '/api';
 }
 
+const cloudTempUrlCache = new Map<string, string>();
+
+export async function resolveCloudFileUrl(fileID: string): Promise<string> {
+  if (!fileID || !fileID.startsWith('cloud://')) return fileID;
+  const cached = cloudTempUrlCache.get(fileID);
+  if (cached) return cached;
+
+  // #ifdef MP-WEIXIN
+  // @ts-ignore
+  if (typeof wx === 'undefined' || !wx.cloud || typeof wx.cloud.getTempFileURL !== 'function') {
+    return fileID;
+  }
+  return new Promise((resolve) => {
+    // @ts-ignore
+    wx.cloud.getTempFileURL({
+      fileList: [fileID],
+      success: (res: { fileList?: Array<{ fileID: string; tempFileURL: string }> }) => {
+        const tempUrl = res.fileList?.[0]?.tempFileURL || '';
+        if (tempUrl) {
+          cloudTempUrlCache.set(fileID, tempUrl);
+          resolve(tempUrl);
+          return;
+        }
+        resolve(fileID);
+      },
+      fail: () => resolve(fileID),
+    });
+  });
+  // #endif
+
+  // #ifndef MP-WEIXIN
+  return fileID;
+  // #endif
+}
+
 function logUploadFailure(ctx: Record<string, unknown>) {
   console.error('[uploadFile] FAIL', JSON.stringify(ctx, null, 2));
 }
