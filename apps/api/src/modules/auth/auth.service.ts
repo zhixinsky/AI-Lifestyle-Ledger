@@ -78,18 +78,30 @@ export class AuthService {
         if (!appId || !appSecret) {
           throw new UnauthorizedException('微信登录未配置');
         }
-        const url = `https://api.weixin.qq.com/sns/jscode2session?appid=${appId}&secret=${appSecret}&js_code=${code}&grant_type=authorization_code`;
-        const res = await fetch(url);
-        const data = await res.json();
-        this.logger.log(`WeChat response: errcode=${data.errcode}`);
-        if (data.errcode) {
-          throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
+        try {
+          const params = new URLSearchParams({
+            appid: appId,
+            secret: appSecret,
+            js_code: code,
+            grant_type: 'authorization_code',
+          });
+          const res = await fetch(`https://api.weixin.qq.com/sns/jscode2session?${params.toString()}`);
+          const data = await res.json();
+          this.logger.log(`WeChat response: errcode=${data.errcode}`);
+          if (data.errcode) {
+            throw new UnauthorizedException(`微信登录失败: ${data.errmsg}`);
+          }
+          if (openid && data.openid && openid !== data.openid) {
+            throw new UnauthorizedException('微信登录态不匹配');
+          }
+          openid = openid || data.openid;
+          sessionKey = data.session_key;
+        } catch (error: any) {
+          if (!openid || error instanceof UnauthorizedException) {
+            throw error;
+          }
+          this.logger.warn(`code2Session 请求失败，已使用云托管 openid 继续登录: ${error?.message || error}`);
         }
-        if (openid && data.openid && openid !== data.openid) {
-          throw new UnauthorizedException('微信登录态不匹配');
-        }
-        openid = openid || data.openid;
-        sessionKey = data.session_key;
       }
 
       if (!openid) {
