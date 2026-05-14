@@ -12,7 +12,7 @@
     <view class="mili-main">
       <view class="hub">
           <view class="hub-top" :style="{ paddingTop: statusPad }">
-            <text class="hub-greet">{{ timeHello }}，{{ userName }}</text>
+            <text class="hub-greet">{{ greetingTitle }}</text>
             <text class="hub-sub">{{ miliSubtitle }}</text>
           </view>
 
@@ -97,6 +97,36 @@
                 </view>
               </view>
             </view>
+
+            <view v-if="savedBillPanelVisible && savedBill" class="chat-panel saved-bill-panel">
+              <view class="chat-panel__glass" aria-hidden="true" />
+              <view class="chat-panel__shine" aria-hidden="true" />
+              <view class="chat-panel__head">
+                <view class="chat-panel__title-wrap">
+                  <text class="chat-panel__eyebrow">AI 米粒</text>
+                  <text class="chat-panel__title">已记账</text>
+                </view>
+                <view class="chat-panel__close" @tap="closeSavedBillPanel">×</view>
+              </view>
+              <view class="saved-bill-card">
+                <view class="saved-bill-icon" :style="{ background: savedBill.category?.color || 'rgba(115, 219, 190, 0.28)' }">
+                  <text>{{ savedBill.category?.icon || '◎' }}</text>
+                </view>
+                <view class="saved-bill-main">
+                  <text class="saved-bill-category">{{ savedBill.category?.name || savedBill.remark || '账单' }}</text>
+                  <text class="saved-bill-remark">{{ savedBill.remark || savedBill.category?.name || '语音记账' }}</text>
+                </view>
+                <text :class="['saved-bill-amount', savedBill.type]">{{ savedBill.type === 'income' ? '+' : '-' }}¥{{ savedBill.amount.toFixed(2) }}</text>
+              </view>
+              <view class="saved-bill-actions">
+                <button class="saved-bill-btn" @tap="editSavedBill">
+                  <text>修改</text>
+                </button>
+                <button class="saved-bill-btn danger" @tap="deleteSavedBill">
+                  <text>删除</text>
+                </button>
+              </view>
+            </view>
           </view>
 
           <view class="hub-bottom-actions">
@@ -167,13 +197,14 @@ import LoginModal from '@/components/LoginModal.vue';
 import TransactionEditor from '@/components/TransactionEditor.vue';
 import { useLoginSheetStore } from '@/stores/login-sheet';
 import { aiApi } from '@/api/ai';
+import { transactionApi, type TransactionPayload } from '@/api/transactions';
 import { useAiStore } from '@/stores/ai';
 import { useFinanceStore } from '@/stores/finance';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionForm } from '@/composables/useTransactionForm';
-import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
 import { classifyVoiceIntent } from '@/utils/intent-classifier';
+import type { AiParsedTransaction, Transaction } from '@/types/domain';
 import { dailyExpenseFromTrend, buildSpendCurveSvgRaw } from './spend-curve';
 
 const aiStore = useAiStore();
@@ -197,6 +228,11 @@ const timeHello = computed(() => {
   if (h < 18) return '下午好';
   if (h < 23) return '晚上好';
   return '夜深了';
+});
+
+const greetingTitle = computed(() => {
+  if (!authStore.isLoggedIn) return timeHello.value;
+  return `${timeHello.value}，${userName.value}`;
 });
 
 const summary = computed(
@@ -503,16 +539,58 @@ const statusPad = ref('120rpx');
 const recording = ref(false);
 const parsing = ref(false);
 const editorVisible = ref(false);
+const editingTransactionId = ref('');
 const voiceLiveText = ref('');
 
 const chatPanelVisible = ref(false);
 const chatPanelLoading = ref(false);
 const chatPanelText = ref('');
 const chatPanelReply = ref('');
+const savedBillPanelVisible = ref(false);
+const savedBill = ref<Transaction | null>(null);
+let chatPanelAutoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+let savedBillAutoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearPanelAutoCloseTimers() {
+  if (chatPanelAutoCloseTimer) {
+    clearTimeout(chatPanelAutoCloseTimer);
+    chatPanelAutoCloseTimer = null;
+  }
+  if (savedBillAutoCloseTimer) {
+    clearTimeout(savedBillAutoCloseTimer);
+    savedBillAutoCloseTimer = null;
+  }
+}
 
 function closeChatPanel() {
   chatPanelVisible.value = false;
   chatPanelLoading.value = false;
+  if (chatPanelAutoCloseTimer) {
+    clearTimeout(chatPanelAutoCloseTimer);
+    chatPanelAutoCloseTimer = null;
+  }
+}
+
+function closeSavedBillPanel() {
+  savedBillPanelVisible.value = false;
+  if (savedBillAutoCloseTimer) {
+    clearTimeout(savedBillAutoCloseTimer);
+    savedBillAutoCloseTimer = null;
+  }
+}
+
+function scheduleChatPanelAutoClose(delay = 12000) {
+  if (chatPanelAutoCloseTimer) clearTimeout(chatPanelAutoCloseTimer);
+  chatPanelAutoCloseTimer = setTimeout(() => {
+    closeChatPanel();
+  }, delay);
+}
+
+function scheduleSavedBillAutoClose(delay = 8000) {
+  if (savedBillAutoCloseTimer) clearTimeout(savedBillAutoCloseTimer);
+  savedBillAutoCloseTimer = setTimeout(() => {
+    closeSavedBillPanel();
+  }, delay);
 }
 
 const voiceTranscriptVisible = computed(
@@ -590,6 +668,10 @@ onMounted(() => {
   initOrbFloatSlots();
 });
 
+onUnmounted(() => {
+  clearPanelAutoCloseTimers();
+});
+
 onShow(() => {
   if (authStore.isLoggedIn && !finance.categories.length) {
     finance.loadCategories();
@@ -606,7 +688,11 @@ onShow(() => {
 });
 
 function openEditor() {
-  if (!ensureLoggedIn()) return;
+  if (!authStore.isLoggedIn) {
+    loginSheet.open();
+    return;
+  }
+  editingTransactionId.value = '';
   form.value = {
     type: 'expense',
     amount: 0,
@@ -621,11 +707,55 @@ function openEditor() {
   }
 }
 
+function showLoginRequiredChat() {
+  clearPanelAutoCloseTimers();
+  recording.value = false;
+  parsing.value = false;
+  voiceLiveText.value = '';
+  chatPanelText.value = '按住说话';
+  chatPanelReply.value = '登录后，米粒才能帮你识别语音、保存账单和延续聊天记忆。你也可以先返回继续浏览。';
+  chatPanelLoading.value = false;
+  chatPanelVisible.value = true;
+  scheduleChatPanelAutoClose(10000);
+  loginSheet.open();
+}
+
 async function handleEditorSave() {
+  if (editingTransactionId.value) {
+    saving.value = true;
+    try {
+      const updated = await transactionApi.update(editingTransactionId.value, form.value);
+      savedBill.value = updated;
+      editorVisible.value = false;
+      editingTransactionId.value = '';
+      await refreshAfterBillChange();
+      uni.showToast({ title: '已更新', icon: 'success' });
+    } catch {
+      uni.showToast({ title: '更新失败', icon: 'none' });
+    } finally {
+      saving.value = false;
+    }
+    return;
+  }
   await save();
   editorVisible.value = false;
   aiStore.refreshInsight().catch(() => {});
   aiStore.loadGreeting().catch(() => {});
+}
+
+async function refreshAfterBillChange() {
+  await Promise.all([
+    finance.loadDashboard().catch(() => {}),
+    finance.loadTransactions().catch(() => {}),
+    finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
+  ]);
+  aiStore.refreshInsight().catch(() => {});
+  aiStore.loadGreeting().catch(() => {});
+  try {
+    uni.$emit('transactions-updated');
+  } catch {
+    /* ignore */
+  }
 }
 
 function findCategoryId(name: string, type: 'expense' | 'income') {
@@ -651,44 +781,89 @@ function buildQuickParsedBill(rawText: string, result: ReturnType<typeof classif
   };
 }
 
-function setQuickParsedBill(rawText: string, result: ReturnType<typeof classifyVoiceIntent>) {
-  const bill = buildQuickParsedBill(rawText, result);
-  try {
-    uni.setStorageSync('mili_pending_voice_intent', {
-      rawText,
-      type: bill.type,
-      category: bill.category,
-      tag: result.tag || '',
-      matchedKeyword: result.matchedKeyword || result.tag || '',
-    });
-  } catch {
-    /* ignore */
-  }
-  aiStore.setParsed(rawText, '', [bill]);
-  return bill;
+function parsedBillToPayload(item: AiParsedTransaction): TransactionPayload {
+  return {
+    type: item.type,
+    amount: item.amount,
+    categoryId: item.categoryId || findCategoryId(item.category, item.type),
+    occurredAt: item.occurredAt || new Date().toISOString(),
+    remark: item.remark,
+    tags: item.tags || [],
+  };
 }
 
-function optimizeQuickBillInBackground(rawText: string, quickBill: ReturnType<typeof buildQuickParsedBill>) {
-  aiApi.parseBill(rawText).then((result) => {
-    if (!result.transactions.length) return;
-    if (aiStore.rawInput !== rawText || aiStore.logId) return;
-    const current = aiStore.parsedTransactions[0];
-    if (!current) return;
-    const userEdited =
-      current.amount !== quickBill.amount ||
-      current.category !== quickBill.category ||
-      current.remark !== quickBill.remark ||
-      current.type !== quickBill.type;
-    if (userEdited) return;
-    aiStore.setParsed(rawText, result.logId, result.transactions);
-  }).catch(() => {});
+async function saveParsedBills(transactions: AiParsedTransaction[], logId = '') {
+  if (!transactions.length) return [];
+  if (!finance.categories.length) {
+    await finance.loadCategories().catch(() => {});
+  }
+  if (logId) {
+    const result = await aiApi.confirmBill(logId, transactions);
+    return result.transactions;
+  }
+  const payloads = transactions.map(parsedBillToPayload);
+  if (payloads.some((item) => !item.categoryId)) {
+    throw new Error('分类加载失败');
+  }
+  return Promise.all(payloads.map((item) => transactionApi.create(item)));
+}
+
+async function showSavedBillResult(saved: Transaction[]) {
+  const first = saved[0];
+  if (!first) return;
+  savedBill.value = first;
+  savedBillPanelVisible.value = true;
+  chatPanelVisible.value = false;
+  scheduleSavedBillAutoClose();
+  await refreshAfterBillChange();
+  uni.showToast({ title: saved.length > 1 ? `已记账${saved.length}笔` : '已记账', icon: 'success' });
+}
+
+function editSavedBill() {
+  if (!savedBill.value) return;
+  closeSavedBillPanel();
+  editingTransactionId.value = savedBill.value.id;
+  form.value = {
+    type: savedBill.value.type,
+    amount: savedBill.value.amount,
+    categoryId: savedBill.value.categoryId,
+    occurredAt: savedBill.value.occurredAt,
+    remark: savedBill.value.remark || '',
+    tags: savedBill.value.tags || [],
+  };
+  editorVisible.value = true;
+}
+
+async function deleteSavedBill() {
+  if (!savedBill.value) return;
+  const targetId = savedBill.value.id;
+  uni.showModal({
+    title: '删除这笔记录？',
+    content: '删除后不会保留在账单里',
+    confirmText: '删除',
+    confirmColor: '#d96b6b',
+    success: async (res) => {
+      if (!res.confirm) return;
+      try {
+        await transactionApi.remove(targetId);
+        savedBillPanelVisible.value = false;
+        savedBill.value = null;
+        await refreshAfterBillChange();
+        uni.showToast({ title: '已删除', icon: 'success' });
+      } catch {
+        uni.showToast({ title: '删除失败', icon: 'none' });
+      }
+    },
+  });
 }
 
 async function showVoiceChat(text: string) {
+  clearPanelAutoCloseTimers();
   chatPanelText.value = text;
   chatPanelReply.value = '';
   chatPanelLoading.value = true;
   chatPanelVisible.value = true;
+  savedBillPanelVisible.value = false;
   try {
     await aiStore.sendMessage(text);
     const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
@@ -697,6 +872,7 @@ async function showVoiceChat(text: string) {
     chatPanelReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
   } finally {
     chatPanelLoading.value = false;
+    scheduleChatPanelAutoClose();
   }
 }
 
@@ -711,9 +887,9 @@ async function parseVoiceBill(text: string) {
         await finance.loadCategories().catch(() => {});
       }
       voiceLiveText.value = `已识别为记账：${quickIntent.category || '其它'} ${quickIntent.tag ? `· ${quickIntent.tag} ` : ''}¥${quickIntent.amount}`;
-      const quickBill = setQuickParsedBill(t, quickIntent);
-      setTimeout(() => uni.navigateTo({ url: '/pages/ai-confirm/index' }), 120);
-      optimizeQuickBillInBackground(t, quickBill);
+      const quickBill = buildQuickParsedBill(t, quickIntent);
+      const saved = await saveParsedBills([quickBill]);
+      await showSavedBillResult(saved);
       return;
     }
 
@@ -724,8 +900,8 @@ async function parseVoiceBill(text: string) {
 
     const result = await aiApi.parseBill(t);
     if (result.transactions.length > 0) {
-      aiStore.setParsed(t, result.logId, result.transactions);
-      uni.navigateTo({ url: '/pages/ai-confirm/index' });
+      const saved = await saveParsedBills(result.transactions, result.logId);
+      await showSavedBillResult(saved);
       return;
     }
     // 未识别到账单：视为「聊天」，在当前页展示轻量聊天卡片，用户可继续按住说话追问。
@@ -739,7 +915,11 @@ async function parseVoiceBill(text: string) {
 }
 
 function onHoldStart() {
-  if (!ensureLoggedIn()) return;
+  clearPanelAutoCloseTimers();
+  if (!authStore.isLoggedIn) {
+    showLoginRequiredChat();
+    return;
+  }
   if (parsing.value) return;
   voiceLiveText.value = '';
   recording.value = true;
@@ -1385,8 +1565,8 @@ onUnmounted(() => {
 .chat-panel {
   position: absolute;
   z-index: 8;
-  left: 18rpx;
-  right: 18rpx;
+  left: 0;
+  right: 0;
   top: 8rpx;
   bottom: 10rpx;
   border-radius: 32rpx;
@@ -1498,5 +1678,95 @@ onUnmounted(() => {
   color: rgba(20, 44, 38, 0.9);
   border: 1rpx solid rgba(255, 255, 255, 0.76);
   box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.78);
+}
+
+.saved-bill-panel {
+  display: flex;
+  flex-direction: column;
+}
+
+.saved-bill-card {
+  position: relative;
+  z-index: 1;
+  margin: 22rpx 24rpx 0;
+  padding: 22rpx;
+  border-radius: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  background: rgba(255, 255, 255, 0.52);
+  border: 1rpx solid rgba(255, 255, 255, 0.78);
+  box-shadow: inset 0 1rpx 0 rgba(255, 255, 255, 0.78);
+}
+
+.saved-bill-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 34rpx;
+  flex-shrink: 0;
+}
+
+.saved-bill-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+
+.saved-bill-category {
+  font-size: 30rpx;
+  font-weight: 800;
+  color: rgba(19, 67, 56, 0.94);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-bill-remark {
+  font-size: 23rpx;
+  color: rgba(48, 92, 80, 0.62);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.saved-bill-amount {
+  font-size: 30rpx;
+  font-weight: 850;
+  color: #5f61d8;
+  flex-shrink: 0;
+}
+
+.saved-bill-amount.income {
+  color: #00a99f;
+}
+
+.saved-bill-actions {
+  position: relative;
+  z-index: 1;
+  margin: auto 24rpx 24rpx;
+  display: flex;
+  gap: 18rpx;
+}
+
+.saved-bill-btn {
+  flex: 1;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 999rpx;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1rpx solid rgba(255, 255, 255, 0.78);
+  color: rgba(19, 67, 56, 0.88);
+  font-size: 28rpx;
+  font-weight: 750;
+}
+
+.saved-bill-btn.danger {
+  color: #b86464;
 }
 </style>

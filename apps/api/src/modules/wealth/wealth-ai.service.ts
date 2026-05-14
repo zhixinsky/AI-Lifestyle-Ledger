@@ -18,7 +18,7 @@ export class WealthAiService {
       where: { userId_month: { userId, month } },
     });
 
-    if (snapshot?.adviceJson) {
+    if (snapshot?.adviceJson && !(await this.hasNewerTransactions(userId, snapshot.updatedAt))) {
       return snapshot.adviceJson as { summary: string; suggestions: string[]; encouragement: string };
     }
 
@@ -35,6 +35,7 @@ export class WealthAiService {
   }
 
   async refreshAdvice(userId: string) {
+    await this.wealth.refreshMonth(userId, undefined, { updateGoals: false });
     const advice = await this.generateAdvice(userId);
     const month = dayjs().format('YYYY-MM');
 
@@ -53,6 +54,15 @@ export class WealthAiService {
         console.error('[WealthAi] Background advice refresh failed:', e.message);
       });
     });
+  }
+
+  private async hasNewerTransactions(userId: string, snapshotUpdatedAt: Date) {
+    const latest = await this.prisma.transaction.findFirst({
+      where: { userId },
+      orderBy: { updatedAt: 'desc' },
+      select: { updatedAt: true },
+    });
+    return Boolean(latest?.updatedAt && latest.updatedAt > snapshotUpdatedAt);
   }
 
   private async generateAdvice(userId: string) {

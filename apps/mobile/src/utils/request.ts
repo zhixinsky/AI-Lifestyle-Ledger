@@ -26,14 +26,9 @@ interface RequestOptions {
   auth?: boolean;
 }
 
-let isShowingLogin = false;
-
-function triggerLogin() {
-  if (isShowingLogin) return;
-  isShowingLogin = true;
+function clearExpiredLogin() {
   uni.removeStorageSync('token');
-  uni.$emit('show-login');
-  setTimeout(() => { isShowingLogin = false; }, 1000);
+  uni.$emit('auth-expired');
 }
 
 export function getApiBase() {
@@ -133,7 +128,7 @@ export async function uploadFile(urlPath: string, filePath: string): Promise<{ u
         }
         if (statusCode === 401) {
           if (authToken) {
-            triggerLogin();
+            clearExpiredLogin();
           }
           logUploadFailure({
             channel: 'uni.uploadFile',
@@ -200,10 +195,8 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
           }
           const msg = (res.data as { message?: string })?.message;
           if (res.statusCode === 401) {
-            const isAuthEndpoint = reqPath.includes('/auth/');
-            // 无 token 时的 401 不弹窗（允许未登录浏览）；仅会话过期仍弹登录
-            if (!isAuthEndpoint && token) {
-              triggerLogin();
+            if (!reqPath.includes('/auth/') && token) {
+              clearExpiredLogin();
             }
             reject(new Error(msg || '请先登录'));
             return;
@@ -238,7 +231,7 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
         const msg = (res.data as { message?: string })?.message;
         if (res.statusCode === 401) {
           if (!url.includes('/auth/') && token) {
-            triggerLogin();
+            clearExpiredLogin();
           }
           reject(new Error(msg || '请先登录'));
           return;

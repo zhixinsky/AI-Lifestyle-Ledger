@@ -47,8 +47,8 @@
       </view>
     </view>
 
-    <button class="subscribe-btn" @tap="handleSubscribe">
-      {{ status?.isPro ? '续费会员' : '立即开通' }}
+    <button class="subscribe-btn" :loading="paying" :disabled="paying" @tap="handleSubscribe">
+      {{ paying ? '正在拉起支付' : status?.isPro ? '续费会员' : '立即开通' }}
     </button>
 
     <view class="spacer" />
@@ -60,11 +60,12 @@ import { ref, computed, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
-import { membershipApi } from '@/api/membership';
+import { membershipApi, type WxPaymentParams } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
 
 const status = ref<MembershipStatus | null>(null);
 const selectedPlan = ref('monthly_pro');
+const paying = ref(false);
 
 const levelNames = ['免费版', 'Pro', 'Premium'];
 const currentLevelNum = computed(() => {
@@ -106,14 +107,15 @@ function goBack() {
 }
 
 async function handleSubscribe() {
+  if (paying.value) return;
   const plan = plans.find((p) => p.id === selectedPlan.value);
   if (!plan) return;
 
   try {
+    paying.value = true;
     const res = await membershipApi.createOrder({
       type: 'subscription',
-      amount: plan.price,
-      description: plan.name,
+      planId: plan.id,
     });
     if (res.mock) {
       // 模拟支付
@@ -128,10 +130,42 @@ async function handleSubscribe() {
           }
         },
       });
+      return;
     }
-  } catch {
-    uni.showToast({ title: '创建订单失败', icon: 'none' });
+    if (!res.wxParams) throw new Error('缺少微信支付参数');
+    await requestWechatPayment(res.wxParams);
+    const syncResult = await membershipApi.syncOrder(res.orderId);
+    if (syncResult.paid) {
+      uni.showToast({ title: '开通成功！', icon: 'success' });
+      await loadStatus();
+    } else {
+      uni.showToast({ title: '支付处理中，请稍后刷新', icon: 'none' });
+      setTimeout(loadStatus, 1500);
+    }
+  } catch (error: any) {
+    const message = String(error?.errMsg || error?.message || '');
+    if (message.includes('cancel')) {
+      uni.showToast({ title: '已取消支付', icon: 'none' });
+    } else {
+      uni.showToast({ title: '支付失败，请稍后重试', icon: 'none' });
+    }
+  } finally {
+    paying.value = false;
   }
+}
+
+function requestWechatPayment(params: WxPaymentParams) {
+  return new Promise<void>((resolve, reject) => {
+    uni.requestPayment({
+      timeStamp: params.timeStamp,
+      nonceStr: params.nonceStr,
+      package: params.package,
+      signType: params.signType,
+      paySign: params.paySign,
+      success: () => resolve(),
+      fail: (err) => reject(err),
+    });
+  });
 }
 
 async function loadStatus() {

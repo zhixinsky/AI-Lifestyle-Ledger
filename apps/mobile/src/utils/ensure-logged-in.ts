@@ -4,6 +4,6 @@ import { useAuthStore } from '@/stores/auth';
 export function ensureLoggedIn(): boolean {
   const authStore = useAuthStore();
   if (authStore.isLoggedIn) return true;
-  uni.$emit('show-login');
+  uni.showToast({ title: '登录后可使用', icon: 'none' });
   return false;
 }

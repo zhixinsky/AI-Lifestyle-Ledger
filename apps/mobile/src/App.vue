@@ -14,6 +14,10 @@ const financeStore = useFinanceStore();
 onLaunch(() => {
   console.log('Moona launched');
   uni.$on('show-login', () => loginSheet.open());
+  uni.$on('auth-expired', () => {
+    authStore.logout();
+    financeStore.reset();
+  });
   // 记账数据更新后：立刻刷新 AI 提醒/观察
   uni.$on('transactions-updated', () => {
     if (authStore.isLoggedIn) {

@@ -2,6 +2,9 @@
   <view v-if="visible" class="login-mask" @tap.self="onMaskTap">
     <view class="login-sheet" :style="{ paddingBottom: safeBottom + 'px' }">
       <view class="sheet-handle" />
+      <view class="close-btn" @tap="close">
+        <text>×</text>
+      </view>
 
       <!-- 步骤1: 登录 -->
       <view v-if="step === 'login'">
@@ -35,15 +38,21 @@
         </button>
 
         <view class="agreement-row">
-          <view class="agreement-check" :class="{ checked: agreementAccepted }" @tap="toggleAgreement">
+          <view class="agreement-check" :class="{ checked: agreementAccepted }" @tap.stop="toggleAgreement">
             <text v-if="agreementAccepted">✓</text>
           </view>
           <view class="agreement-text">
             <text>我已阅读并同意</text>
-            <text class="agreement-link" @tap="openUserAgreement">《用户服务协议》</text>
+            <text class="agreement-link" @tap.stop="openUserAgreement">《用户服务协议》</text>
             <text>和</text>
-            <text class="agreement-link" @tap="openPrivacyPolicy">《隐私政策》</text>
+            <text class="agreement-link" @tap.stop="openPrivacyPolicy">《隐私政策》</text>
           </view>
+        </view>
+
+        <view class="cancel-wrap">
+          <button class="cancel-btn" @tap.stop="close">
+            <text>暂不登录，先返回</text>
+          </button>
         </view>
       </view>
 
@@ -123,10 +132,19 @@ const wxIconSrc = makeSvgIcon(
   '#ffffff', '0'
 );
 
-function onMaskTap() {}
+function close() {
+  loading.value = false;
+  saving.value = false;
+  step.value = 'login';
+  emit('close');
+}
+
+function onMaskTap() {
+  // 避免用户勾选协议或阅读条款时误触空白区域关闭弹窗。
+}
 
 function goPhoneLogin() {
-  emit('close');
+  close();
   uni.navigateTo({ url: '/pages/login/index' });
 }
 
@@ -274,11 +292,28 @@ function skipProfile() {
 }
 
 .login-sheet {
+  position: relative;
   width: 100%;
   background: #fff;
   border-radius: 32rpx 32rpx 0 0;
   padding: 20rpx 48rpx 40rpx;
   animation: slide-up 0.3s ease;
+}
+
+.close-btn {
+  position: absolute;
+  top: 22rpx;
+  right: 28rpx;
+  width: 58rpx;
+  height: 58rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f6f5;
+  color: #66736f;
+  font-size: 38rpx;
+  line-height: 1;
 }
 
 @keyframes slide-up {
@@ -376,6 +411,24 @@ function skipProfile() {
   justify-content: center;
   gap: 12rpx;
   margin-top: 32rpx;
+}
+
+.cancel-wrap {
+  margin-top: 22rpx;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.cancel-btn {
+  width: 50%;
+  height: 76rpx;
+  line-height: 76rpx;
+  border-radius: 38rpx;
+  background: #f6f8f7;
+  color: #60706b;
+  font-size: 27rpx;
+  font-weight: 600;
 }
 
 .agreement-check {

@@ -1,6 +1,6 @@
 <template>
   <view class="legal-page">
-    <view class="nav" :style="{ paddingTop: statusPad }">
+    <view class="nav" :style="{ paddingTop: statusPad, paddingRight: menuSafeRight }">
       <view class="back" @tap="goBack">‹</view>
       <text class="nav-title">用户服务协议</text>
       <view class="nav-spacer" />
@@ -60,10 +60,23 @@
 const statusPad = (() => {
   try {
     const sys = uni.getSystemInfoSync();
-    return `${sys.statusBarHeight || 0}px`;
+    return `${(sys.statusBarHeight || 0) + 16}px`;
   } catch {
-    return '0px';
+    return '32px';
   }
+})();
+
+const menuSafeRight = (() => {
+  // #ifdef MP-WEIXIN
+  try {
+    const rect = uni.getMenuButtonBoundingClientRect?.();
+    const sys = uni.getSystemInfoSync();
+    if (rect?.left) return `${Math.max(24, sys.windowWidth - rect.left + 16)}px`;
+  } catch {
+    /* ignore */
+  }
+  // #endif
+  return '24rpx';
 })();
 
 function goBack() {
@@ -84,9 +97,9 @@ function goBack() {
 }
 
 .nav {
-  height: 88rpx;
-  padding-left: 24rpx;
-  padding-right: 24rpx;
+  position: relative;
+  min-height: 96rpx;
+  padding-left: 18rpx;
   display: flex;
   align-items: center;
   background: rgba(247, 248, 250, 0.96);
@@ -94,8 +107,8 @@ function goBack() {
 
 .back,
 .nav-spacer {
-  width: 72rpx;
-  height: 72rpx;
+  width: 88rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -107,18 +120,22 @@ function goBack() {
 }
 
 .nav-title {
-  flex: 1;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 360rpx;
   text-align: center;
   font-size: 32rpx;
   font-weight: 700;
+  color: #1e1e1e;
 }
 
 .content {
-  height: calc(100vh - 88rpx - env(safe-area-inset-top, 0px));
+  height: calc(100vh - 128rpx - env(safe-area-inset-top, 0px));
 }
 
 .paper {
-  padding: 32rpx 36rpx 64rpx;
+  padding: 44rpx 36rpx 64rpx;
 }
 
 .title {

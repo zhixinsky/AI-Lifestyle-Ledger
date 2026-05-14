@@ -44,12 +44,12 @@ export class WealthService {
     };
   }
 
-  async getMonthSurplus(userId: string, month: string) {
+  async getMonthSurplus(userId: string, month: string, options: { forceRecalculate?: boolean } = {}) {
     const existing = await this.prisma.wealthSnapshot.findUnique({
       where: { userId_month: { userId, month } },
     });
 
-    if (existing) {
+    if (existing && !options.forceRecalculate) {
       return {
         month,
         income: Number(existing.income),
@@ -114,7 +114,7 @@ export class WealthService {
 
   /* ========== Refresh / Auto Push ========== */
 
-  async refreshMonth(userId: string, month?: string) {
+  async refreshMonth(userId: string, month?: string, options: { updateGoals?: boolean } = {}) {
     const target = month ? dayjs(`${month}-01`) : dayjs();
     const targetMonth = target.format('YYYY-MM');
 
@@ -127,14 +127,15 @@ export class WealthService {
     let cumulative = 0;
 
     for (const m of months) {
-      const data = await this.getMonthSurplus(userId, m);
+      const data = await this.getMonthSurplus(userId, m, { forceRecalculate: m === targetMonth });
       surpluses.push(data.surplus);
       cumulative += data.surplus;
     }
 
     const current = surpluses[surpluses.length - 1];
-    const currentIncome = (await this.getMonthSurplus(userId, targetMonth)).income;
-    const currentExpense = (await this.getMonthSurplus(userId, targetMonth)).expense;
+    const currentMonthData = await this.getMonthSurplus(userId, targetMonth, { forceRecalculate: true });
+    const currentIncome = currentMonthData.income;
+    const currentExpense = currentMonthData.expense;
     const surplusRate = currentIncome > 0 ? Math.round((current / currentIncome) * 100) : 0;
     const wealthScore = this.calculateWealthScore(surplusRate, surpluses);
 
@@ -158,7 +159,9 @@ export class WealthService {
       },
     });
 
-    await this.pushGoalProgress(userId, targetMonth, current);
+    if (options.updateGoals !== false) {
+      await this.pushGoalProgress(userId, targetMonth, current);
+    }
 
     return this.getOverview(userId, targetMonth);
   }

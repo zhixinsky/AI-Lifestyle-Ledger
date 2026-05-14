@@ -112,19 +112,29 @@
     <view class="section">
       <text class="section-title">明细</text>
       <MoonaCard>
-        <view v-if="filteredTransactions.length">
-          <view
-            v-for="(item, idx) in filteredTransactions"
-            :key="item.id"
-            :class="['bill-row', { bordered: idx < filteredTransactions.length - 1 }]"
-          >
-            <view class="bill-icon" :style="{ background: item.category?.color || '#eef2f6' }" @tap.stop="openCatPicker(item)">
-              <text>{{ item.category?.icon || '◎' }}</text>
+        <view v-if="transactionGroups.length">
+          <view v-for="group in transactionGroups" :key="group.key" class="bill-day-group">
+            <view class="bill-day-header">
+              <view class="bill-day-left">
+                <text class="bill-day-date">{{ group.dateLabel }}</text>
+                <text class="bill-day-week">{{ group.weekday }}</text>
+              </view>
+              <text class="bill-day-total">{{ filterType === 'expense' ? '支出' : '收入' }}：¥{{ formatAmount(group.total) }}</text>
             </view>
-            <view class="bill-info" @tap.stop="openNameEdit(item)">
-              <text class="bill-name">{{ item.remark || item.category?.name || '账单' }}</text>
+            <view
+              v-for="(item, idx) in group.items"
+              :key="item.id"
+              :class="['bill-row', { bordered: idx < group.items.length - 1 }]"
+            >
+              <view class="bill-icon" :style="{ background: item.category?.color || '#eef2f6' }" @tap.stop="openCatPicker(item)">
+                <text>{{ item.category?.icon || '◎' }}</text>
+              </view>
+              <view class="bill-info" @tap.stop="openNameEdit(item)">
+                <text class="bill-name">{{ item.remark || item.category?.name || '账单' }}</text>
+                <text class="bill-date">{{ formatTime(item.occurredAt) }} · {{ item.category?.name || '未分类' }}</text>
+              </view>
+              <text :class="['bill-amount', item.type]" @tap.stop="openAmountEdit(item)">{{ formatSignedMoney(item.amount, item.type) }}</text>
             </view>
-            <text :class="['bill-amount', item.type]" @tap.stop="openAmountEdit(item)">{{ formatSignedMoney(item.amount, item.type) }}</text>
           </view>
         </view>
         <view v-else class="empty">
@@ -408,6 +418,27 @@ const filteredTransactions = computed(() =>
   transactions.value.filter((t) => t.type === filterType.value)
 );
 
+const weekdayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+const transactionGroups = computed(() => {
+  const groups = new Map<string, { key: string; dateLabel: string; weekday: string; total: number; items: Transaction[] }>();
+  filteredTransactions.value.forEach((item) => {
+    const d = new Date(item.occurredAt);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const current = groups.get(key) || {
+      key,
+      dateLabel: formatDayLabel(item.occurredAt),
+      weekday: weekdayNames[d.getDay()],
+      total: 0,
+      items: [],
+    };
+    current.total += Number(item.amount || 0);
+    current.items.push(item);
+    groups.set(key, current);
+  });
+  return Array.from(groups.values());
+});
+
 const displayRange = computed(() => {
   const m = stats.value?.month;
   if (!m) return pickerDisplay.value;
@@ -430,6 +461,16 @@ function formatDate(dateStr: string) {
   const hh = String(d.getHours()).padStart(2, '0');
   const mm = String(d.getMinutes()).padStart(2, '0');
   return `${mo}/${da} ${hh}:${mm}`;
+}
+
+function formatDayLabel(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getMonth() + 1).padStart(2, '0')}月${String(d.getDate()).padStart(2, '0')}日`;
+}
+
+function formatTime(dateStr: string) {
+  const d = new Date(dateStr);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
 function switchType(type: 'expense' | 'income') {
@@ -788,6 +829,49 @@ onShow(() => {
 }
 
 /* 账单列表 */
+.bill-day-group {
+  padding: 8rpx 0 10rpx;
+}
+
+.bill-day-group + .bill-day-group {
+  margin-top: 12rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid #eef1f4;
+}
+
+.bill-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 4rpx 0 14rpx;
+}
+
+.bill-day-left {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.bill-day-date {
+  font-size: 27rpx;
+  font-weight: 800;
+  color: #1e1e1e;
+}
+
+.bill-day-week {
+  font-size: 22rpx;
+  color: #88909b;
+}
+
+.bill-day-total {
+  flex-shrink: 0;
+  font-size: 23rpx;
+  font-weight: 650;
+  color: #667085;
+}
+
 .bill-row {
   display: flex;
   align-items: center;

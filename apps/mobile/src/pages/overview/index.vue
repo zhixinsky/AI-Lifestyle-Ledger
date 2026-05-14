@@ -1,6 +1,11 @@
 <template>
   <view>
   <PageShell>
+    <view class="nav">
+      <text class="nav-title">概览</text>
+      <view class="nav-placeholder" />
+    </view>
+
     <!-- 今日支出 Hero -->
     <MoonaCard>
       <view class="hero-row">
@@ -265,7 +270,6 @@ import { budgetApi } from '@/api/budgets';
 import { wealthApi } from '@/api/wealth';
 import { growthApi } from '@/api/growth';
 import type { BudgetOverview, WealthOverview, WealthGoal, Badge } from '@/types/domain';
-import { ensureLoggedIn } from '@/utils/ensure-logged-in';
 
 const finance = useFinanceStore();
 const aiStore = useAiStore();
@@ -360,12 +364,10 @@ function goProfile() {
 }
 
 function goBudget() {
-  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/budget/index' });
 }
 
 function goSavingGoals() {
-  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/saving-goals/index' });
 }
 
@@ -374,7 +376,6 @@ function goBills() {
 }
 
 function goGrowth() {
-  if (!ensureLoggedIn()) return;
   uni.navigateTo({ url: '/pages/growth/index' });
 }
 
@@ -417,7 +418,26 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 14rpx;
+}
+
+.nav-title {
+  font-size: 38rpx;
+  font-weight: 800;
+  color: #1e1e1e;
+}
+
+.nav-placeholder {
+  width: 180rpx;
+  flex-shrink: 0;
+}
+
 /* Hero 卡片 */
+
 .hero-row {
   display: flex;
   align-items: center;

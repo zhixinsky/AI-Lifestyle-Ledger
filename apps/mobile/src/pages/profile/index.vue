@@ -374,8 +374,8 @@ const menuGroups = [
     { icon: '💾', label: '数据备份', url: '' },
   ],
   [
-    { icon: '💬', label: '帮助与反馈', url: '' },
-    { icon: 'ℹ', label: '关于 Moona', url: '' },
+    { icon: '💬', label: '帮助与反馈', url: '/pages/help/index' },
+    { icon: 'ℹ', label: '关于 Moona', url: '/pages/about/index' },
   ],
 ];
 
@@ -384,10 +384,6 @@ const tabBarPages = ['/pages/overview/index', '/pages/bills/index', '/pages/inde
 function onMenuTap(item: { label: string; url: string }) {
   if (!item.url) {
     uni.showToast({ title: `${item.label} 即将上线`, icon: 'none' });
-    return;
-  }
-  if (!authStore.isLoggedIn) {
-    uni.$emit('show-login');
     return;
   }
   if (tabBarPages.includes(item.url)) {

@@ -58,6 +58,20 @@
       }
     },
     {
+      "path": "pages/help/index",
+      "style": {
+        "navigationBarTitleText": "帮助与反馈",
+        "navigationStyle": "custom"
+      }
+    },
+    {
+      "path": "pages/about/index",
+      "style": {
+        "navigationBarTitleText": "关于 Moona",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/category-settings/index",
       "style": {
         "navigationBarTitleText": "类别设置",

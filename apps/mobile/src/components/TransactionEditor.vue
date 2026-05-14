@@ -223,7 +223,7 @@ function syncAmount() {
 watch(() => props.visible, (val) => {
   if (val) {
     step.value = 1;
-    leftOperand.value = '';
+    leftOperand.value = props.modelValue.amount > 0 ? String(props.modelValue.amount) : '';
     rightOperand.value = '';
     currentOp.value = '';
     if (!props.categories.length) {

@@ -292,6 +292,7 @@ async function loadData() {
 async function loadAdvice() {
   try {
     advice.value = await wealthApi.getAdvice();
+    await loadData();
   } catch { /* ignore */ }
 }
 
@@ -341,7 +342,6 @@ async function removeGoal(goalId: string) {
 }
 
 onMounted(() => {
-  loadData();
   loadAdvice();
 });
 </script>
