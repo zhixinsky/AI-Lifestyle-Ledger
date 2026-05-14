@@ -360,7 +360,7 @@ function handleLogout() {
 }
 
 .profile-member-card {
-  margin-top: 36rpx;
+  margin-top: 64rpx;
 }
 
 /* 菜单 */
