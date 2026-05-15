@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import * as bcrypt from 'bcryptjs';
 import { PrismaService } from '../prisma/prisma.service';
 import { SmsService } from '../sms/sms.service';
+import { EmailService } from '../email/email.service';
 
 interface CodeEntry {
   code: string;
@@ -17,6 +18,7 @@ export class AccountService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly smsService: SmsService,
+    private readonly emailService: EmailService,
   ) {}
 
   async profile(userId: string) {
@@ -87,9 +89,15 @@ export class AccountService {
 
   async sendEmailCode(email?: string) {
     const normalized = this.normalizeEmail(email);
+    const existing = this.emailCodes.get(normalized);
+    if (existing && existing.expiresAt - Date.now() > 9.5 * 60 * 1000) {
+      throw new BadRequestException('发送过于频繁，请稍后再试');
+    }
+
     const code = this.smsService.generateCode();
+    const sent = await this.emailService.sendVerificationCode(normalized, code);
     this.emailCodes.set(normalized, { code, expiresAt: Date.now() + 10 * 60 * 1000 });
-    this.logger.log(`Email verification code for ${normalized}: ${code}`);
+    if (!sent) this.logger.warn(`Email verification code for ${normalized}: ${code}`);
     return { success: true };
   }
 

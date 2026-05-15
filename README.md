@@ -134,6 +134,18 @@ copy apps\api\.env.example apps\api\.env
 | `SMS_BASE_URL` | 手机号登录必填 | 短信服务接口地址。 |
 | `SMS_TEMPLATE_ID` | 手机号登录必填 | 验证码短信模板 ID。 |
 
+### 邮箱验证码
+
+| 变量 | 必填 | 说明 |
+| --- | --- | --- |
+| `SMTP_HOST` | 邮箱绑定必填 | SMTP 服务器地址，例如 `smtp.qq.com`、`smtp.gmail.com`。 |
+| `SMTP_PORT` | 邮箱绑定必填 | SMTP 端口，常用 `465` 或 `587`。 |
+| `SMTP_USER` | 邮箱绑定必填 | SMTP 登录账号。 |
+| `SMTP_PASS` | 邮箱绑定必填 | SMTP 密码或授权码，通常不是邮箱登录密码。 |
+| `SMTP_FROM` | 邮箱绑定必填 | 发件人地址，可写成 `Moona <no-reply@example.com>`。 |
+
+未配置 SMTP 时，邮箱验证码只会打印在后端日志中，不会真实发送邮件。
+
 ## 微信云托管配置
 
 ### 云托管服务
