@@ -990,9 +990,7 @@ async function showVoiceChat(text: string) {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
     chatPanelReply.value = last?.content || '我暂时没想好怎么回答，换个说法试试？';
-    if (chatPanelVoiceEnabled.value) {
-      playChatPanelReply();
-    }
+    tryPlayChatPanelVoice();
   } catch {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
@@ -1014,6 +1012,11 @@ function toggleChatPanelVoice() {
   if (chatPanelReply.value && !chatPanelLoading.value) {
     playChatPanelReply();
   }
+}
+
+function tryPlayChatPanelVoice() {
+  if (!chatPanelVoiceEnabled.value || !chatPanelReply.value || chatPanelLoading.value) return;
+  void playChatPanelReply();
 }
 
 async function playChatPanelReply() {
@@ -1094,6 +1097,8 @@ async function parseVoiceBill(text: string) {
     if (session !== voiceAiSession) return;
     if (result.busy || result.timeout) {
       chatPanelReply.value = result.message || '米粒思考得有点久，可以再试一次哦～';
+      chatPanelLoading.value = false;
+      tryPlayChatPanelVoice();
       return;
     }
     if (result.transactions.length > 0) {

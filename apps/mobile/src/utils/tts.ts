@@ -13,12 +13,17 @@ function normalizeSpeakText(text: string) {
   return compact.length > MAX_TTS_LENGTH ? `${compact.slice(0, MAX_TTS_LENGTH)}...` : compact;
 }
 
-export function getVoiceReplyEnabled() {
+export function readStorageFlag(key: string) {
   try {
-    return uni.getStorageSync(VOICE_REPLY_STORAGE_KEY) === true;
+    const value = uni.getStorageSync(key);
+    return value === true || value === 1 || value === '1' || value === 'true';
   } catch {
     return false;
   }
+}
+
+export function getVoiceReplyEnabled() {
+  return readStorageFlag(VOICE_REPLY_STORAGE_KEY);
 }
 
 export function setVoiceReplyEnabled(enabled: boolean) {
