@@ -112,7 +112,7 @@
           <input class="input" v-model="phoneForm.phone" type="number" maxlength="11" placeholder="请输入手机号" />
           <view class="code-row">
             <input class="input code-input" v-model="phoneForm.code" type="number" maxlength="6" placeholder="验证码" />
-            <button class="code-btn" :disabled="sendingCode" @tap="sendPhoneCode">{{ sendingCode ? '发送中' : '获取验证码' }}</button>
+            <button class="code-btn" :disabled="phoneCodeDisabled" @tap="sendPhoneCode">{{ phoneCodeText }}</button>
           </view>
           <button class="primary-btn" :disabled="submitting" @tap="submitPhone">保存</button>
         </view>
@@ -121,7 +121,7 @@
           <input class="input" v-model="emailForm.email" type="text" placeholder="请输入邮箱" />
           <view class="code-row">
             <input class="input code-input" v-model="emailForm.code" type="number" maxlength="6" placeholder="验证码" />
-            <button class="code-btn" :disabled="sendingCode" @tap="sendEmailCode">{{ sendingCode ? '发送中' : '获取验证码' }}</button>
+            <button class="code-btn" :disabled="emailCodeDisabled" @tap="sendEmailCode">{{ emailCodeText }}</button>
           </view>
           <button class="primary-btn" :disabled="submitting" @tap="submitEmail">保存</button>
         </view>
@@ -138,7 +138,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import MemberProfileCard from '@/components/MemberProfileCard.vue';
 import { backIcon } from '@/utils/icons';
@@ -157,8 +157,13 @@ const financeStore = useFinanceStore();
 const profile = ref<AccountProfile | null>(null);
 const membership = ref<MembershipStatus | null>(null);
 const activeForm = ref<'profile' | 'phone' | 'email' | 'password' | ''>('');
-const sendingCode = ref(false);
+const sendingPhoneCode = ref(false);
+const sendingEmailCode = ref(false);
+const phoneCountdown = ref(0);
+const emailCountdown = ref(0);
 const submitting = ref(false);
+let phoneCountdownTimer: ReturnType<typeof setInterval> | null = null;
+let emailCountdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const phoneForm = reactive({ phone: '', code: '' });
 const emailForm = reactive({ email: '', code: '' });
@@ -181,6 +186,16 @@ const maskedEmail = computed(() => {
   return `${name.slice(0, 1)}***@${domain}`;
 });
 const memberActionText = computed(() => (membership.value?.level === 'free' ? '开通会员' : '会员中心'));
+const phoneCodeDisabled = computed(() => sendingPhoneCode.value || phoneCountdown.value > 0);
+const emailCodeDisabled = computed(() => sendingEmailCode.value || emailCountdown.value > 0);
+const phoneCodeText = computed(() => {
+  if (phoneCountdown.value > 0) return `${phoneCountdown.value}s`;
+  return sendingPhoneCode.value ? '发送中' : '获取验证码';
+});
+const emailCodeText = computed(() => {
+  if (emailCountdown.value > 0) return `${emailCountdown.value}s`;
+  return sendingEmailCode.value ? '发送中' : '获取验证码';
+});
 const sheetTitle = computed(() => {
   if (activeForm.value === 'profile') return '编辑个人资料';
   if (activeForm.value === 'phone') return profile.value?.phone ? '更换手机号' : '绑定手机号';
@@ -242,6 +257,23 @@ function closeForm() {
   activeForm.value = '';
 }
 
+function startCountdown(target: 'phone' | 'email') {
+  const countdown = target === 'phone' ? phoneCountdown : emailCountdown;
+  const currentTimer = target === 'phone' ? phoneCountdownTimer : emailCountdownTimer;
+  if (currentTimer) clearInterval(currentTimer);
+  countdown.value = 60;
+  const timer = setInterval(() => {
+    countdown.value -= 1;
+    if (countdown.value <= 0) {
+      clearInterval(timer);
+      if (target === 'phone') phoneCountdownTimer = null;
+      else emailCountdownTimer = null;
+    }
+  }, 1000);
+  if (target === 'phone') phoneCountdownTimer = timer;
+  else emailCountdownTimer = timer;
+}
+
 function onProfileAvatarChoose(e: any) {
   const avatar = e?.detail?.avatarUrl || '';
   if (!avatar) return;
@@ -277,28 +309,32 @@ async function submitProfile() {
 }
 
 async function sendPhoneCode() {
+  if (phoneCodeDisabled.value) return;
   if (!phoneForm.phone) return uni.showToast({ title: '请输入手机号', icon: 'none' });
-  sendingCode.value = true;
+  sendingPhoneCode.value = true;
   try {
     await accountApi.sendPhoneCode(phoneForm.phone);
+    startCountdown('phone');
     uni.showToast({ title: '验证码已发送', icon: 'success' });
   } catch (error: any) {
     uni.showToast({ title: error?.message || '发送失败', icon: 'none' });
   } finally {
-    sendingCode.value = false;
+    sendingPhoneCode.value = false;
   }
 }
 
 async function sendEmailCode() {
+  if (emailCodeDisabled.value) return;
   if (!emailForm.email) return uni.showToast({ title: '请输入邮箱', icon: 'none' });
-  sendingCode.value = true;
+  sendingEmailCode.value = true;
   try {
     await accountApi.sendEmailCode(emailForm.email);
+    startCountdown('email');
     uni.showToast({ title: '验证码已发送', icon: 'success' });
   } catch (error: any) {
     uni.showToast({ title: error?.message || '发送失败', icon: 'none' });
   } finally {
-    sendingCode.value = false;
+    sendingEmailCode.value = false;
   }
 }
 
@@ -395,6 +431,11 @@ async function handleDeleteAccount() {
 }
 
 onMounted(loadProfile);
+
+onUnmounted(() => {
+  if (phoneCountdownTimer) clearInterval(phoneCountdownTimer);
+  if (emailCountdownTimer) clearInterval(emailCountdownTimer);
+});
 </script>
 
 <style scoped>
@@ -586,6 +627,10 @@ onMounted(loadProfile);
   background: #e8f7f4;
   color: #168f82;
   font-size: 25rpx;
+}
+.code-btn[disabled] {
+  background: #edf1ef;
+  color: #98a2b3;
 }
 .primary-btn {
   margin-top: 8rpx;

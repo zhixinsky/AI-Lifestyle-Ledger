@@ -23,7 +23,7 @@
           <text class="input-label">验证码</text>
           <view class="code-row">
             <input v-model="code" type="number" maxlength="6" placeholder="请输入验证码" class="code-input" />
-            <view class="code-btn" @tap="sendCode">
+            <view :class="['code-btn', { disabled: codeBtnDisabled }]" @tap="sendCode">
               <text>{{ codeBtnText }}</text>
             </view>
           </view>
@@ -71,11 +71,13 @@ const auth = useAuthStore();
 const phone = ref('');
 const code = ref('');
 const loading = ref(false);
+const sendingCode = ref(false);
 const countdown = ref(0);
 const agreementAccepted = ref(false);
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
 const codeBtnText = computed(() => countdown.value > 0 ? `${countdown.value}s` : '获取验证码');
+const codeBtnDisabled = computed(() => sendingCode.value || countdown.value > 0);
 
 function toggleAgreement() {
   agreementAccepted.value = !agreementAccepted.value;
@@ -97,11 +99,12 @@ function openPrivacyPolicy() {
 
 async function sendCode() {
   if (!ensureAgreementAccepted()) return;
-  if (countdown.value > 0) return;
+  if (codeBtnDisabled.value) return;
   if (!phone.value || phone.value.length !== 11) {
     uni.showToast({ title: '请输入正确手机号', icon: 'none' });
     return;
   }
+  sendingCode.value = true;
   try {
     await authApi.sendCode(phone.value);
     uni.showToast({ title: '验证码已发送', icon: 'success' });
@@ -115,6 +118,8 @@ async function sendCode() {
     }, 1000);
   } catch (e: any) {
     uni.showToast({ title: e?.message || '发送失败', icon: 'none' });
+  } finally {
+    sendingCode.value = false;
   }
 }
 
@@ -295,11 +300,19 @@ async function submit() {
   justify-content: center;
 }
 
+.code-btn.disabled {
+  background: #edf1ef;
+}
+
 .code-btn text {
   font-size: 26rpx;
   color: #00a99f;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.code-btn.disabled text {
+  color: #98a2b3;
 }
 
 .submit-btn {
