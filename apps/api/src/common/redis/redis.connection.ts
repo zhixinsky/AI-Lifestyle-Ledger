@@ -26,8 +26,17 @@ export class RedisConnection implements OnModuleInit, OnModuleDestroy {
       port,
       password: process.env.REDIS_PASSWORD,
       tls: {},
+      family: 4,
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
+      retryStrategy: (times) => Math.min(times * 1000, 30000),
+    });
+
+    this.connection.on('error', (err) => {
+      this.logger.warn(`Redis connection error: ${err.message}`);
+    });
+    this.connection.on('reconnecting', () => {
+      this.logger.warn(`Redis reconnecting to ${this.host}:${this.port}`);
     });
   }
 

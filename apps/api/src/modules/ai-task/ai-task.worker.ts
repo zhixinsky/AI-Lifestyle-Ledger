@@ -17,6 +17,7 @@ interface AiTaskJobData {
 export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AiTaskWorker.name);
   private worker?: Worker<AiTaskJobData>;
+  private lastWorkerErrorLogAt = 0;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -40,6 +41,9 @@ export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`AI task job failed ${job?.id || 'unknown'}: ${err.message}`, err.stack);
     });
     this.worker.on('error', (err) => {
+      const now = Date.now();
+      if (now - this.lastWorkerErrorLogAt < 30000) return;
+      this.lastWorkerErrorLogAt = now;
       this.logger.error(`AI task worker error: ${err.message}`, err.stack);
     });
   }
