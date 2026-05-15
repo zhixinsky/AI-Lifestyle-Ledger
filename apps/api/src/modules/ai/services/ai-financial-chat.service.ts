@@ -41,11 +41,27 @@ export class AiFinancialChatService {
       { role: 'user' as const, content: message },
     ];
 
-    const result = await this.aiChat.complete(messages);
+    const aiResult = await this.aiChat.completeWithMeta(messages);
+
+    if (aiResult.busy || aiResult.timeout) {
+      return {
+        intent: 'chat',
+        busy: aiResult.busy,
+        timeout: aiResult.timeout,
+        message: aiResult.message,
+        reply: aiResult.message || '米粒现在有点忙，稍等一下再试试～',
+        transactions: [],
+        suggestions: ['查看今日消费', '本月账单分析'],
+      };
+    }
+
+    const result = aiResult.content;
 
     if (!result) {
       const fallback = {
+        intent: 'chat',
         reply: '抱歉，AI 暂时无法响应，请稍后再试～',
+        transactions: [],
         suggestions: ['查看今日消费', '本月账单分析'],
       };
       return fallback;
@@ -57,12 +73,17 @@ export class AiFinancialChatService {
       this.memories.extractFromChat(userId, message, reply).catch((err) => {
         console.error('[UserMemory] extract failed:', err);
       });
-      return parsed;
+      return {
+        intent: parsed.intent || 'chat',
+        reply,
+        transactions: parsed.transactions || [],
+        suggestions: parsed.suggestions || [],
+      };
     } catch {
       this.memories.extractFromChat(userId, message, result).catch((err) => {
         console.error('[UserMemory] extract failed:', err);
       });
-      return { reply: result, suggestions: [] };
+      return { intent: 'chat', reply: result, transactions: [], suggestions: [] };
     }
   }
 

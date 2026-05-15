@@ -11,5 +11,8 @@ export interface ParsedBillTransaction {
 
 export interface ParsedBillResult {
   intent?: 'expense' | 'income' | 'transfer' | 'not_bill';
+  busy?: boolean;
+  timeout?: boolean;
+  message?: string;
   transactions: ParsedBillTransaction[];
 }

@@ -21,7 +21,6 @@ import { SmsModule } from './modules/sms/sms.module';
 import { AccountModule } from './modules/account/account.module';
 import { LifeSpacesModule } from './modules/life-spaces/life-spaces.module';
 import { AiGreetingsModule } from './modules/ai-greetings/ai-greetings.module';
-import { AiTaskModule } from './modules/ai-task/ai-task.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -36,7 +35,6 @@ import { join } from 'path';
     PrismaModule,
     SmsModule,
     AiModule,
-    AiTaskModule,
     AuthModule,
     UsersModule,
     CategoriesModule,

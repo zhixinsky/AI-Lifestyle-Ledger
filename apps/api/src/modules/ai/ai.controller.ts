@@ -44,7 +44,11 @@ export class AiController {
 
     return {
       logId: log.id,
-      transactions: enriched
+      transactions: enriched,
+      intent: result.intent,
+      busy: result.busy,
+      timeout: result.timeout,
+      message: result.message,
     };
   }
 

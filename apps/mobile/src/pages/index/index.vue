@@ -1082,16 +1082,20 @@ async function parseVoiceBill(text: string) {
       return;
     }
 
-    const { taskId } = await aiApi.createTask({ type: 'parse_bill', inputText: t, intent: 'parse_bill' });
-    const result = await aiApi.waitTask<{ logId: string; transactions: AiParsedTransaction[] }>(taskId, {
-      timeoutMs: 15000,
-      intervalMs: 800,
-      onTick: (elapsedMs) => {
-        if (session !== voiceAiSession) return;
-        chatPanelThinkingText.value = aiWaitingText(elapsedMs);
-      },
-    });
+    const start = Date.now();
+    const waitingTimer = setInterval(() => {
+      if (session !== voiceAiSession) {
+        clearInterval(waitingTimer);
+        return;
+      }
+      chatPanelThinkingText.value = aiWaitingText(Date.now() - start);
+    }, 500);
+    const result = await aiApi.parseBill(t).finally(() => clearInterval(waitingTimer));
     if (session !== voiceAiSession) return;
+    if (result.busy || result.timeout) {
+      chatPanelReply.value = result.message || '米粒思考得有点久，可以再试一次哦～';
+      return;
+    }
     if (result.transactions.length > 0) {
       const saved = await saveParsedBills(result.transactions, result.logId);
       if (session !== voiceAiSession) return;

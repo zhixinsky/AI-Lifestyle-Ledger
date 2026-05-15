@@ -7,10 +7,11 @@ import { AiChatService } from './ai-chat.service';
 import { AiPromptService } from './ai-prompt.service';
 
 const categoryKeywords: Array<{ category: string; type: TransactionType; keywords: string[] }> = [
-  { category: '餐饮', type: TransactionType.expense, keywords: ['饭', '餐', '午饭', '晚饭', '早餐', '外卖', '奶茶', '咖啡', '饮料', '水果', '超市'] },
+  { category: '餐饮', type: TransactionType.expense, keywords: ['饭', '餐', '午饭', '晚饭', '早餐', '外卖', '奶茶', '咖啡', '饮料', '下午茶', '水果', '超市'] },
   { category: '交通', type: TransactionType.expense, keywords: ['停车', '地铁', '公交', '打车', '出租', '高铁', '油费', '车费'] },
   { category: '购物', type: TransactionType.expense, keywords: ['买', '衣服', '鞋', '淘宝', '京东', '购物'] },
   { category: '娱乐', type: TransactionType.expense, keywords: ['电影', '游戏', '演唱会', '娱乐', '会员'] },
+  { category: '其它', type: TransactionType.expense, keywords: ['牛肉干', '零食'] },
   { category: '医疗', type: TransactionType.expense, keywords: ['药', '医院', '门诊', '医疗'] },
   { category: '住房', type: TransactionType.expense, keywords: ['房租', '物业', '水电', '燃气'] },
   { category: '学习', type: TransactionType.expense, keywords: ['书', '课程', '学习', '培训'] },
@@ -26,21 +27,37 @@ export class BillParserService {
 
   async parse(input: string, occurredAt?: string): Promise<ParsedBillResult> {
     const currentTime = occurredAt || new Date().toISOString();
-    const aiContent = await this.aiChat.complete([
+    const ruleResult = this.parseByRules(input, currentTime);
+    if (ruleResult.transactions.length > 0 && this.isSimpleRuleBill(input)) {
+      return ruleResult;
+    }
+
+    const aiResult = await this.aiChat.completeWithMeta([
       { role: 'system', content: this.prompts.getBillParserPrompt() },
       { role: 'user', content: `当前时间：${currentTime}\n用户输入：${input}` }
     ]);
 
-    if (aiContent) {
-      const parsed = parseAiJson<ParsedBillResult>(aiContent);
+    if (aiResult.busy || aiResult.timeout) {
+      return {
+        intent: 'not_bill',
+        transactions: [],
+        busy: aiResult.busy,
+        timeout: aiResult.timeout,
+        message: aiResult.message,
+      };
+    }
+
+    if (aiResult.content) {
+      const parsed = parseAiJson<ParsedBillResult>(aiResult.content);
       return this.normalize(parsed, currentTime);
     }
 
-    return this.parseByRules(input, currentTime);
+    return ruleResult;
   }
 
   private normalize(result: ParsedBillResult, currentTime: string): ParsedBillResult {
     return {
+      intent: result.intent,
       transactions: (result.transactions || [])
         .filter((item) => Number(item.amount) > 0)
         .map((item) => ({
@@ -65,6 +82,11 @@ export class BillParserService {
       .filter((item): item is ParsedBillTransaction => Boolean(item));
 
     return { transactions };
+  }
+
+  private isSimpleRuleBill(input: string) {
+    const normalized = input.replace(/\s+/g, '').trim();
+    return /^[\u4e00-\u9fa5A-Za-z]+(?:\d+(?:\.\d{1,2})?)(?:元|块|￥|¥)?$/.test(normalized);
   }
 
   private parseSegment(segment: string, currentTime: string): ParsedBillTransaction | null {
