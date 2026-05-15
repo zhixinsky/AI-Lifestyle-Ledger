@@ -1,4 +1,4 @@
-export type VoiceIntent = 'expense' | 'income' | 'analysis' | 'chat' | 'unknown';
+export type VoiceIntent = 'transfer' | 'expense' | 'income' | 'analysis' | 'chat' | 'unknown';
 
 export interface IntentClassifyResult {
   intent: VoiceIntent;
@@ -22,6 +22,10 @@ const PREFERENCE_KEY = 'mili_voice_category_preferences';
 
 const expenseKeywords = [
   '花了', '买了', '支付', '消费', '付款', '用了', '扣了', '支出', '点了', '下单', '交了', '吃了', '喝了',
+];
+
+const transferKeywords = [
+  '转账', '转给', '还款', '收款', '微信转', '支付宝转',
 ];
 
 const incomeKeywords = [
@@ -160,6 +164,9 @@ export function amountParser(text: string) {
     if (standalone?.[1]) return Number(standalone[1]);
   }
 
+  const numericCandidate = normalized.match(/(\d+(?:\.\d+)?)/);
+  if (numericCandidate?.[1]) return Number(numericCandidate[1]);
+
   const cnMatch = normalized.match(/[零〇一二两三四五六七八九十百千万]+/);
   if (cnMatch) return parseChineseInteger(cnMatch[0]);
   return undefined;
@@ -233,14 +240,25 @@ export function classifyVoiceIntent(text: string): IntentClassifyResult {
   if (!normalized) return { intent: 'unknown', confidence: 0, needAiFallback: true };
 
   const amount = amountParser(normalized);
+  const transferKeyword = includesAny(normalized, transferKeywords);
   const incomeKeyword = includesAny(normalized, incomeKeywords);
   const expenseKeyword = includesAny(normalized, expenseKeywords);
   const incomeCategory = incomeCategoryClassifier(normalized);
   const expenseCategory = expenseCategoryClassifier(normalized);
   const analysisKeyword = includesAny(normalized, analysisKeywords);
 
-  // 收入优先级高于支出。
-  if (amount !== undefined && (incomeKeyword || incomeCategory)) {
+  if (transferKeyword) {
+    return {
+      intent: 'transfer',
+      amount,
+      remark: buildRemark(raw, amount),
+      confidence: 0.9,
+      needAiFallback: true,
+      matchedKeyword: transferKeyword,
+    };
+  }
+
+  if (incomeKeyword || incomeCategory) {
     const category = incomeCategory || {
       category: '其它收入',
       tag: incomeKeyword || '其它收入',
@@ -260,6 +278,7 @@ export function classifyVoiceIntent(text: string): IntentClassifyResult {
     };
   }
 
+  // 明确支出词或分类命中时，本地高置信可直接记账。
   if (amount !== undefined && (expenseKeyword || expenseCategory)) {
     const category = expenseCategory || {
       category: '',
@@ -280,6 +299,16 @@ export function classifyVoiceIntent(text: string): IntentClassifyResult {
     };
   }
 
+  if (amount !== undefined) {
+    return {
+      intent: 'expense',
+      amount,
+      remark: buildRemark(raw, amount),
+      confidence: 0.5,
+      needAiFallback: true,
+    };
+  }
+
   if (analysisKeyword) {
     return {
       intent: 'analysis',
@@ -287,16 +316,6 @@ export function classifyVoiceIntent(text: string): IntentClassifyResult {
       confidence: 0.85,
       needAiFallback: true,
       matchedKeyword: analysisKeyword,
-    };
-  }
-
-  if (amount !== undefined) {
-    return {
-      intent: 'unknown',
-      amount,
-      remark: buildRemark(raw, amount),
-      confidence: 0.45,
-      needAiFallback: true,
     };
   }
 

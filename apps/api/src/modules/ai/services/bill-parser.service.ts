@@ -41,7 +41,7 @@ export class BillParserService {
 
   private normalize(result: ParsedBillResult, currentTime: string): ParsedBillResult {
     return {
-      transactions: result.transactions
+      transactions: (result.transactions || [])
         .filter((item) => Number(item.amount) > 0)
         .map((item) => ({
           type: item.type || TransactionType.expense,
