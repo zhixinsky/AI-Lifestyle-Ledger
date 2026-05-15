@@ -70,7 +70,7 @@ import { backIcon } from '@/utils/icons';
 
 const supportEmail = 'admin@dokor.cn';
 const sessionFrom = 'moona_help_feedback';
-const messageCardTitle = 'Moona AI生活账本帮助与反馈';
+const messageCardTitle = 'Moona 应用帮助与反馈（AI米粒）';
 const messageCardPath = '/pages/help/index';
 
 const faqs = [

@@ -38,7 +38,7 @@
             </view>
             <view class="air-card air-card-insight">
               <view class="air-card-head air-card-head-insight">
-                <text class="air-label insight-title">AI 米粒观察</text>
+                <text class="air-label insight-title">AI米粒观察</text>
                 <text class="air-sparkle" aria-hidden="true">✨</text>
               </view>
               <view class="air-card-body air-card-body-insight">
@@ -83,7 +83,7 @@
               <view class="chat-panel__shine" aria-hidden="true" />
               <view class="chat-panel__head">
                 <view class="chat-panel__title-wrap">
-                  <text class="chat-panel__eyebrow">AI 米粒</text>
+                  <text class="chat-panel__eyebrow">AI米粒</text>
                   <text class="chat-panel__title">继续按住说话追问</text>
                 </view>
                 <view class="chat-panel__close" @tap="closeChatPanel">×</view>
@@ -103,7 +103,7 @@
               <view class="chat-panel__shine" aria-hidden="true" />
               <view class="chat-panel__head">
                 <view class="chat-panel__title-wrap">
-                  <text class="chat-panel__eyebrow">AI 米粒</text>
+                  <text class="chat-panel__eyebrow">AI米粒</text>
                   <text class="chat-panel__title">已记账</text>
                 </view>
                 <view class="chat-panel__close" @tap="closeSavedBillPanel">×</view>
@@ -455,12 +455,12 @@ const localInsightFallback = computed(() => {
   const top = finance.statistics?.categoryRatio?.[0];
   const recent = summary.value.recentTransactions?.[0];
   if (top?.amount) {
-    return `米粒看到你本月${top.category}花得最多，约 ${top.amount.toFixed(0)} 元。`;
+    return `AI米粒看到你本月${top.category}花得最多，约 ${top.amount.toFixed(0)} 元。`;
   }
   if (recent) {
-    return `刚记录了${recent.category?.name || '一笔账'}，米粒会继续帮你观察节奏。`;
+    return `刚记录了${recent.category?.name || '一笔账'}，AI米粒会继续帮你观察节奏。`;
   }
-  return '记一笔账，让米粒更了解你的日常节奏～';
+  return '记一笔账，让 AI米粒更了解你的日常节奏～';
 });
 
 const emptyInsightPatterns = ['记一笔账', '还没有记账', '还没有新的共同记录'];
@@ -802,7 +802,7 @@ function showLoginRequiredChat() {
   parsing.value = false;
   voiceLiveText.value = '';
   chatPanelText.value = '按住说话';
-  chatPanelReply.value = '登录后，米粒才能帮你识别语音、保存账单和延续聊天记忆。你也可以先返回继续浏览。';
+  chatPanelReply.value = '登录后，AI米粒才能帮你识别语音、保存账单和延续聊天记忆。你也可以先返回继续浏览。';
   chatPanelLoading.value = false;
   chatPanelVisible.value = true;
   scheduleChatPanelAutoClose(10000);

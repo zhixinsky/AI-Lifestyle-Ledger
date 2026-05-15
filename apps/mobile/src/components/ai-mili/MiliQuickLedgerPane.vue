@@ -15,7 +15,7 @@
       <text class="card-go">›</text>
     </view>
     <view class="tip">
-      <text>也可回到中间，按住说话让 AI 帮你记</text>
+      <text>也可回到中间，按住说话让 AI米粒帮你记</text>
     </view>
   </view>
 </template>

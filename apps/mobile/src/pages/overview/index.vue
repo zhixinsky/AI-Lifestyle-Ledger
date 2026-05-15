@@ -38,7 +38,7 @@
       </view>
     </MoonaCard>
 
-    <!-- AI 生活卡片 -->
+    <!-- AI米粒 等功能入口 Widget -->
     <view class="widget-row">
       <view
         v-for="card in overviewCards"
@@ -109,11 +109,11 @@
       </view>
     </view>
 
-    <!-- AI 提醒 -->
+    <!-- AI米粒 提醒 -->
     <MoonaCard class="ai-card" @tap="goAiChat">
       <view class="ai-header">
         <view class="ai-badge">
-          <text>AI 提醒</text>
+          <text>AI米粒 提醒</text>
         </view>
         <view class="ai-dot" :style="{ background: insightColor }" />
       </view>
@@ -280,7 +280,7 @@ const badges = ref<Badge[]>([]);
 const lifeSpaces = ref<LifeSpace[]>([]);
 const DEFAULT_OVERVIEW_CARDS = [
   { key: 'daily', title: '日常生活', sub: '查看每日生活记录', icon: '日', visible: true, sort: 0, className: 'widget-bills', visual: 'bills', onTap: goBills },
-  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, sort: 1, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
+  { key: 'ai', title: 'AI米粒', sub: '生活趋势洞察', icon: 'AI', visible: true, sort: 1, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
   { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, sort: 2, className: 'widget-wealth', visual: 'wealth', onTap: goSavingGoals },
   { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, sort: 3, className: 'widget-budget', visual: 'budget', onTap: goBudget },
 ];
@@ -316,7 +316,7 @@ const localInsightText = computed(() => {
   const recent = summary.value.recentTransactions?.[0];
   if (top?.amount) return `本月${top.category}支出占比最高，约 ${top.percent}%`;
   if (recent) return `最近记录了${recent.category?.name || '一笔账'}，继续保持会更准`;
-  return '记一笔账，让 AI 更了解你';
+  return '记一笔账，让 AI米粒更了解你';
 });
 const hasUserRecords = computed(() => {
   const s = summary.value;

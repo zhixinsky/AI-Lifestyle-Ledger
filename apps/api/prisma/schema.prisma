@@ -44,7 +44,7 @@ model User {
   identities       UserIdentity[]
   aiGreetingDailies AiGreetingDaily[]
 
-  /// 是否开启 AI 米粒页「智能问候」（关闭后仅用本地默认文案）
+  /// 是否开启 AI米粒页「智能问候」（关闭后仅用本地默认文案）
   smartGreetingEnabled Boolean @default(true)
 }
 

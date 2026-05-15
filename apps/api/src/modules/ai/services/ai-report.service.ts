@@ -233,15 +233,15 @@ ${compareFormatted}`;
 
   private memoryOnlyInsight(memoryContext: string) {
     if (memoryContext.includes('资金紧张') || memoryContext.includes('省钱')) {
-      return '米粒记得你想省钱，会帮你盯住不必要支出';
+      return 'AI米粒记得你想省钱，会帮你盯住不必要支出';
     }
     if (memoryContext.includes('外卖')) {
-      return '米粒记得你想控制外卖，今天可以少点一次';
+      return 'AI米粒记得你想控制外卖，今天可以少点一次';
     }
     if (memoryContext.includes('目标')) {
-      return '米粒记得你的目标，会帮你一起规划支出';
+      return 'AI米粒记得你的目标，会帮你一起规划支出';
     }
-    return '米粒已记住你的偏好，会给你更贴心提醒';
+    return 'AI米粒已记住你的偏好，会给你更贴心提醒';
   }
 
   private fallbackReport(type: 'daily' | 'monthly', transactions: TransactionRow[]) {

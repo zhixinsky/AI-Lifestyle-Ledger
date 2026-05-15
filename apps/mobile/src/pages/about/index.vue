@@ -13,7 +13,8 @@
       <view class="brand-logo">
         <image class="brand-logo-img" :src="brandLogoSrc" mode="aspectFit" />
       </view>
-      <text class="brand-name">Moona AI生活账本</text>
+      <text class="brand-name">Moona 生活账本</text>
+      <text class="brand-ai">AI 助手：AI米粒</text>
       <text class="brand-sub">让记账像聊天一样简单，让生活被温柔地看见。</text>
       <text class="version">Version 0.1.0</text>
     </view>
@@ -21,8 +22,8 @@
     <view class="section">
       <text class="section-title">我们在做什么</text>
       <MoonaCard class="copy-card">
-        <text class="paragraph">Moona 是一个 AI 陪伴型生活账本。它不只记录消费，也会理解你的生活节奏、消费习惯、预算目标和重要提醒。</text>
-        <text class="paragraph">你可以通过语音、手动记录和 AI 对话管理账单，让米粒逐渐成为更懂你的生活记账助手。</text>
+        <text class="paragraph">Moona 是应用名称，也是你手机里的这款 AI 生活账本。它不只记录消费，也会理解你的生活节奏、消费习惯、预算目标和重要提醒。</text>
+        <text class="paragraph">你可以通过语音、手动记录和与 AI米粒 对话管理账单，让 TA 逐渐成为更懂你的生活记账助手。</text>
       </MoonaCard>
     </view>
 
@@ -63,8 +64,8 @@ import { backIcon } from '@/utils/icons';
 const brandLogoSrc = 'cloud://prod-d3gw02rfhd26627e8.7072-prod-d3gw02rfhd26627e8-1432436662/ai.png';
 
 const features = [
-  { icon: '🎙', title: '语音记账', desc: '说一句话，米粒快速识别金额、分类和备注。' },
-  { icon: '✨', title: 'AI观察', desc: '根据账单和偏好生成更贴近你的提醒。' },
+  { icon: '🎙', title: '语音记账', desc: '说一句话，AI米粒 快速识别金额、分类和备注。' },
+  { icon: '✨', title: 'AI米粒观察', desc: '根据账单和偏好生成更贴近你的提醒。' },
   { icon: '🏡', title: '生活空间', desc: '记录两个人或一家人的共同生活节奏。' },
   { icon: '📈', title: '财富成长', desc: '用预算、目标和分析辅助长期规划。' },
 ];
@@ -106,6 +107,7 @@ function openPrivacyPolicy() {
 .brand-logo { width: 108rpx; height: 108rpx; display: flex; align-items: center; justify-content: center; }
 .brand-logo-img { width: 100%; height: 100%; }
 .brand-name { margin-top: 24rpx; font-size: 38rpx; font-weight: 850; color: #1f352f; }
+.brand-ai { margin-top: 10rpx; font-size: 24rpx; font-weight: 650; color: #2eb8a0; }
 .brand-sub { margin-top: 12rpx; font-size: 25rpx; line-height: 1.6; color: #667770; text-align: center; }
 .version { margin-top: 20rpx; font-size: 22rpx; color: #9aa7a2; }
 .section { margin-top: 30rpx; }

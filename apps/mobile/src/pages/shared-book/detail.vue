@@ -196,7 +196,7 @@ const spaceObservation = computed(() => {
   const perPerson = aaStats.value?.perPerson || totalExpense.value / Math.max(1, coupleMembers.value.length || 2);
   return {
     title: `${top} 是最近最明显的生活主题`,
-    text: `这段时间「${spaceMeta.value.name}」记录了 ${transactions.value.length} 个片段，人均支出约 ¥${formatAmount(perPerson)}。米粒会继续观察哪些钱花得值得，哪些节奏可以调轻一点。`,
+    text: `这段时间「${spaceMeta.value.name}」记录了 ${transactions.value.length} 个片段，人均支出约 ¥${formatAmount(perPerson)}。AI米粒会继续观察哪些钱花得值得，哪些节奏可以调轻一点。`,
   };
 });
 
@@ -218,7 +218,7 @@ const savingGoal = computed(() => {
     title: `${spaceMeta.value.name}备用金`,
     desc: saved > 0
       ? `已沉淀 ¥${formatAmount(saved)}，继续把确定的小钱留给未来。`
-      : '记录共同收入后，米粒会自动追踪离目标还有多远。',
+      : '记录共同收入后，AI米粒会自动追踪离目标还有多远。',
     percent,
   };
 });
@@ -238,7 +238,7 @@ const badges = computed(() => [
   { icon: '01', name: '开始经营', desc: `创建${spaceMeta.value.name}`, earned: Boolean(book.value) },
   { icon: '07', name: '七天生活感', desc: '一起记录满 7 天', earned: daysTogether.value >= 7 },
   { icon: '¥', name: '共同目标', desc: '开始追踪备用金', earned: totalIncome.value > 0 || totalExpense.value > 0 },
-  { icon: 'AI', name: '米粒观察员', desc: '拥有可分析的生活片段', earned: transactions.value.length >= 5 },
+  { icon: 'AI', name: 'AI米粒观察员', desc: '拥有可分析的生活片段', earned: transactions.value.length >= 5 },
 ]);
 
 function goBack() {

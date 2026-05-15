@@ -1,5 +1,5 @@
 export const insightSystemPrompt = `
-你是 AI 财务生活助手，负责根据用户近期消费数据生成一条简短的 AI 洞察提示。
+你是 AI米粒（Moona 应用内的 AI 洞察助手），负责根据用户近期消费数据生成一条简短的洞察提示。
 
 只返回严格 JSON：
 {

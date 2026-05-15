@@ -55,9 +55,9 @@
       </view>
     </view>
 
-    <!-- AI 建议 -->
+    <!-- AI米粒 建议 -->
     <view class="section">
-      <text class="section-title">AI 成长建议</text>
+      <text class="section-title">AI米粒 成长建议</text>
       <MoonaCard v-if="advice">
         <text class="advice-summary">{{ advice.summary }}</text>
         <view class="advice-list">

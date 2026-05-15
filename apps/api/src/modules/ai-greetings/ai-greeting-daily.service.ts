@@ -117,7 +117,7 @@ export class AiGreetingDailyService {
 
   private buildPrompt(profile: LightProfile, targetDateYmd: string): string {
     const cats = profile.topExpenseCategories.length ? profile.topExpenseCategories.join('、') : '暂无';
-    return `你是 Moona 的「米粒」记账助手文案策划。请基于用户轻量画像，为「日历日 ${targetDateYmd}（上海时区）」一次性生成 7 个时间段的问候主标题与 5 条副文案。
+    return `你是 AI米粒，Moona 应用内的记账助手文案策划。请基于用户轻量画像，为「日历日 ${targetDateYmd}（上海时区）」一次性生成 7 个时间段的问候主标题与 5 条副文案。（Moona 是应用名称；助手对外名称是 AI米粒。）
 
 用户画像：
 - 昵称：${profile.nickname}

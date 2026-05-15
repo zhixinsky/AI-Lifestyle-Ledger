@@ -108,7 +108,7 @@ export const useAiStore = defineStore('ai', {
       }
       // fallback：维持旧值或给默认文案
       if (!this.insight) {
-        this.insight = { text: '记一笔账，让 AI 更了解你', type: 'tip' };
+        this.insight = { text: '记一笔账，让 AI米粒更了解你', type: 'tip' };
       }
       if (!this.insightPool.length && this.insight) {
         this.insightPool = [this.insight];

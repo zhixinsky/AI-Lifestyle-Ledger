@@ -12,7 +12,7 @@
     <view class="space-hero">
       <text class="hero-kicker">AI Life Spaces</text>
       <text class="hero-title">经营不同的人生空间</text>
-      <text class="hero-sub">记录生活、时刻和记忆，让 AI 看见每个场景里的节奏。</text>
+      <text class="hero-sub">记录生活、时刻和记忆，让 AI米粒看见每个场景里的节奏。</text>
     </view>
 
     <!-- 创建/加入 -->

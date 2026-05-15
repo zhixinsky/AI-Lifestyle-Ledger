@@ -1,6 +1,6 @@
 /**
  * 将 statistics.trend（period=month 时为 MM-DD）汇总为「当月每日支出」数组。
- * 与 AI 米粒页面同目录输出 spend-curve.js，避免引用根目录 utils 时小程序 require 失败。
+ * 与 AI米粒页面同目录输出 spend-curve.js，避免引用根目录 utils 时小程序 require 失败。
  */
 export function dailyExpenseFromTrend(
   trend: Array<{ date: string; expense: number }> | undefined,

@@ -57,7 +57,7 @@
             <text class="menu-icon">✨</text>
             <view class="menu-text-col">
               <text class="menu-label">智能问候</text>
-              <text class="menu-sub">关闭后，AI 米粒页仅使用本地默认文案</text>
+              <text class="menu-sub">关闭后，AI米粒页仅使用本地默认文案</text>
             </view>
           </view>
           <switch :checked="smartGreetingOn" color="#00d4c8" @change="onSmartGreetingChange" />

@@ -1,5 +1,5 @@
 export const billParserSystemPrompt = `
-你是 AI 财务生活助手的账单解析器。
+你是 AI米粒（Moona 应用内的账单解析助手）。
 只返回严格 JSON，不要输出 Markdown，不要解释。
 
 JSON 格式：

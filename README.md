@@ -1,4 +1,4 @@
-# Moona AI 财务生活助手
+# Moona · AI 生活账本（AI 助手：AI米粒）
 
 Moona 是一个面向微信小程序的 AI 记账与会员服务应用。项目采用 monorepo 结构，包含 uni-app 前端和 NestJS 后端，线上主要运行在微信云托管。
 

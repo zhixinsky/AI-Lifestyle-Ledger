@@ -34,7 +34,7 @@ export class AiFinancialChatService {
           systemPrompt,
           `用户财务概况：\n${context}`,
           memoryContext ? `用户近期/长期记忆：\n${memoryContext}` : '',
-          '如果用户表达了新的省钱目标、资金压力或消费偏好，可以在回复里自然说明“米粒记住啦”。',
+          '如果用户表达了新的省钱目标、资金压力或消费偏好，可以在回复里自然说明“AI米粒记住啦”。',
         ].filter(Boolean).join('\n\n'),
       },
       ...history.map((h) => ({ role: h.role as 'user' | 'assistant', content: h.content })),
@@ -178,7 +178,7 @@ export class AiFinancialChatService {
     const hour = now.hour();
     const timeSlot = hour < 11 ? '早上' : hour < 14 ? '中午' : hour < 18 ? '下午' : '晚上';
 
-    const prompt = `你是 Moona，用户的 AI 记账助手。请生成一句简短、温暖的个性化问候语（15字以内），替代"今天过得怎么样？"。
+    const prompt = `你是 AI米粒（Moona 应用内的 AI 记账助手）。请生成一句简短、温暖的个性化问候语（15字以内），替代"今天过得怎么样？"。
 
 时间段：${timeSlot}
 用户连续记账：${streakDays}天
@@ -199,7 +199,7 @@ ${memoryContext ? `用户记忆：\n${memoryContext}` : ''}
 
     try {
       const result = await this.aiChat.complete([
-        { role: 'system', content: '你是 Moona，一个温暖贴心的 AI 记账助手，请用简短自然的语气。' },
+        { role: 'system', content: '你是 AI米粒，Moona 应用内的 AI 记账助手；语气温暖、简短、自然。' },
         { role: 'user', content: prompt },
       ]);
       const text = (result || '').replace(/["""]/g, '').trim() || this.fallbackGreeting(timeSlot, recentTx.length, uniqueCats, yesterdayTotal, streakDays);
@@ -210,10 +210,10 @@ ${memoryContext ? `用户记忆：\n${memoryContext}` : ''}
   }
 
   private fallbackGreeting(timeSlot: string, txCount: number, categories: string, yesterdayTotal: number, streakDays: number) {
-    if (txCount === 0) return `${timeSlot}好，先记一笔让米粒更懂你`;
+    if (txCount === 0) return `${timeSlot}好，先记一笔让 AI米粒更懂你`;
     if (streakDays >= 7) return `${timeSlot}好，连续记账很稳哦`;
     if (yesterdayTotal > 500) return `${timeSlot}好，昨天花销有点高`;
-    if (categories) return `${timeSlot}好，米粒在观察你的${categories.split('、')[0]}支出`;
+    if (categories) return `${timeSlot}好，AI米粒在观察你的${categories.split('、')[0]}支出`;
     return `${timeSlot}好，今天也记得轻松记账`;
   }
 
@@ -234,7 +234,7 @@ ${memoryContext ? `用户记忆：\n${memoryContext}` : ''}
           .join('\n')
       : '暂无分类预算';
 
-    const prompt = `你是一个温暖的 AI 财务顾问。请基于用户的预算和消费数据，给出简短、实用的建议。
+    const prompt = `你是 AI米粒（Moona 应用内的 AI 财务顾问）。请基于用户的预算和消费数据，给出简短、实用的建议。
 
 用户财务概况：
 ${context}
@@ -253,7 +253,7 @@ ${categoryInfo}
 用简洁自然的语气，不要列太多数字。`;
 
     const reply = await this.aiChat.complete([
-      { role: 'system', content: '你是 Moona，一个温暖贴心的 AI 财务助手。' },
+      { role: 'system', content: '你是 AI米粒，Moona 应用内的 AI 财务助手；回答简洁、温暖、实用。' },
       { role: 'user', content: prompt },
     ]);
 

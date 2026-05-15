@@ -13,7 +13,7 @@
       <!-- AI米粒 -->
       <view :class="['tab-item', { active: current === 'mili' }]" @tap="switchTo('mili')">
         <image class="tab-icon-img" :src="current === 'mili' ? icons.aiActive : icons.ai" mode="aspectFit" />
-        <text class="tab-label">米粒</text>
+        <text class="tab-label">AI米粒</text>
       </view>
 
       <!-- 中间记账按钮 -->
