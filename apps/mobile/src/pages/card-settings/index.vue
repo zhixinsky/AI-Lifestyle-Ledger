@@ -15,27 +15,49 @@
     </view>
 
     <view class="section-title">默认卡片</view>
-    <view class="overview-grid">
+    <view class="widget-row">
       <view
         v-for="(card, index) in defaultCards"
         :key="card.key"
-        :class="['overview-card', card.className, { disabled: !card.visible }]"
+        :class="['widget-card', card.className, { disabled: !card.visible }]"
         @tap="toggleDefault(index)"
       >
-        <view class="overview-glass" />
-        <view class="card-texture">
-          <view class="texture-orb" />
-          <view class="texture-line texture-line-1" />
-          <view class="texture-line texture-line-2" />
-        </view>
         <view :class="['check-mark', { active: card.visible }]"><text>✓</text></view>
-        <view class="overview-content">
-          <view class="overview-copy">
-            <text class="overview-title">{{ card.title }}</text>
-            <text class="overview-sub">{{ card.desc }}</text>
+        <view class="widget-glass" />
+        <view class="widget-content">
+          <view class="widget-text">
+            <text class="widget-title">{{ card.title }}</text>
+            <text class="widget-sub">{{ card.desc }}</text>
           </view>
-          <view class="overview-mini-icon"><text>{{ card.icon }}</text></view>
+          <view :class="['widget-icon-area', `widget-icon-${card.visual}`]">
+            <template v-if="card.visual === 'ai'">
+              <view class="wi-orb" />
+              <view class="wi-ring" />
+              <view class="wi-bar wi-bar-1" />
+              <view class="wi-bar wi-bar-2" />
+              <view class="wi-bar wi-bar-3" />
+            </template>
+            <template v-else-if="card.visual === 'wealth'">
+              <view class="ww-coin" />
+              <view class="ww-arrow" />
+              <view class="ww-curve" />
+            </template>
+            <template v-else-if="card.visual === 'budget'">
+              <view class="wb-ring-track" />
+              <view class="wb-ring-fill" />
+              <view class="wb-dot" />
+              <view class="wb-bar wb-bar-1" />
+              <view class="wb-bar wb-bar-2" />
+            </template>
+            <template v-else>
+              <view class="wbl-receipt" />
+              <view class="wbl-line wbl-line-1" />
+              <view class="wbl-line wbl-line-2" />
+              <view class="wbl-line wbl-line-3" />
+            </template>
+          </view>
         </view>
+        <view class="widget-shimmer" />
         <view class="sort-row">
           <text @tap.stop="moveDefault(index, -1)">↑</text>
           <text @tap.stop="moveDefault(index, 1)">↓</text>
@@ -90,16 +112,17 @@ interface FeatureCardSetting {
   icon: string;
   visible: boolean;
   className: string;
+  visual: string;
 }
 
 const DEFAULT_STORAGE_KEY = 'overview_default_cards';
 const spaces = ref<LifeSpace[]>([]);
 const selectableSpaces = creatableLifeSpaceMetas;
 const defaultCards = ref<FeatureCardSetting[]>([
-  { key: 'daily', title: '日常生活', desc: '查看每日生活记录', icon: '日', visible: true, className: 'card-daily' },
-  { key: 'ai', title: 'AI分析', desc: '消费趋势与生活洞察', icon: 'AI', visible: true, className: 'card-ai' },
-  { key: 'wealth', title: '财富成长', desc: '目标、存钱和成长路径', icon: '财', visible: true, className: 'card-wealth' },
-  { key: 'budget', title: '预算提醒', desc: '提前看见支出节奏', icon: '预', visible: true, className: 'card-budget' },
+  { key: 'daily', title: '日常生活', desc: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills' },
+  { key: 'ai', title: 'AI分析', desc: '消费趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai' },
+  { key: 'wealth', title: '财富成长', desc: '资产持续增长', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth' },
+  { key: 'budget', title: '预算管理', desc: '合理规划支出', icon: '预', visible: true, className: 'widget-budget', visual: 'budget' },
 ]);
 const selectedCount = computed(() =>
   defaultCards.value.filter((card) => card.visible).length + spaces.value.filter((space) => space.isVisible && space.type !== 'daily').length
@@ -120,7 +143,10 @@ function loadFeatureSettings() {
   if (Array.isArray(saved) && saved.length) {
     defaultCards.value = saved.map((item) => ({
       ...item,
-      className: item.key === 'daily' ? 'card-daily' : item.key === 'budget' ? 'card-budget' : item.key === 'wealth' ? 'card-wealth' : 'card-ai',
+      title: item.key === 'daily' ? '日常生活' : item.title,
+      desc: item.key === 'daily' ? '查看每日生活记录' : item.key === 'ai' ? '消费趋势洞察' : item.key === 'wealth' ? '资产持续增长' : item.key === 'budget' ? '合理规划支出' : item.desc,
+      className: item.key === 'daily' ? 'widget-bills' : item.key === 'budget' ? 'widget-budget' : item.key === 'wealth' ? 'widget-wealth' : 'widget-ai',
+      visual: item.key === 'daily' ? 'bills' : item.key === 'budget' ? 'budget' : item.key === 'wealth' ? 'wealth' : 'ai',
     }));
     return;
   }
@@ -214,6 +240,100 @@ onMounted(() => {
 .setting-title { font-size: 28rpx; font-weight: 780; color: #20352f; }
 .setting-sub { font-size: 22rpx; color: #75837e; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sort-actions { display: flex; flex-direction: column; gap: 6rpx; color: #78908a; font-size: 28rpx; font-weight: 800; padding-left: 4rpx; }
+.widget-row {
+  display: flex;
+  gap: 12rpx;
+  margin: 0 0 6rpx;
+}
+.widget-card {
+  flex: 1;
+  position: relative;
+  height: 120rpx;
+  border-radius: 20rpx;
+  overflow: hidden;
+  box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.06);
+  transition: transform 0.2s ease;
+}
+.widget-card.disabled { opacity: 0.58; }
+.widget-glass {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  border-radius: 20rpx;
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  pointer-events: none;
+}
+.widget-content {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 20rpx 16rpx 16rpx;
+}
+.widget-text { display: flex; flex-direction: column; gap: 2rpx; }
+.widget-title { font-size: 26rpx; font-weight: 800; letter-spacing: 0.5rpx; }
+.widget-sub { font-size: 16rpx; font-weight: 500; opacity: 0.7; }
+.widget-shimmer {
+  position: absolute;
+  top: 0; right: 0; bottom: 0; left: 0;
+  z-index: 1;
+  border-radius: 24rpx;
+  pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.12) 52%, transparent 70%);
+  background-size: 300% 100%;
+  animation: shimmer-flow 6s ease-in-out infinite;
+}
+@keyframes shimmer-flow {
+  0% { background-position: 200% center; }
+  100% { background-position: -200% center; }
+}
+.widget-icon-area {
+  position: absolute;
+  right: 12rpx;
+  bottom: 14rpx;
+  width: 68rpx;
+  height: 68rpx;
+}
+.widget-bills { background: linear-gradient(145deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.25)); border-bottom: 4rpx solid rgba(5, 150, 105, 0.3); }
+.widget-bills .widget-title { color: #047857; }
+.widget-bills .widget-sub { color: #059669; }
+.widget-ai { background: linear-gradient(145deg, rgba(139, 92, 246, 0.2), rgba(99, 102, 241, 0.28)); border-bottom: 4rpx solid rgba(139, 92, 246, 0.35); }
+.widget-ai .widget-title { color: #6d28d9; }
+.widget-ai .widget-sub { color: #7c3aed; }
+.widget-wealth { background: linear-gradient(145deg, rgba(245, 208, 120, 0.22), rgba(212, 175, 55, 0.2)); border-bottom: 4rpx solid rgba(212, 175, 55, 0.3); }
+.widget-wealth .widget-title { color: #92700c; }
+.widget-wealth .widget-sub { color: #a16207; }
+.widget-budget { background: linear-gradient(145deg, rgba(56, 189, 248, 0.18), rgba(14, 165, 233, 0.25)); border-bottom: 4rpx solid rgba(14, 165, 233, 0.3); }
+.widget-budget .widget-title { color: #0369a1; }
+.widget-budget .widget-sub { color: #0284c7; }
+.wbl-receipt { position: absolute; right: 10rpx; top: 0; width: 28rpx; height: 36rpx; border-radius: 4rpx 4rpx 0 0; background: rgba(16, 185, 129, 0.18); border-bottom: 4rpx dashed rgba(5, 150, 105, 0.2); }
+.wbl-line { position: absolute; height: 5rpx; border-radius: 3rpx; background: linear-gradient(to right, rgba(16,185,129,0.3), rgba(5,150,105,0.12)); }
+.wbl-line-1 { right: 0; bottom: 22rpx; width: 44rpx; }
+.wbl-line-2 { right: 6rpx; bottom: 12rpx; width: 32rpx; }
+.wbl-line-3 { right: 2rpx; bottom: 2rpx; width: 38rpx; }
+.wi-orb { position: absolute; right: 6rpx; top: 4rpx; width: 36rpx; height: 36rpx; border-radius: 50%; background: linear-gradient(135deg, rgba(139,92,246,0.4), rgba(99,102,241,0.25)); box-shadow: 0 0 16rpx rgba(139,92,246,0.25); animation: ai-breathe 3s ease-in-out infinite; }
+@keyframes ai-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+.wi-ring { position: absolute; right: 0; top: -2rpx; width: 48rpx; height: 48rpx; border-radius: 50%; border: 2rpx solid rgba(139,92,246,0.15); }
+.wi-bar { position: absolute; bottom: 0; width: 10rpx; border-radius: 5rpx; background: linear-gradient(to top, rgba(139,92,246,0.35), rgba(99,102,241,0.15)); }
+.wi-bar-1 { left: 8rpx; height: 28rpx; }
+.wi-bar-2 { left: 24rpx; height: 40rpx; }
+.wi-bar-3 { left: 40rpx; height: 20rpx; }
+.ww-coin { position: absolute; right: 10rpx; top: 8rpx; width: 28rpx; height: 28rpx; border-radius: 50%; background: linear-gradient(135deg, rgba(234,194,82,0.5), rgba(212,175,55,0.3)); border: 2rpx solid rgba(212,175,55,0.25); box-shadow: 0 2rpx 12rpx rgba(212,175,55,0.15); }
+.ww-arrow { position: absolute; right: 28rpx; top: 16rpx; width: 16rpx; height: 16rpx; border-right: 3rpx solid rgba(180,140,20,0.35); border-top: 3rpx solid rgba(180,140,20,0.35); transform: rotate(-45deg); }
+.ww-curve { position: absolute; bottom: 4rpx; left: 0; right: 0; height: 32rpx; border-radius: 0 32rpx 0 0; border-top: 3rpx solid rgba(212,175,55,0.2); border-right: 3rpx solid rgba(212,175,55,0.2); }
+.wb-ring-track { position: absolute; right: 8rpx; top: 2rpx; width: 40rpx; height: 40rpx; border-radius: 50%; border: 4rpx solid rgba(56,189,248,0.12); }
+.wb-ring-fill { position: absolute; right: 8rpx; top: 2rpx; width: 40rpx; height: 40rpx; border-radius: 50%; border: 4rpx solid transparent; border-top-color: rgba(14,165,233,0.4); border-right-color: rgba(14,165,233,0.4); transform: rotate(30deg); }
+.wb-dot { position: absolute; right: 38rpx; top: 4rpx; width: 8rpx; height: 8rpx; border-radius: 50%; background: rgba(14,165,233,0.4); }
+.wb-bar { position: absolute; bottom: 2rpx; height: 6rpx; border-radius: 3rpx; background: linear-gradient(to right, rgba(56,189,248,0.3), rgba(14,165,233,0.15)); }
+.wb-bar-1 { left: 0; width: 42rpx; }
+.wb-bar-2 { left: 0; bottom: 14rpx; width: 28rpx; }
 .overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
 .overview-card {
   position: relative;
@@ -257,7 +377,7 @@ onMounted(() => {
   position: absolute;
   right: 14rpx;
   top: 14rpx;
-  z-index: 3;
+  z-index: 4;
   width: 34rpx;
   height: 34rpx;
   border-radius: 50%;
@@ -291,7 +411,7 @@ onMounted(() => {
   font-size: 21rpx;
   font-weight: 850;
 }
-.sort-row { position: absolute; left: 18rpx; bottom: 12rpx; z-index: 2; display: flex; gap: 18rpx; color: rgba(79,129,116,0.76); font-size: 25rpx; font-weight: 850; }
+.sort-row { position: absolute; left: 14rpx; bottom: 10rpx; z-index: 4; display: flex; gap: 16rpx; color: rgba(79,129,116,0.76); font-size: 24rpx; font-weight: 850; }
 .overview-space-icon {
   width: 54rpx;
   height: 54rpx;
