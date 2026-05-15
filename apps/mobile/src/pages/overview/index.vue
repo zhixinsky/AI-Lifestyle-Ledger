@@ -278,12 +278,13 @@ const wealthOverview = ref<WealthOverview | null>(null);
 const topGoal = ref<WealthGoal | null>(null);
 const badges = ref<Badge[]>([]);
 const lifeSpaces = ref<LifeSpace[]>([]);
-const defaultCards = ref([
+const DEFAULT_OVERVIEW_CARDS = [
   { key: 'daily', title: '日常生活', sub: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills', onTap: goBills },
   { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
   { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth', onTap: goSavingGoals },
   { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, className: 'widget-budget', visual: 'budget', onTap: goBudget },
-]);
+];
+const defaultCards = ref(DEFAULT_OVERVIEW_CARDS.map((card) => ({ ...card })));
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
 const badgeTotal = computed(() => badges.value.length);
 
@@ -425,22 +426,62 @@ function loadData() {
   ]).catch(() => {});
 }
 
-function loadOverviewCards() {
+function normalizeOverviewCard(item: any) {
+  const fallback = DEFAULT_OVERVIEW_CARDS.find((card) => card.key === item.key) || DEFAULT_OVERVIEW_CARDS[0];
+  return {
+    ...fallback,
+    ...item,
+    title: fallback.title,
+    sub: item.sub || item.desc || fallback.sub,
+    className: fallback.className,
+    visual: fallback.visual,
+    onTap: fallback.onTap,
+  };
+}
+
+function getLocalDefaultCards() {
   const saved = uni.getStorageSync('overview_default_cards') as typeof defaultCards.value | '';
   if (Array.isArray(saved) && saved.length) {
-    defaultCards.value = saved.map((item) => ({
-      ...item,
-      sub: (item as any).sub || (item as any).desc || '',
-      className: item.key === 'daily' ? 'widget-bills' : item.key === 'budget' ? 'widget-budget' : item.key === 'wealth' ? 'widget-wealth' : 'widget-ai',
-      visual: item.key === 'daily' ? 'bills' : item.key === 'budget' ? 'budget' : item.key === 'wealth' ? 'wealth' : 'ai',
-      onTap: item.key === 'daily' ? goBills : item.key === 'budget' ? goBudget : item.key === 'wealth' ? goSavingGoals : goAiChat,
-    }));
-  } else {
-    const legacy = uni.getStorageSync('overview_feature_cards') as Array<any> | '';
-    if (Array.isArray(legacy) && legacy.length) {
-      const legacyMap = new Map(legacy.map((item) => [item.key, item]));
-      defaultCards.value = defaultCards.value.map((item) => ({ ...item, visible: legacyMap.get(item.key)?.visible ?? item.visible }));
+    return saved.map(normalizeOverviewCard);
+  }
+  const legacy = uni.getStorageSync('overview_feature_cards') as Array<any> | '';
+  if (Array.isArray(legacy) && legacy.length) {
+    const legacyMap = new Map(legacy.map((item) => [item.key, item]));
+    return DEFAULT_OVERVIEW_CARDS.map((item) => ({ ...item, visible: legacyMap.get(item.key)?.visible ?? item.visible }));
+  }
+  return [];
+}
+
+function applyRemoteDefaultCards(items: Array<{ key: string; sort?: number; isVisible?: boolean }>) {
+  const settingMap = new Map(items.map((item) => [item.key, item]));
+  defaultCards.value = DEFAULT_OVERVIEW_CARDS
+    .map((card, index) => ({
+      ...card,
+      visible: settingMap.get(card.key)?.isVisible ?? card.visible,
+      sort: settingMap.get(card.key)?.sort ?? index,
+    }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ sort, ...card }) => card);
+}
+
+async function loadOverviewCards() {
+  const localCards = getLocalDefaultCards();
+  const remoteCards = await lifeSpaceApi.homeCards().catch(() => []);
+  if (remoteCards.length) {
+    const remoteAllVisible = remoteCards.every((item) => item.isVisible);
+    const localHasCustomVisible = localCards.length && localCards.some((item) => !item.visible);
+    if (remoteAllVisible && localHasCustomVisible) {
+      defaultCards.value = localCards;
+      lifeSpaceApi.updateHomeCards(localCards.map((card, index) => ({
+        key: card.key,
+        sort: index,
+        isVisible: card.visible,
+      }))).catch(() => {});
+    } else {
+      applyRemoteDefaultCards(remoteCards);
     }
+  } else if (localCards.length) {
+    defaultCards.value = localCards;
   }
   lifeSpaceApi.list().then((items) => { lifeSpaces.value = items; }).catch(() => {});
 }

@@ -26,4 +26,17 @@ export class LifeSpacesController {
   ) {
     return this.lifeSpacesService.updateSettings(user.sub, items);
   }
+
+  @Get('home-cards')
+  listHomeCards(@CurrentUser() user: AuthUser) {
+    return this.lifeSpacesService.listHomeCards(user.sub);
+  }
+
+  @Post('home-cards')
+  updateHomeCards(
+    @CurrentUser() user: AuthUser,
+    @Body('items') items: Array<{ key: string; sort?: number; isVisible?: boolean }> = [],
+  ) {
+    return this.lifeSpacesService.updateHomeCards(user.sub, items);
+  }
 }

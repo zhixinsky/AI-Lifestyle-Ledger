@@ -3,6 +3,13 @@ import { BookType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CREATABLE_LIFE_SPACE_TYPES, LIFE_SPACE_PRESETS } from './life-space-presets';
 
+const DEFAULT_HOME_CARDS = [
+  { key: 'daily', sort: 0, isVisible: true },
+  { key: 'ai', sort: 1, isVisible: true },
+  { key: 'wealth', sort: 2, isVisible: true },
+  { key: 'budget', sort: 3, isVisible: true },
+];
+
 @Injectable()
 export class LifeSpacesService {
   constructor(private readonly prisma: PrismaService) {}
@@ -75,5 +82,55 @@ export class LifeSpacesService {
       })),
     );
     return this.list(userId);
+  }
+
+  private async ensureHomeCards(userId: string) {
+    await Promise.all(
+      DEFAULT_HOME_CARDS.map((card) => this.prisma.homeCardSetting.upsert({
+        where: { userId_key: { userId, key: card.key } },
+        update: {},
+        create: {
+          userId,
+          key: card.key,
+          sort: card.sort,
+          isVisible: card.isVisible,
+        },
+      })),
+    );
+  }
+
+  async listHomeCards(userId: string) {
+    await this.ensureHomeCards(userId);
+    return this.prisma.homeCardSetting.findMany({
+      where: { userId },
+      orderBy: [{ sort: 'asc' }, { createdAt: 'asc' }],
+      select: {
+        key: true,
+        sort: true,
+        isVisible: true,
+      },
+    });
+  }
+
+  async updateHomeCards(userId: string, items: Array<{ key: string; sort?: number; isVisible?: boolean }>) {
+    const allowedKeys = new Set(DEFAULT_HOME_CARDS.map((card) => card.key));
+    const updates = items.filter((item) => allowedKeys.has(item.key));
+    await this.ensureHomeCards(userId);
+    await Promise.all(
+      updates.map((item, index) => this.prisma.homeCardSetting.upsert({
+        where: { userId_key: { userId, key: item.key } },
+        update: {
+          sort: item.sort ?? index,
+          ...(item.isVisible !== undefined ? { isVisible: item.isVisible } : {}),
+        },
+        create: {
+          userId,
+          key: item.key,
+          sort: item.sort ?? index,
+          isVisible: item.isVisible ?? true,
+        },
+      })),
+    );
+    return this.listHomeCards(userId);
   }
 }

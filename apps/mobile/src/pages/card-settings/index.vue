@@ -133,12 +133,13 @@ interface FeatureCardSetting {
 const DEFAULT_STORAGE_KEY = 'overview_default_cards';
 const spaces = ref<LifeSpace[]>([]);
 const selectableSpaces = creatableLifeSpaceMetas;
-const defaultCards = ref<FeatureCardSetting[]>([
+const DEFAULT_CARD_SETTINGS: FeatureCardSetting[] = [
   { key: 'daily', title: '日常生活', desc: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills' },
   { key: 'ai', title: 'AI分析', desc: '消费趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai' },
   { key: 'wealth', title: '财富成长', desc: '资产持续增长', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth' },
   { key: 'budget', title: '预算管理', desc: '合理规划支出', icon: '预', visible: true, className: 'widget-budget', visual: 'budget' },
-]);
+];
+const defaultCards = ref<FeatureCardSetting[]>(DEFAULT_CARD_SETTINGS.map((card) => ({ ...card })));
 const selectedCount = computed(() =>
   defaultCards.value.filter((card) => card.visible).length + spaces.value.filter((space) => space.isVisible && space.type !== 'daily').length
 );
@@ -149,48 +150,66 @@ function goBack() {
   else uni.switchTab({ url: '/pages/profile/index' });
 }
 
-function loadFeatureSettings() {
+function normalizeDefaultCard(item: FeatureCardSetting): FeatureCardSetting {
+  const fallback = DEFAULT_CARD_SETTINGS.find((card) => card.key === item.key) || DEFAULT_CARD_SETTINGS[0];
+  return {
+    ...fallback,
+    ...item,
+    title: fallback.title,
+    desc: fallback.desc,
+    className: fallback.className,
+    visual: fallback.visual,
+  };
+}
+
+function applyDefaultSettings(items: Array<{ key: string; sort?: number; isVisible?: boolean }>) {
+  const settingMap = new Map(items.map((item) => [item.key, item]));
+  defaultCards.value = DEFAULT_CARD_SETTINGS
+    .map((card, index) => ({
+      ...card,
+      visible: settingMap.get(card.key)?.isVisible ?? card.visible,
+      sort: settingMap.get(card.key)?.sort ?? index,
+    }))
+    .sort((a, b) => a.sort - b.sort)
+    .map(({ sort, ...card }) => card);
+}
+
+function getLegacyDefaultSettings() {
   const saved = uni.getStorageSync(DEFAULT_STORAGE_KEY) as FeatureCardSetting[] | '';
   if (Array.isArray(saved) && saved.length) {
-    defaultCards.value = saved.map((item) => ({
-      ...item,
-      title: item.key === 'daily' ? '日常生活' : item.title,
-      desc: item.key === 'daily' ? '查看每日生活记录' : item.key === 'ai' ? '消费趋势洞察' : item.key === 'wealth' ? '资产持续增长' : item.key === 'budget' ? '合理规划支出' : item.desc,
-      className: item.key === 'daily' ? 'widget-bills' : item.key === 'budget' ? 'widget-budget' : item.key === 'wealth' ? 'widget-wealth' : 'widget-ai',
-      visual: item.key === 'daily' ? 'bills' : item.key === 'budget' ? 'budget' : item.key === 'wealth' ? 'wealth' : 'ai',
-    }));
-    return;
+    return saved.map(normalizeDefaultCard);
   }
   const legacy = uni.getStorageSync('overview_feature_cards') as Array<any> | '';
   if (Array.isArray(legacy) && legacy.length) {
     const legacyMap = new Map(legacy.map((item) => [item.key, item]));
-    defaultCards.value = defaultCards.value.map((item) => ({ ...item, visible: legacyMap.get(item.key)?.visible ?? item.visible }));
+    return DEFAULT_CARD_SETTINGS.map((item) => ({ ...item, visible: legacyMap.get(item.key)?.visible ?? item.visible }));
   }
+  return [];
+}
+
+async function loadFeatureSettings() {
+  const legacySettings = getLegacyDefaultSettings();
+  const remoteSettings = await lifeSpaceApi.homeCards().catch(() => []);
+  if (remoteSettings.length) {
+    const remoteAllVisible = remoteSettings.every((item) => item.isVisible);
+    const legacyHasCustomVisible = legacySettings.length && legacySettings.some((item) => !item.visible);
+    if (remoteAllVisible && legacyHasCustomVisible) {
+      defaultCards.value = legacySettings;
+      await lifeSpaceApi.updateHomeCards(defaultCards.value.map((card, index) => ({
+        key: card.key,
+        sort: index,
+        isVisible: card.visible,
+      }))).catch(() => []);
+      return;
+    }
+    applyDefaultSettings(remoteSettings);
+    return;
+  }
+  if (legacySettings.length) defaultCards.value = legacySettings;
 }
 
 async function loadSpaces() {
   spaces.value = await lifeSpaceApi.list().catch(() => []);
-  normalizeSelectionLimit();
-}
-
-function normalizeSelectionLimit() {
-  let count = 0;
-  for (const space of spaces.value) {
-    if (!space.isVisible || space.type === 'daily') continue;
-    if (count >= 4) {
-      space.isVisible = false;
-      continue;
-    }
-    count += 1;
-  }
-  for (const card of defaultCards.value) {
-    if (!card.visible) continue;
-    if (count >= 4) {
-      card.visible = false;
-      continue;
-    }
-    count += 1;
-  }
 }
 
 function toggleDefault(index: number) {
@@ -228,7 +247,15 @@ async function toggleLifeSpace(type: BookType) {
 }
 
 async function saveSettings() {
-  normalizeSelectionLimit();
+  if (selectedCount.value > 4) {
+    uni.showToast({ title: '首页最多显示4张卡片，请先关闭多余卡片', icon: 'none' });
+    return;
+  }
+  await lifeSpaceApi.updateHomeCards(defaultCards.value.map((card, index) => ({
+    key: card.key,
+    sort: index,
+    isVisible: card.visible,
+  }))).catch(() => []);
   spaces.value = await lifeSpaceApi.updateSettings(spaces.value.map((space, index) => ({
     id: space.id,
     sort: index,
@@ -239,9 +266,8 @@ async function saveSettings() {
   uni.showToast({ title: '已保存', icon: 'success' });
 }
 
-onMounted(() => {
-  loadFeatureSettings();
-  loadSpaces();
+onMounted(async () => {
+  await Promise.all([loadFeatureSettings(), loadSpaces()]);
 });
 </script>
 
