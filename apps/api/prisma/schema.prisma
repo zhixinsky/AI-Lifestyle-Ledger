@@ -42,6 +42,41 @@ model User {
   userChallenges   UserChallenge[]
   memories         UserMemory[]
   identities       UserIdentity[]
+  aiGreetingDailies AiGreetingDaily[]
+
+  /// 是否开启 AI 米粒页「智能问候」（关闭后仅用本地默认文案）
+  smartGreetingEnabled Boolean @default(true)
+}
+
+enum AiGreetingPeriod {
+  midnight
+  morning
+  forenoon
+  noon
+  afternoon
+  evening
+  night
+}
+
+enum AiGreetingSource {
+  ai
+  default
+}
+
+model AiGreetingDaily {
+  id         String           @id @default(cuid())
+  userId     String
+  date       DateTime         @db.Date
+  period     AiGreetingPeriod
+  title      String           @default("")
+  subtitles  Json
+  source     AiGreetingSource @default(default)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, date, period])
+  @@index([userId, date])
 }
 
 enum IdentityProvider {

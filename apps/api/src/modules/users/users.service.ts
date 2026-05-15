@@ -15,17 +15,29 @@ export class UsersService {
       email: user.email,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
-      streakDays: user.streakDays
+      streakDays: user.streakDays,
+      smartGreetingEnabled: user.smartGreetingEnabled,
     };
   }
 
-  async updateProfile(userId: string, data: { nickname?: string; avatarUrl?: string }) {
+  async updateProfile(
+    userId: string,
+    data: { nickname?: string; avatarUrl?: string; smartGreetingEnabled?: boolean },
+  ) {
+    const patch: {
+      nickname?: string;
+      avatarUrl?: string;
+      smartGreetingEnabled?: boolean;
+    } = {};
+    if (data.nickname !== undefined) patch.nickname = data.nickname;
+    if (data.avatarUrl !== undefined) patch.avatarUrl = data.avatarUrl;
+    if (data.smartGreetingEnabled !== undefined) patch.smartGreetingEnabled = data.smartGreetingEnabled;
+    if (Object.keys(patch).length === 0) {
+      return this.findMe(userId);
+    }
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: {
-        ...(data.nickname !== undefined ? { nickname: data.nickname } : {}),
-        ...(data.avatarUrl !== undefined ? { avatarUrl: data.avatarUrl } : {}),
-      },
+      data: patch,
     });
     return {
       id: user.id,
@@ -33,7 +45,8 @@ export class UsersService {
       email: user.email,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
-      streakDays: user.streakDays
+      streakDays: user.streakDays,
+      smartGreetingEnabled: user.smartGreetingEnabled,
     };
   }
 }

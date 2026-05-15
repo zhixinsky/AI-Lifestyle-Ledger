@@ -409,7 +409,14 @@ export class AuthService {
     return String(value).trim();
   }
 
-  private async buildResult(user: { id: string; phone: string | null; nickname: string; avatarUrl: string | null; streakDays: number }) {
+  private async buildResult(user: {
+    id: string;
+    phone: string | null;
+    nickname: string;
+    avatarUrl: string | null;
+    streakDays: number;
+    smartGreetingEnabled?: boolean;
+  }) {
     const accessToken = await this.jwtService.signAsync({ sub: user.id, phone: user.phone });
     return {
       accessToken,
@@ -419,6 +426,7 @@ export class AuthService {
         nickname: user.nickname,
         avatarUrl: user.avatarUrl,
         streakDays: user.streakDays,
+        smartGreetingEnabled: user.smartGreetingEnabled ?? true,
       },
     };
   }

@@ -196,7 +196,10 @@ import AppTabbar from '@/components/AppTabbar.vue';
 import LoginModal from '@/components/LoginModal.vue';
 import TransactionEditor from '@/components/TransactionEditor.vue';
 import { useLoginSheetStore } from '@/stores/login-sheet';
+import { aiGreetingsApi } from '@/api/ai-greetings';
 import { aiApi } from '@/api/ai';
+import { GREETING_PERIODS, type GreetingPeriod } from '@/constants/mili-greeting-defaults';
+import { formatShanghaiYmd } from '@/utils/shanghai-date';
 import { transactionApi, type TransactionPayload } from '@/api/transactions';
 import { useAiStore } from '@/stores/ai';
 import { useFinanceStore } from '@/stores/finance';
@@ -220,15 +223,99 @@ const categories = computed(() => finance.categories);
 
 const userName = computed(() => authStore.user?.nickname || '用户');
 
-const timeHello = computed(() => {
-  const h = new Date().getHours();
-  if (h < 5) return '夜深了';
-  if (h < 12) return '早上好';
-  if (h < 14) return '中午好';
-  if (h < 18) return '下午好';
-  if (h < 23) return '晚上好';
-  return '夜深了';
-});
+const currentGreetingPeriod = ref<GreetingPeriod>(getGreetingPeriod());
+const currentSubtitle = ref('');
+const remoteSubtitlePool = ref<string[] | null>(null);
+const remoteTitleOverride = ref<string | null>(null);
+let greetingTimer: ReturnType<typeof setInterval> | null = null;
+
+function subtitleStorageKey(period: GreetingPeriod) {
+  return `mili_greet_last_${formatShanghaiYmd()}_${period}`;
+}
+
+function pickSubtitleAvoidRepeat(period: GreetingPeriod) {
+  const localPool = GREETING_PERIODS[period].subtitles;
+  const pool =
+    remoteSubtitlePool.value && remoteSubtitlePool.value.length > 0
+      ? remoteSubtitlePool.value
+      : localPool;
+  if (!pool.length) return '';
+  let last = '';
+  try {
+    last = (uni.getStorageSync(subtitleStorageKey(period)) as string) || '';
+  } catch {
+    /* ignore */
+  }
+  let next = pool[Math.floor(Math.random() * pool.length)] || pool[0] || '';
+  if (pool.length > 1 && next === last) {
+    const candidates = pool.filter((item) => item !== last);
+    next = candidates[Math.floor(Math.random() * candidates.length)] || next;
+  }
+  try {
+    uni.setStorageSync(subtitleStorageKey(period), next);
+  } catch {
+    /* ignore */
+  }
+  return next;
+}
+
+function scheduleFetchRemoteGreeting() {
+  if (!authStore.isLoggedIn || authStore.user?.smartGreetingEnabled === false) {
+    remoteSubtitlePool.value = null;
+    remoteTitleOverride.value = null;
+    refreshGreeting(true);
+    return;
+  }
+  void (async () => {
+    try {
+      const period = getGreetingPeriod();
+      const ymd = formatShanghaiYmd();
+      const res = await aiGreetingsApi.today({ period, date: ymd });
+      if (!res.enabled) {
+        remoteSubtitlePool.value = null;
+        remoteTitleOverride.value = null;
+        refreshGreeting(true);
+        return;
+      }
+      if (res.subtitles?.length) {
+        remoteSubtitlePool.value = res.subtitles;
+        remoteTitleOverride.value = res.title || null;
+      } else {
+        remoteSubtitlePool.value = null;
+        remoteTitleOverride.value = null;
+      }
+      refreshGreeting(true);
+    } catch {
+      remoteSubtitlePool.value = null;
+      remoteTitleOverride.value = null;
+    }
+  })();
+}
+
+function getGreetingPeriod(date = new Date()): GreetingPeriod {
+  const minutes = date.getHours() * 60 + date.getMinutes();
+  if (minutes < 5 * 60) return 'midnight';
+  if (minutes < 9 * 60) return 'morning';
+  if (minutes < 11 * 60 + 30) return 'forenoon';
+  if (minutes < 14 * 60) return 'noon';
+  if (minutes < 18 * 60) return 'afternoon';
+  if (minutes < 22 * 60) return 'evening';
+  return 'night';
+}
+
+function refreshGreeting(force = false) {
+  const nextPeriod = getGreetingPeriod();
+  const periodChanged = nextPeriod !== currentGreetingPeriod.value;
+  if (force || periodChanged || !currentSubtitle.value) {
+    currentGreetingPeriod.value = nextPeriod;
+    currentSubtitle.value = pickSubtitleAvoidRepeat(nextPeriod);
+    if (periodChanged) scheduleFetchRemoteGreeting();
+  }
+}
+
+const timeHello = computed(
+  () => remoteTitleOverride.value || GREETING_PERIODS[currentGreetingPeriod.value].title,
+);
 
 const greetingTitle = computed(() => {
   if (!authStore.isLoggedIn) return timeHello.value;
@@ -247,17 +334,6 @@ const summary = computed(
     }
 );
 
-const SUBTITLE_EMPTY = '我是你的AI生活助手米粒，有什么想和我聊聊的吗？';
-
-const SUBTITLE_WITH_DATA = [
-  '新的一天开始啦，记账小习惯从今天养成吧。',
-  '每一笔记录，都会让米粒更懂你一点点。',
-  '今天也记得和米粒打声招呼，聊聊花销或心情吧。',
-  '坚持记账的你超棒，米粒在这儿陪你慢慢变好。',
-  '有账单想记？按住说话，米粒帮你整理好分类与时间。',
-  '看看今天的支出节奏，要不要和米粒一起做个小复盘？',
-];
-
 const hasUserRecords = computed(() => {
   const s = summary.value;
   if (s.recentTransactions?.length) return true;
@@ -266,15 +342,7 @@ const hasUserRecords = computed(() => {
   return false;
 });
 
-const miliSubtitle = computed(() => {
-  if (aiStore.greeting) return aiStore.greeting;
-  if (!hasUserRecords.value) {
-    return SUBTITLE_EMPTY;
-  }
-  const d = new Date();
-  const seed = d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate();
-  return SUBTITLE_WITH_DATA[seed % SUBTITLE_WITH_DATA.length];
-});
+const miliSubtitle = computed(() => currentSubtitle.value || '');
 
 function calendarMonthStr(d = new Date()) {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -333,7 +401,7 @@ const EYE_OFF_PATHS =
   '<path d="M10.7 5.1A11 11 0 0 1 12 5c6.7 0 10 6 10 6a15 15 0 0 1-2 3.5"/><path d="M5.2 5.2A14 14 0 0 0 2 12s3.5 6 10 6c2.9 0 5.3-1 7-2.3"/><path d="M14 14a2.5 2.5 0 0 1-3.5-3.5"/><line x1="2" y1="2" x2="22" y2="22"/>';
 
 const eyeToggleIconUri = computed(() =>
-  makeSvgIcon(hideMonthSpend.value ? EYE_OFF_PATHS : EYE_ON_PATHS, EYE_ICON_COLOR, 1.85)
+  makeSvgIcon(hideMonthSpend.value ? EYE_OFF_PATHS : EYE_ON_PATHS, EYE_ICON_COLOR, '1.85')
 );
 
 function toggleHideSpend() {
@@ -650,6 +718,9 @@ function setStatusPad() {
 
 onMounted(() => {
   setStatusPad();
+  refreshGreeting(true);
+  scheduleFetchRemoteGreeting();
+  greetingTimer = setInterval(() => refreshGreeting(), 60 * 1000);
   try {
     const v = uni.getStorageSync(MILI_HIDE_SPEND_KEY);
     hideMonthSpend.value = v === true || v === 'true' || v === 1;
@@ -662,7 +733,6 @@ onMounted(() => {
     Promise.all([
       finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
       aiStore.loadInsight().catch(() => {}),
-      aiStore.loadGreeting().catch(() => {}),
     ]);
   }
   initOrbFloatSlots();
@@ -670,9 +740,15 @@ onMounted(() => {
 
 onUnmounted(() => {
   clearPanelAutoCloseTimers();
+  if (greetingTimer) {
+    clearInterval(greetingTimer);
+    greetingTimer = null;
+  }
 });
 
 onShow(() => {
+  refreshGreeting(true);
+  scheduleFetchRemoteGreeting();
   if (authStore.isLoggedIn && !finance.categories.length) {
     finance.loadCategories();
   }
@@ -682,7 +758,6 @@ onShow(() => {
     Promise.all([
       finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
       aiStore.loadInsight().catch(() => {}),
-      aiStore.loadGreeting().catch(() => {}),
     ]);
   }
 });
@@ -740,7 +815,6 @@ async function handleEditorSave() {
   await save();
   editorVisible.value = false;
   aiStore.refreshInsight().catch(() => {});
-  aiStore.loadGreeting().catch(() => {});
 }
 
 async function refreshAfterBillChange() {
@@ -750,7 +824,6 @@ async function refreshAfterBillChange() {
     finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
   ]);
   aiStore.refreshInsight().catch(() => {});
-  aiStore.loadGreeting().catch(() => {});
   try {
     uni.$emit('transactions-updated');
   } catch {

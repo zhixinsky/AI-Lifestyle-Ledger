@@ -26,7 +26,6 @@ onLaunch(() => {
         financeStore.loadTransactions().catch(() => {}),
         financeStore.loadStatistics({ period: 'month' }).catch(() => {}),
         aiStore.refreshInsight().catch(() => {}),
-        aiStore.loadGreeting().catch(() => {}),
       ]).catch(() => {});
     }
   });
@@ -34,7 +33,6 @@ onLaunch(() => {
   uni.$on('login-success', () => {
     if (authStore.isLoggedIn) {
       aiStore.refreshInsight().catch(() => {});
-      aiStore.loadGreeting().catch(() => {});
     }
   });
 

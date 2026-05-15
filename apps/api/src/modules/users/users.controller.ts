@@ -16,7 +16,7 @@ export class UsersController {
   @Patch('me')
   updateProfile(
     @CurrentUser() user: AuthUser,
-    @Body() body: { nickname?: string; avatarUrl?: string },
+    @Body() body: { nickname?: string; avatarUrl?: string; smartGreetingEnabled?: boolean },
   ) {
     return this.usersService.updateProfile(user.sub, body);
   }

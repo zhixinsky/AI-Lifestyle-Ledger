@@ -28,11 +28,11 @@ export const authApi = {
     return request<User>('/users/me');
   },
   /** POST /api/user/profile：微信快捷登录完善资料（云存储 fileID） */
-  postUserProfile(data: { nickname?: string; avatarUrl?: string }) {
+  postUserProfile(data: { nickname?: string; avatarUrl?: string; smartGreetingEnabled?: boolean }) {
     return request<User>('/user/profile', { method: 'POST', data });
   },
   /** PATCH /api/user/profile（与 PATCH /api/users/me 等价） */
-  updateProfile(data: { nickname?: string; avatarUrl?: string }) {
+  updateProfile(data: { nickname?: string; avatarUrl?: string; smartGreetingEnabled?: boolean }) {
     return request<User>('/user/profile', { method: 'PATCH', data });
   },
 };

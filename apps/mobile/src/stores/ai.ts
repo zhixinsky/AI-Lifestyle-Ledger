@@ -24,7 +24,6 @@ export const useAiStore = defineStore('ai', {
     lastInsightFetchedAt: 0,
     insightFetching: false,
     lastInsightFetchFailedAt: 0,
-    greeting: '',
     dailyReport: null as AiReport | null,
     monthlyReport: null as AiReport | null,
     profile: null as UserProfile | null,
@@ -76,12 +75,9 @@ export const useAiStore = defineStore('ai', {
       }
       this.insightFetching = true;
 
-      // 小程序云托管下频繁 callContainer 容易 102002，默认只打一次
+      let maxCount = Math.max(1, Math.min(count, 5));
       // #ifdef MP-WEIXIN
-      const maxCount = 1;
-      // #endif
-      // #ifndef MP-WEIXIN
-      const maxCount = Math.max(1, Math.min(count, 5));
+      maxCount = 1;
       // #endif
 
       const items: AiInsight[] = [];
@@ -129,14 +125,6 @@ export const useAiStore = defineStore('ai', {
     },
     async refreshInsight() {
       await this.fetchInsightPool(1, { force: true });
-    },
-    async loadGreeting() {
-      try {
-        const result = await aiApi.greeting();
-        this.greeting = result.greeting || '';
-      } catch {
-        this.greeting = '';
-      }
     },
     async loadDailyReport(date?: string) {
       this.dailyReport = await aiApi.dailyReport(date);

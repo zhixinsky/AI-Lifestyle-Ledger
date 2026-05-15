@@ -7,6 +7,8 @@ export interface User {
   email?: string;
   avatarUrl?: string;
   streakDays: number;
+  /** 未返回时视为开启 */
+  smartGreetingEnabled?: boolean;
 }
 
 export interface Category {

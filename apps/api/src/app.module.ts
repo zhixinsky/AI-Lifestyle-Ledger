@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './modules/auth/auth.module';
 import { AiModule } from './modules/ai/ai.module';
@@ -19,11 +20,13 @@ import { UploadModule } from './modules/upload/upload.module';
 import { SmsModule } from './modules/sms/sms.module';
 import { AccountModule } from './modules/account/account.module';
 import { LifeSpacesModule } from './modules/life-spaces/life-spaces.module';
+import { AiGreetingsModule } from './modules/ai-greetings/ai-greetings.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({ isGlobal: true }),
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
@@ -48,6 +51,7 @@ import { join } from 'path';
     UploadModule,
     AccountModule,
     LifeSpacesModule,
+    AiGreetingsModule,
   ]
 })
 export class AppModule {}

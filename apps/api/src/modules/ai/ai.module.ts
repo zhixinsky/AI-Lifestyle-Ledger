@@ -21,5 +21,6 @@ import { UserMemoryService } from './services/user-memory.service';
     AiFinancialChatService,
     UserMemoryService,
   ],
+  exports: [AiChatService],
 })
 export class AiModule {}
