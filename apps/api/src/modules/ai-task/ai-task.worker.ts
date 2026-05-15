@@ -1,7 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma, TransactionType } from '@prisma/client';
 import { Job, Worker } from 'bullmq';
-import { createRedisConnection } from '../../common/redis/redis.connection';
+import { RedisConnection } from '../../common/redis/redis.connection';
 import { BillParserService } from '../ai/services/bill-parser.service';
 import { AiFinancialChatService } from '../ai/services/ai-financial-chat.service';
 import type { ParsedBillTransaction } from '../ai/types/parsed-bill';
@@ -16,7 +16,6 @@ interface AiTaskJobData {
 @Injectable()
 export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AiTaskWorker.name);
-  private readonly connection = createRedisConnection();
   private worker?: Worker<AiTaskJobData>;
 
   constructor(
@@ -24,6 +23,7 @@ export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
     private readonly billParser: BillParserService,
     private readonly chatService: AiFinancialChatService,
     private readonly categories: CategoriesService,
+    private readonly redisConnection: RedisConnection,
   ) {}
 
   onModuleInit() {
@@ -31,7 +31,7 @@ export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
       AI_TASK_QUEUE_NAME,
       (job) => this.process(job),
       {
-        connection: this.connection,
+        connection: this.redisConnection.getClient(),
         concurrency: Number(process.env.AI_QUEUE_CONCURRENCY || 3),
       },
     );
@@ -151,9 +151,6 @@ export class AiTaskWorker implements OnModuleInit, OnModuleDestroy {
   async onModuleDestroy() {
     await this.worker?.close().catch((err) => {
       this.logger.error(`Failed to close AI task worker: ${err instanceof Error ? err.message : String(err)}`);
-    });
-    await this.connection.quit().catch((err) => {
-      this.logger.error(`Failed to close Redis connection: ${err instanceof Error ? err.message : String(err)}`);
     });
   }
 }

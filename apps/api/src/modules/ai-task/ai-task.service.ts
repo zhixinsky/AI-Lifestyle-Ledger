@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, OnModuleDestroy } from '@nestjs/common';
 import { Queue } from 'bullmq';
-import { createRedisConnection } from '../../common/redis/redis.connection';
+import { RedisConnection } from '../../common/redis/redis.connection';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateAiTaskDto } from './dto/create-ai-task.dto';
 
@@ -9,10 +9,14 @@ export const AI_TASK_QUEUE_NAME = 'ai-tasks';
 @Injectable()
 export class AiTaskService implements OnModuleDestroy {
   private readonly logger = new Logger(AiTaskService.name);
-  private readonly connection = createRedisConnection();
-  private readonly queue = new Queue(AI_TASK_QUEUE_NAME, { connection: this.connection });
+  private readonly queue: Queue;
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    redisConnection: RedisConnection,
+  ) {
+    this.queue = new Queue(AI_TASK_QUEUE_NAME, { connection: redisConnection.getClient() });
+  }
 
   async create(userId: string, dto: CreateAiTaskDto) {
     if (!dto.inputText?.trim() && !dto.audioUrl?.trim()) {
@@ -84,9 +88,6 @@ export class AiTaskService implements OnModuleDestroy {
   async onModuleDestroy() {
     await this.queue.close().catch((err) => {
       this.logger.error(`Failed to close AI task queue: ${err instanceof Error ? err.message : String(err)}`);
-    });
-    await this.connection.quit().catch((err) => {
-      this.logger.error(`Failed to close Redis connection: ${err instanceof Error ? err.message : String(err)}`);
     });
   }
 }
