@@ -52,8 +52,34 @@
             <text class="widget-title">{{ card.title }}</text>
             <text class="widget-sub">{{ card.sub }}</text>
           </view>
-          <view class="life-card-icon" :style="{ background: card.iconBg }">
-            <text>{{ card.icon }}</text>
+          <view :class="['widget-icon-area', `widget-icon-${card.visual}`]">
+            <template v-if="card.visual === 'ai'">
+              <view class="wi-orb" />
+              <view class="wi-ring" />
+              <view class="wi-bar wi-bar-1" />
+              <view class="wi-bar wi-bar-2" />
+              <view class="wi-bar wi-bar-3" />
+            </template>
+            <template v-else-if="card.visual === 'wealth'">
+              <view class="ww-coin" />
+              <view class="ww-arrow" />
+              <view class="ww-curve" />
+            </template>
+            <template v-else-if="card.visual === 'budget'">
+              <view class="wb-ring-track" />
+              <view class="wb-ring-fill" />
+              <view class="wb-dot" />
+              <view class="wb-bar wb-bar-1" />
+              <view class="wb-bar wb-bar-2" />
+            </template>
+            <template v-else>
+              <view class="life-orb" :style="{ background: card.iconBg }">
+                <text>{{ card.icon }}</text>
+              </view>
+              <view class="life-arc" :style="{ borderColor: card.accentSoft }" />
+              <view class="life-line life-line-1" :style="{ background: card.accentSoft }" />
+              <view class="life-line life-line-2" :style="{ background: card.accentLight }" />
+            </template>
           </view>
         </view>
         <view class="widget-shimmer" />
@@ -229,9 +255,9 @@ const topGoal = ref<WealthGoal | null>(null);
 const badges = ref<Badge[]>([]);
 const lifeSpaces = ref<LifeSpace[]>([]);
 const featureCards = ref([
-  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', onTap: goAiChat },
-  { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, className: 'widget-wealth', onTap: goSavingGoals },
-  { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, className: 'widget-budget', onTap: goBudget },
+  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
+  { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth', onTap: goSavingGoals },
+  { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, className: 'widget-budget', visual: 'budget', onTap: goBudget },
 ]);
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
 const badgeTotal = computed(() => badges.value.length);
@@ -307,7 +333,10 @@ const overviewCards = computed(() => [
       sub: space.description,
       icon: space.icon,
       iconBg: `linear-gradient(145deg, ${space.color}, rgba(255,255,255,0.72))`,
+      accentSoft: hexToRgba(space.color, 0.26),
+      accentLight: hexToRgba(space.color, 0.14),
       className: 'widget-life',
+      visual: 'life',
       onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
     })),
   ...featureCards.value
@@ -315,8 +344,19 @@ const overviewCards = computed(() => [
     .map((card) => ({
       ...card,
       iconBg: 'linear-gradient(145deg, #4f8174, #9ee3d0)',
+      accentSoft: 'rgba(79,129,116,0.22)',
+      accentLight: 'rgba(79,129,116,0.12)',
     })),
 ]);
+
+function hexToRgba(hex: string, alpha: number) {
+  const normalized = hex.replace('#', '');
+  if (normalized.length !== 6) return `rgba(79,129,116,${alpha})`;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
 
 function barWidth(bar: { value: number; amount: number }) {
   const maxAmount = bars.value.length ? bars.value[0].amount : 1;
@@ -375,6 +415,7 @@ function loadOverviewCards() {
       ...item,
       sub: (item as any).sub || (item as any).desc || '',
       className: item.key === 'budget' ? 'widget-budget' : item.key === 'wealth' ? 'widget-wealth' : 'widget-ai',
+      visual: item.key === 'budget' ? 'budget' : item.key === 'wealth' ? 'wealth' : 'ai',
       onTap: item.key === 'budget' ? goBudget : item.key === 'wealth' ? goSavingGoals : goAiChat,
     }));
   }
@@ -552,12 +593,13 @@ onUnmounted(() => {
 /* ━━━ AI 功能入口 Widget ━━━ */
 .widget-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 12rpx;
   margin: 28rpx 0;
 }
 
 .widget-card {
-  flex: 1;
+  flex: 0 0 calc((100% - 36rpx) / 4);
   position: relative;
   height: 120rpx;
   border-radius: 20rpx;
@@ -566,22 +608,43 @@ onUnmounted(() => {
   transition: transform 0.2s ease;
 }
 .widget-life {
-  background:
-    linear-gradient(145deg, rgba(255,255,255,0.76), rgba(232,250,245,0.56)),
-    radial-gradient(circle at 85% 14%, rgba(116,214,188,0.28), transparent 46%);
+  background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(95, 213, 187, 0.24));
+  border-bottom: 4rpx solid rgba(79, 129, 116, 0.24);
 }
-.life-card-icon {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 32rpx;
+.widget-life .widget-title { color: #047857; }
+.widget-life .widget-sub { color: #059669; }
+
+.life-orb {
+  position: absolute;
+  right: 8rpx;
+  top: 2rpx;
+  width: 42rpx;
+  height: 42rpx;
+  border-radius: 18rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: 28rpx;
+  font-size: 18rpx;
   font-weight: 850;
-  box-shadow: 0 18rpx 34rpx rgba(67, 98, 91, 0.12);
+  box-shadow: 0 8rpx 18rpx rgba(67, 98, 91, 0.12);
 }
+.life-arc {
+  position: absolute;
+  right: 0;
+  top: -2rpx;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(79,129,116,0.18);
+}
+.life-line {
+  position: absolute;
+  height: 6rpx;
+  border-radius: 999rpx;
+}
+.life-line-1 { left: 6rpx; bottom: 18rpx; width: 46rpx; }
+.life-line-2 { left: 16rpx; bottom: 6rpx; width: 34rpx; }
 
 .widget-card:active {
   transform: scale(0.96);
