@@ -20,18 +20,25 @@
         v-for="(card, index) in defaultCards"
         :key="card.key"
         :class="['overview-card', card.className, { disabled: !card.visible }]"
+        @tap="toggleDefault(index)"
       >
         <view class="overview-glass" />
+        <view class="card-texture">
+          <view class="texture-orb" />
+          <view class="texture-line texture-line-1" />
+          <view class="texture-line texture-line-2" />
+        </view>
+        <view :class="['check-mark', { active: card.visible }]"><text>✓</text></view>
         <view class="overview-content">
           <view class="overview-copy">
             <text class="overview-title">{{ card.title }}</text>
             <text class="overview-sub">{{ card.desc }}</text>
           </view>
-          <text class="overview-toggle" @tap="toggleDefault(index)">{{ card.visible ? '显示' : '隐藏' }}</text>
+          <view class="overview-mini-icon"><text>{{ card.icon }}</text></view>
         </view>
         <view class="sort-row">
-          <text @tap="moveDefault(index, -1)">↑</text>
-          <text @tap="moveDefault(index, 1)">↓</text>
+          <text @tap.stop="moveDefault(index, -1)">↑</text>
+          <text @tap.stop="moveDefault(index, 1)">↓</text>
         </view>
       </view>
     </view>
@@ -45,6 +52,12 @@
         @tap="toggleLifeSpace(meta.type)"
       >
         <view class="overview-glass" />
+        <view class="card-texture">
+          <view class="texture-orb" />
+          <view class="texture-line texture-line-1" />
+          <view class="texture-line texture-line-2" />
+        </view>
+        <view :class="['check-mark', { active: isSpaceVisible(meta.type) }]"><text>✓</text></view>
         <view class="overview-content">
           <view class="overview-copy">
             <text class="overview-title">{{ meta.name }}</text>
@@ -54,7 +67,7 @@
             <text>{{ meta.icon }}</text>
           </view>
         </view>
-        <text class="space-status">{{ isSpaceVisible(meta.type) ? '已显示' : '点击添加' }}</text>
+        <text class="space-status">{{ isSpaceVisible(meta.type) ? '已加入首页' : '点击添加' }}</text>
       </view>
     </view>
 
@@ -63,7 +76,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import PageShell from '@/components/PageShell.vue';
 import { backIcon } from '@/utils/icons';
 import { lifeSpaceApi } from '@/api/life-spaces';
@@ -88,6 +101,9 @@ const defaultCards = ref<FeatureCardSetting[]>([
   { key: 'wealth', title: '财富成长', desc: '目标、存钱和成长路径', icon: '财', visible: true, className: 'card-wealth' },
   { key: 'budget', title: '预算提醒', desc: '提前看见支出节奏', icon: '预', visible: true, className: 'card-budget' },
 ]);
+const selectedCount = computed(() =>
+  defaultCards.value.filter((card) => card.visible).length + spaces.value.filter((space) => space.isVisible && space.type !== 'daily').length
+);
 
 function goBack() {
   const pages = getCurrentPages();
@@ -129,6 +145,10 @@ function move<T>(items: T[], index: number, offset: number) {
 function moveDefault(index: number, offset: number) { move(defaultCards.value, index, offset); }
 
 function toggleDefault(index: number) {
+  if (!defaultCards.value[index].visible && selectedCount.value >= 4) {
+    uni.showToast({ title: '首页最多显示4张卡片', icon: 'none' });
+    return;
+  }
   defaultCards.value[index].visible = !defaultCards.value[index].visible;
 }
 
@@ -143,7 +163,15 @@ function isSpaceVisible(type: BookType) {
 async function toggleLifeSpace(type: BookType) {
   const existing = findSpace(type);
   if (existing) {
+    if (!existing.isVisible && selectedCount.value >= 4) {
+      uni.showToast({ title: '首页最多显示4张卡片', icon: 'none' });
+      return;
+    }
     existing.isVisible = !existing.isVisible;
+    return;
+  }
+  if (selectedCount.value >= 4) {
+    uni.showToast({ title: '首页最多显示4张卡片', icon: 'none' });
     return;
   }
   const created = await lifeSpaceApi.create(type).catch(() => null);
@@ -196,7 +224,7 @@ onMounted(() => {
   box-shadow: 0 10rpx 30rpx rgba(35, 56, 51, 0.08);
   border-bottom: 4rpx solid rgba(79,129,116,0.2);
 }
-.overview-card.disabled { opacity: 0.5; }
+.overview-card.disabled { opacity: 0.58; }
 .overview-glass {
   position: absolute;
   inset: 0;
@@ -205,18 +233,63 @@ onMounted(() => {
   backdrop-filter: blur(16px) saturate(160%);
   -webkit-backdrop-filter: blur(16px) saturate(160%);
 }
+.card-texture { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.texture-orb {
+  position: absolute;
+  right: -18rpx;
+  top: -22rpx;
+  width: 116rpx;
+  height: 116rpx;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.28);
+  border: 2rpx solid rgba(255,255,255,0.34);
+}
+.texture-line {
+  position: absolute;
+  right: 18rpx;
+  height: 7rpx;
+  border-radius: 999rpx;
+  background: rgba(255,255,255,0.38);
+}
+.texture-line-1 { bottom: 30rpx; width: 68rpx; }
+.texture-line-2 { bottom: 16rpx; width: 44rpx; }
+.check-mark {
+  position: absolute;
+  right: 14rpx;
+  top: 14rpx;
+  z-index: 3;
+  width: 34rpx;
+  height: 34rpx;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.58);
+  color: rgba(80,99,93,0.36);
+  font-size: 22rpx;
+  font-weight: 850;
+  border: 1rpx solid rgba(255,255,255,0.62);
+}
+.check-mark.active { background: rgba(33,122,101,0.88); color: #fff; }
 .overview-content { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 10rpx; }
 .overview-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .overview-title { font-size: 27rpx; font-weight: 820; color: #20352f; }
 .overview-sub { font-size: 20rpx; line-height: 1.35; color: #667770; }
-.overview-toggle {
+.overview-mini-icon {
+  position: absolute;
+  right: 8rpx;
+  bottom: -54rpx;
+  width: 54rpx;
+  height: 54rpx;
+  border-radius: 20rpx;
   flex-shrink: 0;
-  padding: 5rpx 12rpx;
-  border-radius: 999rpx;
-  background: rgba(255,255,255,0.58);
-  color: #4f8174;
-  font-size: 20rpx;
-  font-weight: 760;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.34);
+  color: rgba(33,53,47,0.72);
+  font-size: 21rpx;
+  font-weight: 850;
 }
 .sort-row { position: absolute; left: 18rpx; bottom: 12rpx; z-index: 2; display: flex; gap: 18rpx; color: rgba(79,129,116,0.76); font-size: 25rpx; font-weight: 850; }
 .overview-space-icon {
@@ -236,10 +309,23 @@ onMounted(() => {
 .card-ai { background: linear-gradient(145deg, rgba(139,92,246,0.18), rgba(99,102,241,0.24)); }
 .card-wealth { background: linear-gradient(145deg, rgba(245,208,120,0.22), rgba(212,175,55,0.2)); }
 .card-budget { background: linear-gradient(145deg, rgba(56,189,248,0.18), rgba(14,165,233,0.24)); }
+.card-daily .overview-title { color: #047857; }
+.card-daily .overview-sub { color: #059669; }
+.card-ai .overview-title { color: #6d28d9; }
+.card-ai .overview-sub { color: #7c3aed; }
+.card-wealth .overview-title { color: #92700c; }
+.card-wealth .overview-sub { color: #a16207; }
+.card-budget .overview-title { color: #0369a1; }
+.card-budget .overview-sub { color: #0284c7; }
 .space-card--rose { background: linear-gradient(145deg, rgba(255,245,247,0.9), rgba(242,167,179,0.28)); border-bottom-color: rgba(242,167,179,0.36); }
 .space-card--olive { background: linear-gradient(145deg, rgba(250,255,242,0.9), rgba(167,201,112,0.28)); border-bottom-color: rgba(167,201,112,0.34); }
 .space-card--blue { background: linear-gradient(145deg, rgba(246,248,255,0.9), rgba(141,167,242,0.28)); border-bottom-color: rgba(141,167,242,0.34); }
 .space-card--cyan { background: linear-gradient(145deg, rgba(244,253,255,0.9), rgba(124,199,232,0.28)); border-bottom-color: rgba(124,199,232,0.34); }
 .space-card--amber { background: linear-gradient(145deg, rgba(255,250,238,0.9), rgba(217,183,110,0.3)); border-bottom-color: rgba(217,183,110,0.35); }
+.space-card--rose .overview-title { color: #a95f6f; }
+.space-card--olive .overview-title { color: #617d43; }
+.space-card--blue .overview-title { color: #546bbd; }
+.space-card--cyan .overview-title { color: #247d9f; }
+.space-card--amber .overview-title { color: #92700c; }
 .save-btn { margin-top: 30rpx; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; color: #1f5147; font-size: 31rpx; font-weight: 780; background: linear-gradient(168deg, rgba(232,255,246,0.94), rgba(118,214,188,0.62)); box-shadow: 0 18rpx 48rpx rgba(92,200,168,0.2); }
 </style>

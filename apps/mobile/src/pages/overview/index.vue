@@ -355,7 +355,7 @@ const overviewCards = computed(() => [
       visual: 'life',
       onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
     })),
-]);
+].slice(0, 4));
 
 function hexToRgba(hex: string, alpha: number) {
   const normalized = hex.replace('#', '');
