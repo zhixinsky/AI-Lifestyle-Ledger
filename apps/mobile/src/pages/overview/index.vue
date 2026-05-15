@@ -72,6 +72,12 @@
               <view class="wb-bar wb-bar-1" />
               <view class="wb-bar wb-bar-2" />
             </template>
+            <template v-else-if="card.visual === 'bills'">
+              <view class="wbl-receipt" />
+              <view class="wbl-line wbl-line-1" />
+              <view class="wbl-line wbl-line-2" />
+              <view class="wbl-line wbl-line-3" />
+            </template>
             <template v-else>
               <view class="life-orb" :style="{ background: card.iconBg }">
                 <text>{{ card.icon }}</text>
@@ -325,8 +331,21 @@ const bars = computed(() => {
   }));
 });
 const overviewCards = computed(() => [
+  {
+    key: 'daily-bills',
+    title: '日常生活',
+    sub: '查看每日生活记录',
+    icon: '日',
+    iconBg: 'linear-gradient(145deg, #10b981, #8be7cd)',
+    accentSoft: 'rgba(5,150,105,0.22)',
+    accentLight: 'rgba(16,185,129,0.14)',
+    className: 'widget-bills',
+    visual: 'bills',
+    onTap: goBills,
+  },
   ...lifeSpaces.value
     .filter((space) => space.isVisible)
+    .filter((space) => space.type !== 'daily')
     .map((space) => ({
       key: `space-${space.id}`,
       title: space.name,
