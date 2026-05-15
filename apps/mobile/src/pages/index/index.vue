@@ -1032,8 +1032,8 @@ async function playChatPanelReply() {
 }
 
 function aiWaitingText(elapsedMs: number) {
-  if (elapsedMs < 2000) return '米粒正在理解你的意思…';
-  if (elapsedMs < 5000) return '正在分析金额和分类…';
+  if (elapsedMs < 2000) return '米粒分析语音中…';
+  if (elapsedMs < 5000) return '米粒正在理解你的意思…';
   return '稍等一下，米粒还在思考～';
 }
 
