@@ -78,13 +78,30 @@
               <view class="wbl-line wbl-line-2" />
               <view class="wbl-line wbl-line-3" />
             </template>
+            <template v-else-if="card.visual === 'love'">
+              <text class="love-heart">♥</text>
+              <view class="love-ring" />
+              <view class="love-dot" />
+            </template>
+            <template v-else-if="card.visual === 'family'">
+              <view class="home-roof" />
+              <view class="home-body" />
+              <view class="home-door" />
+            </template>
+            <template v-else-if="card.visual === 'work'">
+              <view class="work-case" />
+              <view class="work-handle" />
+              <view class="work-line" />
+            </template>
+            <template v-else-if="card.visual === 'travel'">
+              <view class="travel-route" />
+              <view class="travel-pin travel-pin-a" />
+              <view class="travel-pin travel-pin-b" />
+            </template>
             <template v-else>
-              <view class="life-orb" :style="{ background: card.iconBg }">
-                <text>{{ card.icon }}</text>
-              </view>
-              <view class="life-arc" :style="{ borderColor: card.accentSoft }" />
-              <view class="life-line life-line-1" :style="{ background: card.accentSoft }" />
-              <view class="life-line life-line-2" :style="{ background: card.accentLight }" />
+              <view class="campus-book" />
+              <view class="campus-book campus-book-r" />
+              <view class="campus-line" />
             </template>
           </view>
         </view>
@@ -249,6 +266,7 @@ import { lifeSpaceApi } from '@/api/life-spaces';
 import { wealthApi } from '@/api/wealth';
 import { growthApi } from '@/api/growth';
 import type { BudgetOverview, WealthOverview, WealthGoal, Badge, LifeSpace } from '@/types/domain';
+import { getLifeSpaceMeta } from '@/utils/life-space';
 
 const finance = useFinanceStore();
 const aiStore = useAiStore();
@@ -343,28 +361,19 @@ const overviewCards = computed(() => [
   ...lifeSpaces.value
     .filter((space) => space.isVisible)
     .filter((space) => space.type !== 'daily')
-    .map((space) => ({
-      key: `space-${space.id}`,
-      title: space.name,
-      sub: space.description,
-      icon: space.icon,
-      iconBg: `linear-gradient(145deg, ${space.color}, rgba(255,255,255,0.72))`,
-      accentSoft: hexToRgba(space.color, 0.26),
-      accentLight: hexToRgba(space.color, 0.14),
-      className: 'widget-life',
-      visual: 'life',
-      onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
-    })),
+    .map((space) => {
+      const meta = getLifeSpaceMeta(space.type);
+      return {
+        key: `space-${space.id}`,
+        title: meta.name,
+        sub: meta.description,
+        icon: meta.icon,
+        className: `space-widget--${meta.theme}`,
+        visual: space.type === 'couple' ? 'love' : space.type,
+        onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
+      };
+    }),
 ].slice(0, 4));
-
-function hexToRgba(hex: string, alpha: number) {
-  const normalized = hex.replace('#', '');
-  if (normalized.length !== 6) return `rgba(79,129,116,${alpha})`;
-  const r = parseInt(normalized.slice(0, 2), 16);
-  const g = parseInt(normalized.slice(2, 4), 16);
-  const b = parseInt(normalized.slice(4, 6), 16);
-  return `rgba(${r},${g},${b},${alpha})`;
-}
 
 function barWidth(bar: { value: number; amount: number }) {
   const maxAmount = bars.value.length ? bars.value[0].amount : 1;
@@ -621,45 +630,6 @@ onUnmounted(() => {
   box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.06);
   transition: transform 0.2s ease;
 }
-.widget-life {
-  background: linear-gradient(145deg, rgba(16, 185, 129, 0.16), rgba(95, 213, 187, 0.24));
-  border-bottom: 4rpx solid rgba(79, 129, 116, 0.24);
-}
-.widget-life .widget-title { color: #047857; }
-.widget-life .widget-sub { color: #059669; }
-
-.life-orb {
-  position: absolute;
-  right: 8rpx;
-  top: 2rpx;
-  width: 42rpx;
-  height: 42rpx;
-  border-radius: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 18rpx;
-  font-weight: 850;
-  box-shadow: 0 8rpx 18rpx rgba(67, 98, 91, 0.12);
-}
-.life-arc {
-  position: absolute;
-  right: 0;
-  top: -2rpx;
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 50%;
-  border: 2rpx solid rgba(79,129,116,0.18);
-}
-.life-line {
-  position: absolute;
-  height: 6rpx;
-  border-radius: 999rpx;
-}
-.life-line-1 { left: 6rpx; bottom: 18rpx; width: 46rpx; }
-.life-line-2 { left: 16rpx; bottom: 6rpx; width: 34rpx; }
-
 .widget-card:active {
   transform: scale(0.96);
 }
@@ -902,6 +872,38 @@ onUnmounted(() => {
 }
 .wb-bar-1 { left: 0; width: 42rpx; }
 .wb-bar-2 { left: 0; bottom: 14rpx; width: 28rpx; }
+
+.space-widget--rose { background: linear-gradient(145deg, rgba(255, 190, 202, 0.22), rgba(242, 167, 179, 0.28)); border-bottom: 4rpx solid rgba(242, 167, 179, 0.36); }
+.space-widget--rose .widget-title { color: #a95f6f; }
+.space-widget--rose .widget-sub { color: #c77b86; }
+.space-widget--olive { background: linear-gradient(145deg, rgba(202, 226, 150, 0.22), rgba(167, 201, 112, 0.28)); border-bottom: 4rpx solid rgba(167, 201, 112, 0.34); }
+.space-widget--olive .widget-title { color: #617d43; }
+.space-widget--olive .widget-sub { color: #789554; }
+.space-widget--blue { background: linear-gradient(145deg, rgba(160, 181, 245, 0.2), rgba(141, 167, 242, 0.28)); border-bottom: 4rpx solid rgba(141, 167, 242, 0.34); }
+.space-widget--blue .widget-title { color: #546bbd; }
+.space-widget--blue .widget-sub { color: #6379ca; }
+.space-widget--cyan { background: linear-gradient(145deg, rgba(138, 214, 238, 0.2), rgba(124, 199, 232, 0.28)); border-bottom: 4rpx solid rgba(124, 199, 232, 0.34); }
+.space-widget--cyan .widget-title { color: #247d9f; }
+.space-widget--cyan .widget-sub { color: #318cac; }
+.space-widget--amber { background: linear-gradient(145deg, rgba(237, 202, 132, 0.22), rgba(217, 183, 110, 0.3)); border-bottom: 4rpx solid rgba(217, 183, 110, 0.35); }
+.space-widget--amber .widget-title { color: #92700c; }
+.space-widget--amber .widget-sub { color: #a67d20; }
+.love-heart { position: absolute; right: 14rpx; top: 0; color: rgba(169,95,111,0.46); font-size: 48rpx; line-height: 1; }
+.love-ring { position: absolute; right: 0; top: -4rpx; width: 56rpx; height: 56rpx; border-radius: 50%; border: 2rpx solid rgba(169,95,111,0.16); }
+.love-dot { position: absolute; right: 44rpx; bottom: 10rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: rgba(169,95,111,0.28); }
+.home-roof { position: absolute; right: 14rpx; top: 4rpx; width: 34rpx; height: 34rpx; border-left: 5rpx solid rgba(97,125,67,0.34); border-top: 5rpx solid rgba(97,125,67,0.34); transform: rotate(45deg); border-radius: 4rpx; }
+.home-body { position: absolute; right: 10rpx; bottom: 8rpx; width: 46rpx; height: 34rpx; border-radius: 8rpx; background: rgba(97,125,67,0.16); border: 2rpx solid rgba(97,125,67,0.2); }
+.home-door { position: absolute; right: 28rpx; bottom: 8rpx; width: 12rpx; height: 20rpx; border-radius: 6rpx 6rpx 0 0; background: rgba(97,125,67,0.24); }
+.work-case { position: absolute; right: 8rpx; bottom: 8rpx; width: 52rpx; height: 38rpx; border-radius: 8rpx; background: rgba(84,107,189,0.16); border: 2rpx solid rgba(84,107,189,0.24); }
+.work-handle { position: absolute; right: 25rpx; top: 8rpx; width: 18rpx; height: 12rpx; border-radius: 8rpx 8rpx 0 0; border: 3rpx solid rgba(84,107,189,0.24); border-bottom: none; }
+.work-line { position: absolute; right: 12rpx; bottom: 26rpx; width: 44rpx; height: 4rpx; border-radius: 999rpx; background: rgba(84,107,189,0.2); }
+.travel-route { position: absolute; left: 8rpx; right: 8rpx; top: 28rpx; height: 26rpx; border-bottom: 4rpx dashed rgba(36,125,159,0.28); border-radius: 50%; transform: rotate(-10deg); }
+.travel-pin { position: absolute; width: 14rpx; height: 14rpx; border-radius: 50% 50% 50% 0; background: rgba(36,125,159,0.32); transform: rotate(-45deg); }
+.travel-pin-a { left: 8rpx; top: 8rpx; }
+.travel-pin-b { right: 8rpx; bottom: 8rpx; }
+.campus-book { position: absolute; right: 32rpx; top: 10rpx; width: 24rpx; height: 42rpx; border-radius: 6rpx 2rpx 2rpx 6rpx; background: rgba(146,112,12,0.18); border: 2rpx solid rgba(146,112,12,0.2); transform: rotate(-8deg); }
+.campus-book-r { right: 10rpx; transform: rotate(8deg); }
+.campus-line { position: absolute; right: 14rpx; bottom: 8rpx; width: 46rpx; height: 5rpx; border-radius: 999rpx; background: rgba(146,112,12,0.2); }
 
 /* AI 卡片 */
 .ai-card {
