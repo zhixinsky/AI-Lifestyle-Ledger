@@ -62,12 +62,19 @@ function textToSpeechMp(text: string): Promise<string> {
         tts: true,
         content: text,
         success: (res: { filename?: string }) => {
-          if (res.filename) resolve(res.filename);
+          if (res.filename) {
+            console.log('[TTS] textToSpeech success:', res.filename);
+            resolve(res.filename);
+          }
           else reject(new Error('TTS missing filename'));
         },
-        fail: (err: unknown) => reject(err instanceof Error ? err : new Error(String(err))),
+        fail: (err: unknown) => {
+          console.error('[TTS] textToSpeech failed:', err);
+          reject(err instanceof Error ? err : new Error(String(err)));
+        },
       });
     } catch (err) {
+      console.error('[TTS] WechatSI unavailable:', err);
       reject(err instanceof Error ? err : new Error(String(err)));
     }
     // #endif
@@ -112,11 +119,19 @@ export async function speakText(text: string) {
     const filename = await textToSpeechMp(content);
     await new Promise<void>((resolve, reject) => {
       const audio = recreateAudioContext();
+      const writableAudio = audio as UniApp.InnerAudioContext & { volume?: number; obeyMuteSwitch?: boolean; autoplay?: boolean };
+      writableAudio.volume = 1;
+      writableAudio.obeyMuteSwitch = false;
+      writableAudio.autoplay = false;
       audio.src = filename;
       resolveCurrent = resolve;
+      audio.onPlay(() => {
+        console.log('[TTS] audio play started');
+      });
       audio.onEnded(() => finishSpeaking());
       audio.onStop(() => finishSpeaking());
       audio.onError((err) => {
+        console.error('[TTS] audio play failed:', err);
         finishSpeaking();
         reject(err instanceof Error ? err : new Error('语音播放失败'));
       });

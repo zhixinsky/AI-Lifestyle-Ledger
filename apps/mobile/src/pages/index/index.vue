@@ -82,8 +82,15 @@
               <view class="chat-panel__glass" aria-hidden="true" />
               <view class="chat-panel__shine" aria-hidden="true" />
               <view class="chat-panel__head">
-                <view class="chat-panel__title-wrap">
+                <view class="chat-panel__title-wrap chat-panel__title-wrap--inline">
                   <text class="chat-panel__eyebrow">AI米粒</text>
+                  <view
+                    :class="['chat-panel__sound-toggle', { on: chatPanelVoiceEnabled, active: chatPanelSpeaking && isSpeaking, failed: chatPanelVoiceFailed }]"
+                    @tap="toggleChatPanelVoice"
+                  >
+                    <view class="chat-panel__voice-wave" />
+                    <text>{{ chatPanelSpeaking && isSpeaking ? 'Ⅱ' : chatPanelVoiceEnabled ? '♪' : '×' }}</text>
+                  </view>
                 </view>
                 <view class="chat-panel__close" @tap="closeChatPanel">×</view>
               </view>
@@ -92,14 +99,6 @@
                   <text>{{ chatPanelText }}</text>
                 </view>
                 <view class="chat-panel__ai-row">
-                  <view
-                    v-if="!chatPanelLoading && chatPanelReply"
-                    :class="['chat-panel__voice-btn', { active: chatPanelSpeaking && isSpeaking, failed: chatPanelVoiceFailed }]"
-                    @tap="playChatPanelReply"
-                  >
-                    <view class="chat-panel__voice-wave" />
-                    <text>{{ chatPanelSpeaking && isSpeaking ? 'Ⅱ' : '♪' }}</text>
-                  </view>
                   <view class="chat-panel__bubble chat-panel__bubble--ai">
                     <text>{{ chatPanelLoading ? '正在思考…' : chatPanelReply }}</text>
                   </view>
@@ -216,7 +215,7 @@ import { useAuthStore } from '@/stores/auth';
 import { useTransactionForm } from '@/composables/useTransactionForm';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
 import { classifyVoiceIntent } from '@/utils/intent-classifier';
-import { destroyTts, getVoiceReplyEnabled, isSpeaking, speakText, stopSpeak } from '@/utils/tts';
+import { destroyTts, getVoiceReplyEnabled, isSpeaking, setVoiceReplyEnabled, speakText, stopSpeak } from '@/utils/tts';
 import type { AiParsedTransaction, Transaction } from '@/types/domain';
 import { dailyExpenseFromTrend, buildSpendCurveSvgRaw } from './spend-curve';
 
@@ -640,10 +639,12 @@ const chatPanelText = ref('');
 const chatPanelReply = ref('');
 const chatPanelSpeaking = ref(false);
 const chatPanelVoiceFailed = ref(false);
+const chatPanelVoiceEnabled = ref(false);
 const savedBillPanelVisible = ref(false);
 const savedBill = ref<Transaction | null>(null);
 let chatPanelAutoCloseTimer: ReturnType<typeof setTimeout> | null = null;
 let savedBillAutoCloseTimer: ReturnType<typeof setTimeout> | null = null;
+let voiceAiSession = 0;
 
 function clearPanelAutoCloseTimers() {
   if (chatPanelAutoCloseTimer) {
@@ -657,8 +658,11 @@ function clearPanelAutoCloseTimers() {
 }
 
 function closeChatPanel() {
+  voiceAiSession += 1;
   chatPanelVisible.value = false;
   chatPanelLoading.value = false;
+  parsing.value = false;
+  voiceLiveText.value = '';
   chatPanelSpeaking.value = false;
   chatPanelVoiceFailed.value = false;
   stopSpeak();
@@ -746,6 +750,7 @@ function setStatusPad() {
 }
 
 onMounted(() => {
+  chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   setStatusPad();
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
@@ -777,6 +782,7 @@ onUnmounted(() => {
 });
 
 onShow(() => {
+  chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
   if (authStore.isLoggedIn && !finance.categories.length) {
@@ -821,6 +827,7 @@ function showLoginRequiredChat() {
   chatPanelReply.value = '登录后，AI米粒才能帮你识别语音、保存账单和延续聊天记忆。你也可以先返回继续浏览。';
   chatPanelSpeaking.value = false;
   chatPanelVoiceFailed.value = false;
+  chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   chatPanelLoading.value = false;
   chatPanelVisible.value = true;
   scheduleChatPanelAutoClose(10000);
@@ -961,26 +968,45 @@ async function deleteSavedBill() {
 }
 
 async function showVoiceChat(text: string) {
+  const session = voiceAiSession;
   clearPanelAutoCloseTimers();
   chatPanelText.value = text;
   chatPanelReply.value = '';
   chatPanelSpeaking.value = false;
   chatPanelVoiceFailed.value = false;
+  chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   chatPanelLoading.value = true;
   chatPanelVisible.value = true;
   savedBillPanelVisible.value = false;
   try {
     await aiStore.sendMessage(text);
+    if (session !== voiceAiSession || !chatPanelVisible.value) return;
     const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
     chatPanelReply.value = last?.content || '我暂时没想好怎么回答，换个说法试试？';
-    if (getVoiceReplyEnabled()) {
+    if (chatPanelVoiceEnabled.value) {
       playChatPanelReply();
     }
   } catch {
+    if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
   } finally {
+    if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelLoading.value = false;
     scheduleChatPanelAutoClose();
+  }
+}
+
+function toggleChatPanelVoice() {
+  const next = !chatPanelVoiceEnabled.value;
+  chatPanelVoiceEnabled.value = next;
+  setVoiceReplyEnabled(next);
+  if (!next) {
+    stopSpeak();
+    chatPanelSpeaking.value = false;
+    return;
+  }
+  if (chatPanelReply.value && !chatPanelLoading.value) {
+    playChatPanelReply();
   }
 }
 
@@ -1014,6 +1040,7 @@ function aiWaitingText(elapsedMs: number) {
 async function parseVoiceBill(text: string) {
   const t = text.trim();
   if (!t || parsing.value) return;
+  const session = ++voiceAiSession;
   parsing.value = true;
   try {
     const quickIntent = classifyVoiceIntent(t);
@@ -1024,11 +1051,13 @@ async function parseVoiceBill(text: string) {
       voiceLiveText.value = `已识别为记账：${quickIntent.category || '其它'} ${quickIntent.tag ? `· ${quickIntent.tag} ` : ''}¥${quickIntent.amount}`;
       const quickBill = buildQuickParsedBill(t, quickIntent);
       const saved = await saveParsedBills([quickBill]);
+      if (session !== voiceAiSession) return;
       await showSavedBillResult(saved);
       return;
     }
 
     if (quickIntent.intent === 'analysis' || quickIntent.intent === 'chat') {
+      if (session !== voiceAiSession) return;
       await showVoiceChat(t);
       return;
     }
@@ -1038,22 +1067,27 @@ async function parseVoiceBill(text: string) {
       timeoutMs: 15000,
       intervalMs: 800,
       onTick: (elapsedMs) => {
+        if (session !== voiceAiSession) return;
         voiceLiveText.value = aiWaitingText(elapsedMs);
       },
     });
+    if (session !== voiceAiSession) return;
     if (result.transactions.length > 0) {
       const saved = await saveParsedBills(result.transactions, result.logId);
+      if (session !== voiceAiSession) return;
       await showSavedBillResult(saved);
       return;
     }
     // 未识别到账单：视为「聊天」，在当前页展示轻量聊天卡片，用户可继续按住说话追问。
     await showVoiceChat(t);
   } catch (err) {
+    if (session !== voiceAiSession) return;
     const message = err instanceof Error && err.message.includes('超时')
       ? '米粒还在处理，稍后再试一下'
       : '识别失败，请稍后再试';
     uni.showToast({ title: message, icon: 'none' });
   } finally {
+    if (session !== voiceAiSession) return;
     parsing.value = false;
     voiceLiveText.value = '';
   }
@@ -1774,6 +1808,12 @@ onUnmounted(() => {
   gap: 4rpx;
 }
 
+.chat-panel__title-wrap--inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 12rpx;
+}
+
 .chat-panel__eyebrow {
   font-size: 22rpx;
   font-weight: 800;
@@ -1844,11 +1884,10 @@ onUnmounted(() => {
   gap: 10rpx;
 }
 
-.chat-panel__voice-btn {
+.chat-panel__sound-toggle {
   position: relative;
   width: 46rpx;
   height: 46rpx;
-  margin-top: 2rpx;
   border-radius: 50%;
   flex-shrink: 0;
   display: flex;
@@ -1860,13 +1899,18 @@ onUnmounted(() => {
   -webkit-backdrop-filter: blur(18rpx);
   box-shadow: 0 8rpx 24rpx rgba(46, 184, 160, 0.14);
   overflow: visible;
+  opacity: 0.56;
 }
 
-.chat-panel__voice-btn.failed {
+.chat-panel__sound-toggle.on {
+  opacity: 1;
+}
+
+.chat-panel__sound-toggle.failed {
   background: rgba(255, 238, 238, 0.72);
 }
 
-.chat-panel__voice-btn text {
+.chat-panel__sound-toggle text {
   position: relative;
   z-index: 1;
   font-size: 22rpx;
@@ -1882,7 +1926,7 @@ onUnmounted(() => {
   opacity: 0;
 }
 
-.chat-panel__voice-btn.active .chat-panel__voice-wave {
+.chat-panel__sound-toggle.active .chat-panel__voice-wave {
   animation: chatVoiceRipple 1.25s ease-out infinite;
 }
 
