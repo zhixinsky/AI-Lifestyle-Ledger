@@ -279,10 +279,10 @@ const topGoal = ref<WealthGoal | null>(null);
 const badges = ref<Badge[]>([]);
 const lifeSpaces = ref<LifeSpace[]>([]);
 const DEFAULT_OVERVIEW_CARDS = [
-  { key: 'daily', title: '日常生活', sub: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills', onTap: goBills },
-  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
-  { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth', onTap: goSavingGoals },
-  { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, className: 'widget-budget', visual: 'budget', onTap: goBudget },
+  { key: 'daily', title: '日常生活', sub: '查看每日生活记录', icon: '日', visible: true, sort: 0, className: 'widget-bills', visual: 'bills', onTap: goBills },
+  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, sort: 1, className: 'widget-ai', visual: 'ai', onTap: goAiChat },
+  { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, sort: 2, className: 'widget-wealth', visual: 'wealth', onTap: goSavingGoals },
+  { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, sort: 3, className: 'widget-budget', visual: 'budget', onTap: goBudget },
 ];
 const defaultCards = ref(DEFAULT_OVERVIEW_CARDS.map((card) => ({ ...card })));
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
@@ -371,10 +371,11 @@ const overviewCards = computed(() => [
         icon: meta.icon,
         className: `space-widget--${meta.theme}`,
         visual: space.type === 'couple' ? 'love' : space.type,
+        sort: space.sort ?? 100,
         onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
       };
     }),
-].slice(0, 4));
+].sort((a, b) => (a.sort ?? 0) - (b.sort ?? 0)).slice(0, 4));
 
 function barWidth(bar: { value: number; amount: number }) {
   const maxAmount = bars.value.length ? bars.value[0].amount : 1;
@@ -436,6 +437,7 @@ function normalizeOverviewCard(item: any) {
     className: fallback.className,
     visual: fallback.visual,
     onTap: fallback.onTap,
+    sort: item.sort ?? fallback.sort,
   };
 }
 
@@ -461,7 +463,7 @@ function applyRemoteDefaultCards(items: Array<{ key: string; sort?: number; isVi
       sort: settingMap.get(card.key)?.sort ?? index,
     }))
     .sort((a, b) => a.sort - b.sort)
-    .map(({ sort, ...card }) => card);
+    .map((card) => card);
 }
 
 async function loadOverviewCards() {

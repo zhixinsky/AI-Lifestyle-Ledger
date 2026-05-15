@@ -63,7 +63,7 @@
     <view class="section-title">操作</view>
     <view class="ios-card">
       <view class="row" @tap="goCardSettings">
-        <text class="action-text">首页卡片管理</text>
+        <text class="action-text">概览卡片管理</text>
         <text class="arrow">›</text>
       </view>
       <view class="row" @tap="openPhoneForm">

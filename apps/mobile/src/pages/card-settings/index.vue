@@ -5,31 +5,34 @@
         <view class="back-glass" />
         <image class="back-icon" :src="backIcon" />
       </view>
-      <text class="nav-title">首页卡片管理</text>
+      <text class="nav-title">概览卡片管理</text>
       <view class="nav-placeholder" />
     </view>
 
     <view class="hero">
       <text class="hero-title">定制你的 AI 生活首页</text>
-      <text class="hero-sub">开启空间卡片、调整顺序，让概览页变成你的生活仪表盘。</text>
+      <text class="hero-sub">选择 4 张卡片展示在概览页，按住上方卡片拖动调整顺序。</text>
     </view>
 
-    <view class="section-title">默认卡片</view>
-    <view class="widget-row">
+    <view class="section-title">概览显示卡片：{{ selectedCount }}/4</view>
+    <view class="widget-row preview-widget-row">
       <view
-        v-for="(card, index) in defaultCards"
+        v-for="(card, index) in selectedCards"
         :key="card.key"
-        :class="['widget-card', card.className, { disabled: !card.visible }]"
-        @tap="toggleDefault(index)"
+        :class="['widget-card', card.className, { dragging: draggingKey === card.key }]"
+        @touchstart="onPreviewTouchStart($event, index, card.key)"
+        @touchmove.prevent="onPreviewTouchMove"
+        @touchend="onPreviewTouchEnd"
+        @touchcancel="onPreviewTouchEnd"
       >
-        <view :class="['check-mark', { active: card.visible }]"><text>✓</text></view>
+        <view class="drag-grip"><text>⋮⋮</text></view>
         <view class="widget-glass" />
         <view class="widget-content">
           <view class="widget-text">
             <text class="widget-title">{{ card.title }}</text>
             <text class="widget-sub">{{ card.desc }}</text>
           </view>
-          <view :class="['widget-icon-area', `widget-icon-${card.visual}`]">
+          <view :class="['widget-icon-area', card.source === 'space' ? `space-icon-${card.theme}` : `widget-icon-${card.visual}`]">
             <template v-if="card.visual === 'ai'">
               <view class="wi-orb" />
               <view class="wi-ring" />
@@ -49,6 +52,31 @@
               <view class="wb-bar wb-bar-1" />
               <view class="wb-bar wb-bar-2" />
             </template>
+            <template v-else-if="card.visual === 'love'">
+              <text class="love-heart">♥</text>
+              <view class="love-ring" />
+              <view class="love-dot" />
+            </template>
+            <template v-else-if="card.visual === 'family'">
+              <view class="home-roof" />
+              <view class="home-body" />
+              <view class="home-door" />
+            </template>
+            <template v-else-if="card.visual === 'work'">
+              <view class="work-case" />
+              <view class="work-handle" />
+              <view class="work-line" />
+            </template>
+            <template v-else-if="card.visual === 'travel'">
+              <view class="travel-route" />
+              <view class="travel-pin travel-pin-a" />
+              <view class="travel-pin travel-pin-b" />
+            </template>
+            <template v-else-if="card.visual === 'campus'">
+              <view class="campus-book" />
+              <view class="campus-book campus-book-r" />
+              <view class="campus-line" />
+            </template>
             <template v-else>
               <view class="wbl-receipt" />
               <view class="wbl-line wbl-line-1" />
@@ -59,48 +87,76 @@
         </view>
         <view class="widget-shimmer" />
       </view>
+      <view v-for="slot in emptySlots" :key="`empty-${slot}`" class="widget-card empty-slot">
+        <text>选择卡片</text>
+      </view>
     </view>
 
-    <view class="section-title">可选生活空间</view>
-    <view class="widget-row optional-widget-row">
+    <view class="section-title">所有卡片</view>
+    <view class="widget-row all-widget-row">
       <view
-        v-for="meta in selectableSpaces"
-        :key="meta.type"
-        :class="['widget-card', 'space-widget-card', `space-widget--${meta.theme}`, { disabled: !isSpaceVisible(meta.type) }]"
-        @tap="toggleLifeSpace(meta.type)"
+        v-for="card in allCards"
+        :key="card.key"
+        :class="['widget-card', card.className, { disabled: !card.visible }]"
+        @tap="toggleCard(card)"
       >
-        <view :class="['check-mark', { active: isSpaceVisible(meta.type) }]"><text>✓</text></view>
+        <view :class="['check-mark', { active: card.visible }]"><text>✓</text></view>
         <view class="widget-glass" />
         <view class="widget-content">
           <view class="widget-text">
-            <text class="widget-title">{{ meta.name }}</text>
-            <text class="widget-sub">{{ meta.description }}</text>
+            <text class="widget-title">{{ card.title }}</text>
+            <text class="widget-sub">{{ card.desc }}</text>
           </view>
-          <view :class="['widget-icon-area', `space-icon-${meta.theme}`]">
-            <template v-if="meta.type === 'love'">
+          <view :class="['widget-icon-area', card.source === 'space' ? `space-icon-${card.theme}` : `widget-icon-${card.visual}`]">
+            <template v-if="card.visual === 'ai'">
+              <view class="wi-orb" />
+              <view class="wi-ring" />
+              <view class="wi-bar wi-bar-1" />
+              <view class="wi-bar wi-bar-2" />
+              <view class="wi-bar wi-bar-3" />
+            </template>
+            <template v-else-if="card.visual === 'wealth'">
+              <view class="ww-coin" />
+              <view class="ww-arrow" />
+              <view class="ww-curve" />
+            </template>
+            <template v-else-if="card.visual === 'budget'">
+              <view class="wb-ring-track" />
+              <view class="wb-ring-fill" />
+              <view class="wb-dot" />
+              <view class="wb-bar wb-bar-1" />
+              <view class="wb-bar wb-bar-2" />
+            </template>
+            <template v-else-if="card.visual === 'love'">
               <text class="love-heart">♥</text>
               <view class="love-ring" />
               <view class="love-dot" />
             </template>
-            <template v-else-if="meta.type === 'family'">
+            <template v-else-if="card.visual === 'family'">
               <view class="home-roof" />
               <view class="home-body" />
               <view class="home-door" />
             </template>
-            <template v-else-if="meta.type === 'work'">
+            <template v-else-if="card.visual === 'work'">
               <view class="work-case" />
               <view class="work-handle" />
               <view class="work-line" />
             </template>
-            <template v-else-if="meta.type === 'travel'">
+            <template v-else-if="card.visual === 'travel'">
               <view class="travel-route" />
               <view class="travel-pin travel-pin-a" />
               <view class="travel-pin travel-pin-b" />
             </template>
-            <template v-else>
+            <template v-else-if="card.visual === 'campus'">
               <view class="campus-book" />
               <view class="campus-book campus-book-r" />
               <view class="campus-line" />
+            </template>
+            <template v-else>
+              <view class="wbl-receipt" />
+              <view class="wbl-line wbl-line-1" />
+              <view class="wbl-line wbl-line-2" />
+              <view class="wbl-line wbl-line-3" />
             </template>
           </view>
         </view>
@@ -128,21 +184,56 @@ interface FeatureCardSetting {
   visible: boolean;
   className: string;
   visual: string;
+  sort: number;
+}
+
+interface CardItem extends FeatureCardSetting {
+  source: 'default' | 'space';
+  type?: BookType;
+  id?: string;
+  theme?: string;
 }
 
 const DEFAULT_STORAGE_KEY = 'overview_default_cards';
 const spaces = ref<LifeSpace[]>([]);
 const selectableSpaces = creatableLifeSpaceMetas;
 const DEFAULT_CARD_SETTINGS: FeatureCardSetting[] = [
-  { key: 'daily', title: '日常生活', desc: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills' },
-  { key: 'ai', title: 'AI分析', desc: '消费趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai' },
-  { key: 'wealth', title: '财富成长', desc: '资产持续增长', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth' },
-  { key: 'budget', title: '预算管理', desc: '合理规划支出', icon: '预', visible: true, className: 'widget-budget', visual: 'budget' },
+  { key: 'daily', title: '日常生活', desc: '查看每日生活记录', icon: '日', visible: true, className: 'widget-bills', visual: 'bills', sort: 0 },
+  { key: 'ai', title: 'AI分析', desc: '消费趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', visual: 'ai', sort: 1 },
+  { key: 'wealth', title: '财富成长', desc: '资产持续增长', icon: '财', visible: true, className: 'widget-wealth', visual: 'wealth', sort: 2 },
+  { key: 'budget', title: '预算管理', desc: '合理规划支出', icon: '预', visible: true, className: 'widget-budget', visual: 'budget', sort: 3 },
 ];
 const defaultCards = ref<FeatureCardSetting[]>(DEFAULT_CARD_SETTINGS.map((card) => ({ ...card })));
 const selectedCount = computed(() =>
   defaultCards.value.filter((card) => card.visible).length + spaces.value.filter((space) => space.isVisible && space.type !== 'daily').length
 );
+const draggingKey = ref('');
+const dragStartX = ref(0);
+const dragCurrentIndex = ref(-1);
+const dragThreshold = ref(64);
+
+const allCards = computed<CardItem[]>(() => [
+  ...defaultCards.value.map((card) => ({ ...card, source: 'default' as const })),
+  ...selectableSpaces.map((meta, index) => {
+    const space = findSpace(meta.type);
+    return {
+      key: `space-${meta.type}`,
+      title: meta.name,
+      desc: meta.description,
+      icon: meta.icon,
+      visible: Boolean(space?.isVisible),
+      className: `space-widget--${meta.theme}`,
+      visual: meta.type,
+      sort: space?.sort ?? 100 + index,
+      source: 'space' as const,
+      type: meta.type,
+      id: space?.id,
+      theme: meta.theme,
+    };
+  }),
+]);
+const selectedCards = computed(() => allCards.value.filter((card) => card.visible).sort((a, b) => a.sort - b.sort).slice(0, 4));
+const emptySlots = computed(() => Array.from({ length: Math.max(0, 4 - selectedCards.value.length) }, (_, index) => index));
 
 function goBack() {
   const pages = getCurrentPages();
@@ -159,6 +250,7 @@ function normalizeDefaultCard(item: FeatureCardSetting): FeatureCardSetting {
     desc: fallback.desc,
     className: fallback.className,
     visual: fallback.visual,
+    sort: item.sort ?? fallback.sort,
   };
 }
 
@@ -171,7 +263,7 @@ function applyDefaultSettings(items: Array<{ key: string; sort?: number; isVisib
       sort: settingMap.get(card.key)?.sort ?? index,
     }))
     .sort((a, b) => a.sort - b.sort)
-    .map(({ sort, ...card }) => card);
+    .map((card) => card);
 }
 
 function getLegacyDefaultSettings() {
@@ -218,6 +310,8 @@ function toggleDefault(index: number) {
     return;
   }
   defaultCards.value[index].visible = !defaultCards.value[index].visible;
+  if (defaultCards.value[index].visible) defaultCards.value[index].sort = nextSort();
+  syncSelectedSort();
 }
 
 function findSpace(type: BookType) {
@@ -236,6 +330,8 @@ async function toggleLifeSpace(type: BookType) {
       return;
     }
     existing.isVisible = !existing.isVisible;
+    if (existing.isVisible) existing.sort = nextSort();
+    syncSelectedSort();
     return;
   }
   if (selectedCount.value >= 4) {
@@ -243,7 +339,76 @@ async function toggleLifeSpace(type: BookType) {
     return;
   }
   const created = await lifeSpaceApi.create(type).catch(() => null);
-  if (created) spaces.value.push(created);
+  if (created) {
+    created.sort = nextSort();
+    spaces.value.push(created);
+    syncSelectedSort();
+  }
+}
+
+function toggleCard(card: CardItem) {
+  if (card.source === 'default') {
+    const index = defaultCards.value.findIndex((item) => item.key === card.key);
+    if (index >= 0) toggleDefault(index);
+    return;
+  }
+  if (card.type) toggleLifeSpace(card.type);
+}
+
+function nextSort() {
+  const selected = allCards.value.filter((card) => card.visible);
+  return selected.length ? Math.max(...selected.map((card) => card.sort)) + 1 : 0;
+}
+
+function setCardSort(key: string, sort: number) {
+  const defaultCard = defaultCards.value.find((card) => card.key === key);
+  if (defaultCard) {
+    defaultCard.sort = sort;
+    return;
+  }
+  const type = key.replace('space-', '') as BookType;
+  const space = findSpace(type);
+  if (space) space.sort = sort;
+}
+
+function syncSelectedSort(order = selectedCards.value) {
+  order.forEach((card, index) => setCardSort(card.key, index));
+}
+
+function reorderSelected(from: number, to: number) {
+  const ordered = [...selectedCards.value];
+  if (from < 0 || to < 0 || from === to || from >= ordered.length || to >= ordered.length) return;
+  const [moving] = ordered.splice(from, 1);
+  ordered.splice(to, 0, moving);
+  syncSelectedSort(ordered);
+}
+
+function onPreviewTouchStart(event: any, index: number, key: string) {
+  draggingKey.value = key;
+  dragCurrentIndex.value = index;
+  dragStartX.value = event.touches?.[0]?.clientX || 0;
+  const screenWidth = uni.getSystemInfoSync().windowWidth || 375;
+  dragThreshold.value = Math.max(48, Math.floor(screenWidth / 5));
+}
+
+function onPreviewTouchMove(event: any) {
+  if (!draggingKey.value) return;
+  const x = event.touches?.[0]?.clientX || dragStartX.value;
+  const delta = x - dragStartX.value;
+  if (Math.abs(delta) < dragThreshold.value) return;
+  const direction = delta > 0 ? 1 : -1;
+  const target = Math.max(0, Math.min(selectedCards.value.length - 1, dragCurrentIndex.value + direction));
+  if (target !== dragCurrentIndex.value) {
+    reorderSelected(dragCurrentIndex.value, target);
+    dragCurrentIndex.value = target;
+    dragStartX.value = x;
+  }
+}
+
+function onPreviewTouchEnd() {
+  draggingKey.value = '';
+  dragStartX.value = 0;
+  dragCurrentIndex.value = -1;
 }
 
 async function saveSettings() {
@@ -253,12 +418,12 @@ async function saveSettings() {
   }
   await lifeSpaceApi.updateHomeCards(defaultCards.value.map((card, index) => ({
     key: card.key,
-    sort: index,
+    sort: card.sort ?? index,
     isVisible: card.visible,
   }))).catch(() => []);
   spaces.value = await lifeSpaceApi.updateSettings(spaces.value.map((space, index) => ({
     id: space.id,
-    sort: index,
+    sort: space.sort ?? index,
     isVisible: space.isVisible,
   }))).catch(() => spaces.value);
   uni.setStorageSync(DEFAULT_STORAGE_KEY, defaultCards.value);
@@ -295,8 +460,12 @@ onMounted(async () => {
   gap: 12rpx;
   margin: 0 0 6rpx;
 }
-.optional-widget-row {
+.optional-widget-row,
+.all-widget-row {
   flex-wrap: wrap;
+}
+.preview-widget-row {
+  min-height: 120rpx;
 }
 .widget-card {
   flex: 0 0 calc((100% - 36rpx) / 4);
@@ -308,6 +477,32 @@ onMounted(async () => {
   transition: transform 0.2s ease;
 }
 .widget-card.disabled { opacity: 0.58; }
+.widget-card.dragging {
+  transform: scale(1.04);
+  z-index: 6;
+  box-shadow: 0 12rpx 34rpx rgba(31, 81, 71, 0.16);
+}
+.empty-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(80,99,93,0.42);
+  font-size: 20rpx;
+  font-weight: 700;
+  background: rgba(255,255,255,0.38);
+  border: 2rpx dashed rgba(80,99,93,0.18);
+  box-shadow: none;
+}
+.drag-grip {
+  position: absolute;
+  right: 8rpx;
+  top: 8rpx;
+  z-index: 4;
+  color: rgba(80,99,93,0.42);
+  font-size: 18rpx;
+  font-weight: 900;
+  transform: rotate(90deg);
+}
 .widget-card .check-mark {
   right: 10rpx;
   top: 10rpx;
