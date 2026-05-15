@@ -97,10 +97,10 @@
       <view
         v-for="card in allCards"
         :key="card.key"
-        :class="['widget-card', card.className, { disabled: !card.visible }]"
+        :class="['widget-card', card.className, { disabled: !isCardSelected(card.key) }]"
         @tap="toggleCard(card)"
       >
-        <view :class="['check-mark', { active: card.visible }]"><text>✓</text></view>
+        <view :class="['check-mark', { active: isCardSelected(card.key) }]"><text>✓</text></view>
         <view class="widget-glass" />
         <view class="widget-content">
           <view class="widget-text">
@@ -204,9 +204,6 @@ const DEFAULT_CARD_SETTINGS: FeatureCardSetting[] = [
   { key: 'budget', title: '预算管理', desc: '合理规划支出', icon: '预', visible: true, className: 'widget-budget', visual: 'budget', sort: 3 },
 ];
 const defaultCards = ref<FeatureCardSetting[]>(DEFAULT_CARD_SETTINGS.map((card) => ({ ...card })));
-const selectedCount = computed(() =>
-  defaultCards.value.filter((card) => card.visible).length + spaces.value.filter((space) => space.isVisible && space.type !== 'daily').length
-);
 const draggingKey = ref('');
 const dragStartX = ref(0);
 const dragCurrentIndex = ref(-1);
@@ -233,6 +230,7 @@ const allCards = computed<CardItem[]>(() => [
   }),
 ]);
 const selectedCards = computed(() => allCards.value.filter((card) => card.visible).sort((a, b) => a.sort - b.sort).slice(0, 4));
+const selectedCount = computed(() => selectedCards.value.length);
 const emptySlots = computed(() => Array.from({ length: Math.max(0, 4 - selectedCards.value.length) }, (_, index) => index));
 
 function goBack() {
@@ -311,7 +309,7 @@ function toggleDefault(index: number) {
   }
   defaultCards.value[index].visible = !defaultCards.value[index].visible;
   if (defaultCards.value[index].visible) defaultCards.value[index].sort = nextSort();
-  syncSelectedSort();
+  normalizeSelectedCards();
 }
 
 function findSpace(type: BookType) {
@@ -320,6 +318,10 @@ function findSpace(type: BookType) {
 
 function isSpaceVisible(type: BookType) {
   return Boolean(findSpace(type)?.isVisible);
+}
+
+function isCardSelected(key: string) {
+  return selectedCards.value.some((card) => card.key === key);
 }
 
 async function toggleLifeSpace(type: BookType) {
@@ -331,7 +333,7 @@ async function toggleLifeSpace(type: BookType) {
     }
     existing.isVisible = !existing.isVisible;
     if (existing.isVisible) existing.sort = nextSort();
-    syncSelectedSort();
+    normalizeSelectedCards();
     return;
   }
   if (selectedCount.value >= 4) {
@@ -342,7 +344,7 @@ async function toggleLifeSpace(type: BookType) {
   if (created) {
     created.sort = nextSort();
     spaces.value.push(created);
-    syncSelectedSort();
+    normalizeSelectedCards();
   }
 }
 
@@ -373,6 +375,24 @@ function setCardSort(key: string, sort: number) {
 
 function syncSelectedSort(order = selectedCards.value) {
   order.forEach((card, index) => setCardSort(card.key, index));
+}
+
+function setCardVisible(key: string, visible: boolean) {
+  const defaultCard = defaultCards.value.find((card) => card.key === key);
+  if (defaultCard) {
+    defaultCard.visible = visible;
+    return;
+  }
+  const type = key.replace('space-', '') as BookType;
+  const space = findSpace(type);
+  if (space) space.isVisible = visible;
+}
+
+function normalizeSelectedCards() {
+  const selected = allCards.value.filter((card) => card.visible).sort((a, b) => a.sort - b.sort).slice(0, 4);
+  const selectedKeySet = new Set(selected.map((card) => card.key));
+  allCards.value.forEach((card) => setCardVisible(card.key, selectedKeySet.has(card.key)));
+  syncSelectedSort(selected);
 }
 
 function reorderSelected(from: number, to: number) {
@@ -412,10 +432,7 @@ function onPreviewTouchEnd() {
 }
 
 async function saveSettings() {
-  if (selectedCount.value > 4) {
-    uni.showToast({ title: '首页最多显示4张卡片，请先关闭多余卡片', icon: 'none' });
-    return;
-  }
+  normalizeSelectedCards();
   await lifeSpaceApi.updateHomeCards(defaultCards.value.map((card, index) => ({
     key: card.key,
     sort: card.sort ?? index,
@@ -433,6 +450,7 @@ async function saveSettings() {
 
 onMounted(async () => {
   await Promise.all([loadFeatureSettings(), loadSpaces()]);
+  normalizeSelectedCards();
 });
 </script>
 
