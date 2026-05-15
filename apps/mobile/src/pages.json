@@ -102,7 +102,7 @@
     {
       "path": "pages/account-security/index",
       "style": {
-        "navigationBarTitleText": "账号与安全",
+        "navigationBarTitleText": "账户设置",
         "navigationStyle": "custom"
       }
     },

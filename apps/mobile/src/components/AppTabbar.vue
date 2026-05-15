@@ -149,7 +149,7 @@ function onTap(tab: (typeof tabs)[number]) {
   z-index: 9999;
   left: 28rpx;
   right: 28rpx;
-  bottom: calc(env(safe-area-inset-bottom, 0px) + 16rpx);
+  bottom: env(safe-area-inset-bottom, 0px);
   pointer-events: none;
 }
 

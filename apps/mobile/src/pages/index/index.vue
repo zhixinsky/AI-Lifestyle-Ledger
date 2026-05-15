@@ -1346,14 +1346,21 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.air-card-body-insight {
+  position: relative;
+  z-index: 1;
+}
+
 .insight-body {
   flex: 1 1 auto;
   width: 100%;
   margin-top: 0;
   min-height: 0;
-  padding-right: 64rpx;
+  padding-right: 10rpx;
   padding-bottom: 2rpx;
   box-sizing: border-box;
+  position: relative;
+  z-index: 1;
 }
 
 .insight-copy {
@@ -1362,6 +1369,9 @@ onUnmounted(() => {
   font-weight: 600;
   color: rgba(28, 72, 60, 0.88);
   letter-spacing: 0.2rpx;
+  position: relative;
+  z-index: 1;
+  word-break: break-word;
 }
 
 .insight-avatar {
@@ -1372,7 +1382,8 @@ onUnmounted(() => {
   height: 58rpx;
   border-radius: 14rpx;
   pointer-events: none;
-  z-index: 2;
+  z-index: 0;
+  opacity: 0.88;
 }
 
 .hub-sub {

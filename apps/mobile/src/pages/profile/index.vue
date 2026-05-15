@@ -51,19 +51,6 @@
 
     <!-- 菜单列表 -->
     <view class="profile-menu-card-wrap">
-      <MoonaCard v-if="authStore.isLoggedIn" class="menu-card settings-pref-card">
-        <view class="menu-item menu-item--toggle">
-          <view class="menu-left menu-left--stack">
-            <text class="menu-icon">✨</text>
-            <view class="menu-text-col">
-              <text class="menu-label">智能问候</text>
-              <text class="menu-sub">关闭后，AI米粒页仅使用本地默认文案</text>
-            </view>
-          </view>
-          <switch :checked="smartGreetingOn" color="#00d4c8" @change="onSmartGreetingChange" />
-        </view>
-      </MoonaCard>
-
       <MoonaCard class="menu-card">
         <view v-for="(group, gIdx) in menuGroups" :key="gIdx">
           <view v-for="(item, idx) in group" :key="item.label" :class="['menu-item', { bordered: idx < group.length - 1 }]" @tap="onMenuTap(item)">
@@ -184,20 +171,6 @@ onShow(() => {
   refreshProfileData();
 });
 
-const smartGreetingOn = computed(() => authStore.user?.smartGreetingEnabled !== false);
-
-async function onSmartGreetingChange(e: any) {
-  if (!authStore.isLoggedIn) return;
-  const val = Boolean(e.detail?.value);
-  try {
-    const updated = await authApi.updateProfile({ smartGreetingEnabled: val });
-    authStore.user = updated;
-    uni.showToast({ title: val ? '已开启智能问候' : '已关闭智能问候', icon: 'none' });
-  } catch {
-    uni.showToast({ title: '设置失败', icon: 'none' });
-  }
-}
-
 const menuGroups = [
   [
     { icon: '⭐', label: '会员中心', url: '/pages/membership/index' },
@@ -213,7 +186,7 @@ const menuGroups = [
     { icon: '🏷', label: '标签管理', url: '' },
   ],
   [
-    { icon: '🔐', label: '账号与安全', url: '/pages/account-security/index' },
+    { icon: '🔐', label: '账户设置', url: '/pages/account-security/index' },
     { icon: '💾', label: '数据备份', url: '' },
   ],
   [
@@ -395,37 +368,6 @@ function handleLogout() {
 
 .profile-menu-card-wrap {
   margin-top: -8rpx;
-}
-
-.menu-item--toggle {
-  align-items: flex-start;
-  padding-top: 28rpx;
-  padding-bottom: 28rpx;
-  height: auto;
-  min-height: 100rpx;
-}
-
-.menu-left--stack {
-  align-items: flex-start;
-  flex: 1;
-  min-width: 0;
-}
-
-.menu-text-col {
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-  min-width: 0;
-}
-
-.menu-sub {
-  font-size: 22rpx;
-  color: #88909b;
-  line-height: 1.35;
-}
-
-.settings-pref-card {
-  margin-bottom: 16rpx;
 }
 
 /* 菜单 */

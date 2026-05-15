@@ -368,7 +368,6 @@ const overviewCards = computed(() => [
         key: `space-${space.id}`,
         title: meta.name,
         sub: meta.description,
-        icon: meta.icon,
         className: `space-widget--${meta.theme}`,
         visual: space.type === 'couple' ? 'love' : space.type,
         sort: space.sort ?? 100,

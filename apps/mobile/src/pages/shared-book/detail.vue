@@ -284,6 +284,7 @@ async function handleLeave() {
       if (!res.confirm) return;
       try {
         await sharedBookApi.leave(bookId.value);
+        uni.$emit('life-spaces-updated');
         uni.showToast({ title: '已离开', icon: 'success' });
         setTimeout(() => uni.navigateBack(), 500);
       } catch {
@@ -301,6 +302,7 @@ async function handleDelete() {
       if (!res.confirm) return;
       try {
         await sharedBookApi.delete(bookId.value);
+        uni.$emit('life-spaces-updated');
         uni.showToast({ title: '已删除', icon: 'success' });
         setTimeout(() => uni.navigateBack(), 500);
       } catch {

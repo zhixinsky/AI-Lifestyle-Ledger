@@ -17,7 +17,7 @@
 
     <!-- 创建/加入 -->
     <view class="action-row">
-      <button class="action-btn primary" @tap="showCreateSheet = true">创建空间</button>
+      <button class="action-btn primary" @tap="openCreateSheet">创建空间</button>
       <button class="action-btn" @tap="showJoinSheet = true">加入空间</button>
     </view>
 
@@ -38,7 +38,7 @@
         <view class="book-content">
           <view class="book-header">
             <view class="book-type-icon" :style="{ background: iconGradient(book.type) }">
-              <text>{{ spaceMeta(book.type).icon }}</text>
+              <LifeSpaceTypeIcon :theme="spaceMeta(book.type).theme" />
             </view>
             <view class="book-info">
               <text class="book-name">{{ book.name }}</text>
@@ -54,7 +54,6 @@
       </view>
     </view>
     <view v-else class="empty">
-      <text class="empty-icon">AI</text>
       <text class="empty-text">还没有生活空间</text>
       <text class="empty-sub">创建一个场景，让生活记录变成可回看的记忆</text>
     </view>
@@ -63,7 +62,12 @@
     <view v-if="showCreateSheet" class="sheet-mask" @tap="showCreateSheet = false">
       <view class="sheet" @tap.stop>
         <text class="sheet-title">创建生活空间</text>
-        <input class="sheet-input" v-model="createName" :placeholder="`空间名称，例如：${spaceMeta(createType).name}`" />
+        <input
+          class="sheet-input"
+          v-model="createName"
+          :placeholder="createNamePlaceholder"
+          @input="onCreateNameInput"
+        />
         <view class="type-grid">
           <view
             v-for="item in creatableLifeSpaceMetas"
@@ -72,7 +76,7 @@
             @tap="selectCreateType(item.type)"
           >
             <view class="type-icon" :style="{ background: iconGradient(item.type) }">
-              <text>{{ item.icon }}</text>
+              <LifeSpaceTypeIcon :theme="item.theme" />
             </view>
             <view class="type-copy">
               <text class="type-label">{{ item.name }}</text>
@@ -99,20 +103,27 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
+import LifeSpaceTypeIcon from '@/components/LifeSpaceTypeIcon.vue';
 import { lifeSpaceApi } from '@/api/life-spaces';
 import { sharedBookApi } from '@/api/shared-book';
 import type { BookType, SharedBook } from '@/types/domain';
-import { creatableLifeSpaceMetas, getLifeSpaceMeta } from '@/utils/life-space';
+import { creatableLifeSpaceMetas, getLifeSpaceMeta, isDefaultLifeSpaceName } from '@/utils/life-space';
 
 const books = ref<SharedBook[]>([]);
 const showCreateSheet = ref(false);
 const showJoinSheet = ref(false);
 const createName = ref('');
 const createType = ref<BookType>('love');
+const createNameCustomized = ref(false);
 const joinCode = ref('');
+
+const createNamePlaceholder = computed(
+  () => `空间名称，例如：${getLifeSpaceMeta(createType.value).name}`,
+);
 
 function goBack() {
   const pages = getCurrentPages();
@@ -129,9 +140,24 @@ function iconGradient(type: BookType) {
   const color = spaceMeta(type).color;
   return `linear-gradient(145deg, ${color}, rgba(255,255,255,0.76))`;
 }
+function openCreateSheet() {
+  createType.value = 'love';
+  createNameCustomized.value = false;
+  createName.value = getLifeSpaceMeta('love').name;
+  showCreateSheet.value = true;
+}
+
+function onCreateNameInput() {
+  createNameCustomized.value = true;
+}
+
 function selectCreateType(type: BookType) {
+  const prevType = createType.value;
   createType.value = type;
-  if (!createName.value.trim()) createName.value = spaceMeta(type).name;
+  if (!createNameCustomized.value || isDefaultLifeSpaceName(createName.value) || createName.value === getLifeSpaceMeta(prevType).name) {
+    createName.value = getLifeSpaceMeta(type).name;
+    createNameCustomized.value = false;
+  }
 }
 
 function copyCode(code: string) {
@@ -149,6 +175,7 @@ async function doCreate() {
     await sharedBookApi.create({ name, type: createType.value });
     showCreateSheet.value = false;
     createName.value = '';
+    createNameCustomized.value = false;
     uni.showToast({ title: '创建成功', icon: 'success' });
     loadBooks();
   } catch { uni.showToast({ title: '创建失败', icon: 'none' }); }
@@ -165,7 +192,16 @@ async function doJoin() {
   } catch { uni.showToast({ title: '加入失败', icon: 'none' }); }
 }
 
-onMounted(loadBooks);
+onMounted(() => {
+  loadBooks();
+  uni.$on('life-spaces-updated', loadBooks);
+});
+
+onShow(loadBooks);
+
+onUnmounted(() => {
+  uni.$off('life-spaces-updated', loadBooks);
+});
 </script>
 
 <style scoped>
@@ -318,7 +354,7 @@ onMounted(loadBooks);
 .book-type-icon {
   width: 62rpx; height: 62rpx; border-radius: 22rpx;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 22rpx; font-weight: 850;
+  overflow: hidden;
   background: linear-gradient(145deg, #42556d, #a8b8ad);
 }
 .book-type-icon.life { background: linear-gradient(145deg, #bd6e7c, #f1b9be); }
@@ -331,14 +367,7 @@ onMounted(loadBooks);
 .code-label { font-size: 22rpx; color: #88909b; }
 .code-value { font-size: 28rpx; font-weight: 700; color: #4f8174; letter-spacing: 4rpx; }
 
-.empty { display: flex; flex-direction: column; align-items: center; padding: 100rpx 0; gap: 12rpx; }
-.empty-icon {
-  width: 96rpx; height: 96rpx; border-radius: 32rpx;
-  display: flex; align-items: center; justify-content: center;
-  background: linear-gradient(145deg, #2c574d, #8fcfbd);
-  color: #fff; font-size: 26rpx; font-weight: 850;
-  box-shadow: 0 18rpx 42rpx rgba(44, 87, 77, 0.18);
-}
+.empty { display: flex; flex-direction: column; align-items: center; padding: 80rpx 32rpx 100rpx; gap: 12rpx; }
 .empty-text { font-size: 30rpx; font-weight: 600; color: #1e1e1e; }
 .empty-sub { font-size: 24rpx; color: #88909b; }
 
@@ -355,11 +384,24 @@ onMounted(loadBooks);
   display: flex; align-items: center; gap: 18rpx; padding: 22rpx; border-radius: 26rpx;
   background: rgba(247,248,250,0.86); border: 2rpx solid transparent;
 }
-.type-option.active { border-color: rgba(112,173,158,0.5); background: rgba(240,250,247,0.92); box-shadow: 0 16rpx 36rpx rgba(79,129,116,0.1); }
+.type-option--rose.active { border-color: rgba(242,167,179,0.55); background: rgba(255,244,246,0.95); box-shadow: 0 16rpx 36rpx rgba(201,126,133,0.12); }
+.type-option--olive.active { border-color: rgba(167,201,112,0.55); background: rgba(248,252,241,0.95); box-shadow: 0 16rpx 36rpx rgba(124,151,104,0.1); }
+.type-option--blue.active { border-color: rgba(141,167,242,0.55); background: rgba(244,247,255,0.95); box-shadow: 0 16rpx 36rpx rgba(91,112,180,0.1); }
+.type-option--cyan.active { border-color: rgba(124,199,232,0.55); background: rgba(241,250,255,0.95); box-shadow: 0 16rpx 36rpx rgba(76,151,180,0.1); }
+.type-option--amber.active { border-color: rgba(217,183,110,0.55); background: rgba(255,251,241,0.95); box-shadow: 0 16rpx 36rpx rgba(163,127,57,0.1); }
 .type-icon {
   width: 68rpx; height: 68rpx; border-radius: 24rpx; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-size: 24rpx; font-weight: 850;
+  overflow: hidden;
+  box-shadow: inset 0 2rpx 0 rgba(255,255,255,0.45);
+}
+.type-icon :deep(.ls-icon) {
+  width: 44rpx;
+  height: 44rpx;
+}
+.book-type-icon :deep(.ls-icon) {
+  width: 40rpx;
+  height: 40rpx;
 }
 .type-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
 .type-label { font-size: 27rpx; color: #1e1e1e; font-weight: 760; }

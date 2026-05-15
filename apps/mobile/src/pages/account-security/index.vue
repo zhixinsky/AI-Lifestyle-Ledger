@@ -5,7 +5,7 @@
         <view class="back-glass" />
         <image class="back-icon" :src="backIcon" />
       </view>
-      <text class="nav-title">账号与安全</text>
+      <text class="nav-title">账户设置</text>
       <view class="nav-placeholder" />
     </view>
 
@@ -62,6 +62,10 @@
 
     <view class="section-title">操作</view>
     <view class="ios-card">
+      <view v-if="authStore.isLoggedIn" class="row">
+        <text class="action-text">智能问候</text>
+        <switch :checked="smartGreetingOn" color="#00d4c8" @change="onSmartGreetingChange" />
+      </view>
       <view class="row" @tap="goCardSettings">
         <text class="action-text">概览卡片管理</text>
         <text class="arrow">›</text>
@@ -139,6 +143,7 @@
 
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, reactive, ref } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import PageShell from '@/components/PageShell.vue';
 import MemberProfileCard from '@/components/MemberProfileCard.vue';
 import { backIcon } from '@/utils/icons';
@@ -199,6 +204,20 @@ const emailCodeText = computed(() => {
   if (sendingEmailCode.value) return '发送中…';
   return '获取验证码';
 });
+const smartGreetingOn = computed(() => authStore.user?.smartGreetingEnabled !== false);
+
+async function onSmartGreetingChange(e: any) {
+  if (!authStore.isLoggedIn) return;
+  const val = Boolean(e.detail?.value);
+  try {
+    const updated = await authApi.updateProfile({ smartGreetingEnabled: val });
+    authStore.user = updated;
+    uni.showToast({ title: val ? '已开启智能问候' : '已关闭智能问候', icon: 'none' });
+  } catch {
+    uni.showToast({ title: '设置失败', icon: 'none' });
+  }
+}
+
 const sheetTitle = computed(() => {
   if (activeForm.value === 'profile') return '编辑个人资料';
   if (activeForm.value === 'phone') return profile.value?.phone ? '更换手机号' : '绑定手机号';
@@ -214,6 +233,11 @@ function goBack() {
 
 async function loadProfile() {
   if (!ensureLoggedIn()) return;
+  try {
+    await authStore.loadProfile();
+  } catch {
+    /* ignore */
+  }
   const [accountProfile, membershipStatus] = await Promise.all([
     accountApi.profile(),
     membershipApi.getStatus().catch(() => null),
@@ -442,6 +466,7 @@ async function handleDeleteAccount() {
 }
 
 onMounted(loadProfile);
+onShow(loadProfile);
 
 onUnmounted(() => {
   if (phoneCountdownTimer) clearInterval(phoneCountdownTimer);
