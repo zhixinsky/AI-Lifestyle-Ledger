@@ -227,6 +227,8 @@ const currentGreetingPeriod = ref<GreetingPeriod>(getGreetingPeriod());
 const currentSubtitle = ref('');
 const remoteSubtitlePool = ref<string[] | null>(null);
 const remoteTitleOverride = ref<string | null>(null);
+/** 远程池/标题对应的时段；与当前时段不一致时必须忽略，否则会「中午好」配「早安」副文案 */
+const remoteGreetingPeriod = ref<GreetingPeriod | null>(null);
 let greetingTimer: ReturnType<typeof setInterval> | null = null;
 
 function subtitleStorageKey(period: GreetingPeriod) {
@@ -235,10 +237,11 @@ function subtitleStorageKey(period: GreetingPeriod) {
 
 function pickSubtitleAvoidRepeat(period: GreetingPeriod) {
   const localPool = GREETING_PERIODS[period].subtitles;
-  const pool =
-    remoteSubtitlePool.value && remoteSubtitlePool.value.length > 0
-      ? remoteSubtitlePool.value
-      : localPool;
+  const remoteOk =
+    remoteGreetingPeriod.value === period &&
+    remoteSubtitlePool.value &&
+    remoteSubtitlePool.value.length > 0;
+  const pool = remoteOk ? remoteSubtitlePool.value : localPool;
   if (!pool.length) return '';
   let last = '';
   try {
@@ -263,6 +266,7 @@ function scheduleFetchRemoteGreeting() {
   if (!authStore.isLoggedIn || authStore.user?.smartGreetingEnabled === false) {
     remoteSubtitlePool.value = null;
     remoteTitleOverride.value = null;
+    remoteGreetingPeriod.value = null;
     refreshGreeting(true);
     return;
   }
@@ -274,20 +278,24 @@ function scheduleFetchRemoteGreeting() {
       if (!res.enabled) {
         remoteSubtitlePool.value = null;
         remoteTitleOverride.value = null;
+        remoteGreetingPeriod.value = null;
         refreshGreeting(true);
         return;
       }
       if (res.subtitles?.length) {
         remoteSubtitlePool.value = res.subtitles;
         remoteTitleOverride.value = res.title || null;
+        remoteGreetingPeriod.value = period;
       } else {
         remoteSubtitlePool.value = null;
         remoteTitleOverride.value = null;
+        remoteGreetingPeriod.value = null;
       }
       refreshGreeting(true);
     } catch {
       remoteSubtitlePool.value = null;
       remoteTitleOverride.value = null;
+      remoteGreetingPeriod.value = null;
     }
   })();
 }
@@ -313,9 +321,15 @@ function refreshGreeting(force = false) {
   }
 }
 
-const timeHello = computed(
-  () => remoteTitleOverride.value || GREETING_PERIODS[currentGreetingPeriod.value].title,
-);
+const timeHello = computed(() => {
+  if (
+    remoteTitleOverride.value &&
+    remoteGreetingPeriod.value === currentGreetingPeriod.value
+  ) {
+    return remoteTitleOverride.value;
+  }
+  return GREETING_PERIODS[currentGreetingPeriod.value].title;
+});
 
 const greetingTitle = computed(() => {
   if (!authStore.isLoggedIn) return timeHello.value;
