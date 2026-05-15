@@ -62,7 +62,7 @@
     </view>
 
     <view class="section-title">可选生活空间</view>
-    <view class="optional-widget-grid">
+    <view class="widget-row optional-widget-row">
       <view
         v-for="meta in selectableSpaces"
         :key="meta.type"
@@ -170,6 +170,27 @@ function loadFeatureSettings() {
 
 async function loadSpaces() {
   spaces.value = await lifeSpaceApi.list().catch(() => []);
+  normalizeSelectionLimit();
+}
+
+function normalizeSelectionLimit() {
+  let count = 0;
+  for (const space of spaces.value) {
+    if (!space.isVisible || space.type === 'daily') continue;
+    if (count >= 4) {
+      space.isVisible = false;
+      continue;
+    }
+    count += 1;
+  }
+  for (const card of defaultCards.value) {
+    if (!card.visible) continue;
+    if (count >= 4) {
+      card.visible = false;
+      continue;
+    }
+    count += 1;
+  }
 }
 
 function toggleDefault(index: number) {
@@ -207,6 +228,7 @@ async function toggleLifeSpace(type: BookType) {
 }
 
 async function saveSettings() {
+  normalizeSelectionLimit();
   spaces.value = await lifeSpaceApi.updateSettings(spaces.value.map((space, index) => ({
     id: space.id,
     sort: index,
@@ -247,13 +269,11 @@ onMounted(() => {
   gap: 12rpx;
   margin: 0 0 6rpx;
 }
-.optional-widget-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14rpx;
+.optional-widget-row {
+  flex-wrap: wrap;
 }
 .widget-card {
-  flex: 1;
+  flex: 0 0 calc((100% - 36rpx) / 4);
   position: relative;
   height: 120rpx;
   border-radius: 20rpx;
