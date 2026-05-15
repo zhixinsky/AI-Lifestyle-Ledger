@@ -36,6 +36,7 @@ model User {
   membership       Membership?
   orders           Order[]
   bookMembers      BookMember[]
+  lifeSpaces       LifeSpace[]
   userBadges       UserBadge[]
   userChallenges   UserChallenge[]
   memories         UserMemory[]
@@ -82,6 +83,7 @@ model Transaction {
   userId     String
   categoryId String
   bookId     String?
+  lifeSpaceId String?
   type       TransactionType
   amount     Decimal         @db.Decimal(12, 2)
   occurredAt DateTime
@@ -92,11 +94,13 @@ model Transaction {
   user       User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   category   Category        @relation(fields: [categoryId], references: [id])
   book       SharedBook?     @relation(fields: [bookId], references: [id])
+  lifeSpace  LifeSpace?      @relation(fields: [lifeSpaceId], references: [id])
   tags       TransactionTag[]
 
   @@index([userId, occurredAt])
   @@index([categoryId])
   @@index([bookId])
+  @@index([lifeSpaceId])
 }
 
 model Tag {
@@ -323,7 +327,12 @@ model Order {
 // ===== 共享账本 =====
 
 enum BookType {
+  daily
+  love
   family
+  work
+  travel
+  campus
   couple
 }
 
@@ -343,6 +352,26 @@ model SharedBook {
   updatedAt    DateTime      @updatedAt
   members      BookMember[]
   transactions Transaction[]
+}
+
+model LifeSpace {
+  id          String        @id @default(cuid())
+  userId      String
+  type        BookType      @default(daily)
+  name        String
+  icon        String
+  cover       String?
+  color       String
+  description String
+  sort        Int           @default(0)
+  isVisible   Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@unique([userId, type])
+  @@index([userId, sort])
 }
 
 model BookMember {

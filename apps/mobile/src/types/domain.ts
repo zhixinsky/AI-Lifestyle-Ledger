@@ -221,8 +221,23 @@ export interface Order {
 
 // ===== 共享账本 =====
 
-export type BookType = 'family' | 'couple';
+export type BookType = 'daily' | 'love' | 'family' | 'work' | 'travel' | 'campus' | 'couple';
 export type BookRole = 'owner' | 'admin' | 'member';
+
+export interface LifeSpace {
+  id: string;
+  userId: string;
+  type: BookType;
+  name: string;
+  icon: string;
+  cover?: string;
+  color: string;
+  description: string;
+  aiIntro: string;
+  sort: number;
+  isVisible: boolean;
+  createdAt: string;
+}
 
 export interface SharedBook {
   id: string;

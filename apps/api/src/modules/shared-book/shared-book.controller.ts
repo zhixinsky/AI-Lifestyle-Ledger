@@ -16,8 +16,13 @@ export class SharedBookController {
     @CurrentUser() user: AuthUser,
     @Body() body: { name: string; type?: string },
   ) {
-    const type = body.type === 'couple' ? BookType.couple : BookType.family;
+    const type = this.parseType(body.type);
     return this.sharedBookService.create(user.sub, body.name, type);
+  }
+
+  private parseType(type?: string) {
+    if (type && Object.values(BookType).includes(type as BookType)) return type as BookType;
+    return BookType.family;
   }
 
   @Post('join')

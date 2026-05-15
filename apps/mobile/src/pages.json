@@ -107,6 +107,13 @@
       }
     },
     {
+      "path": "pages/card-settings/index",
+      "style": {
+        "navigationBarTitleText": "首页卡片管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/shared-book/index",
       "style": {
         "navigationBarTitleText": "生活空间",

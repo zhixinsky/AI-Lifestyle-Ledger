@@ -38,76 +38,22 @@
       </view>
     </MoonaCard>
 
-    <!-- 功能入口 -->
+    <!-- AI 生活卡片 -->
     <view class="widget-row">
-      <!-- 您的账单 -->
-      <view class="widget-card widget-bills" @tap="goBills">
+      <view
+        v-for="card in overviewCards"
+        :key="card.key"
+        :class="['widget-card', card.className]"
+        @tap="card.onTap"
+      >
         <view class="widget-glass" />
         <view class="widget-content">
           <view class="widget-text">
-            <text class="widget-title">您的账单</text>
-            <text class="widget-sub">收支明细查询</text>
+            <text class="widget-title">{{ card.title }}</text>
+            <text class="widget-sub">{{ card.sub }}</text>
           </view>
-          <view class="widget-icon-area widget-icon-bills">
-            <view class="wbl-receipt" />
-            <view class="wbl-line wbl-line-1" />
-            <view class="wbl-line wbl-line-2" />
-            <view class="wbl-line wbl-line-3" />
-          </view>
-        </view>
-        <view class="widget-shimmer" />
-      </view>
-
-      <!-- AI 分析 -->
-      <view class="widget-card widget-ai" @tap="goAiChat">
-        <view class="widget-glass" />
-        <view class="widget-content">
-          <view class="widget-text">
-            <text class="widget-title">AI分析</text>
-            <text class="widget-sub">消费趋势洞察</text>
-          </view>
-          <view class="widget-icon-area widget-icon-ai">
-            <view class="wi-orb" />
-            <view class="wi-ring" />
-            <view class="wi-bar wi-bar-1" />
-            <view class="wi-bar wi-bar-2" />
-            <view class="wi-bar wi-bar-3" />
-          </view>
-        </view>
-        <view class="widget-shimmer" />
-      </view>
-
-      <!-- 财富成长 -->
-      <view class="widget-card widget-wealth" @tap="goSavingGoals">
-        <view class="widget-glass" />
-        <view class="widget-content">
-          <view class="widget-text">
-            <text class="widget-title">财富成长</text>
-            <text class="widget-sub">资产持续增长</text>
-          </view>
-          <view class="widget-icon-area widget-icon-wealth">
-            <view class="ww-coin" />
-            <view class="ww-arrow" />
-            <view class="ww-curve" />
-          </view>
-        </view>
-        <view class="widget-shimmer" />
-      </view>
-
-      <!-- 预算管理 -->
-      <view class="widget-card widget-budget" @tap="goBudget">
-        <view class="widget-glass" />
-        <view class="widget-content">
-          <view class="widget-text">
-            <text class="widget-title">预算管理</text>
-            <text class="widget-sub">合理规划支出</text>
-          </view>
-          <view class="widget-icon-area widget-icon-budget">
-            <view class="wb-ring-track" />
-            <view class="wb-ring-fill" />
-            <view class="wb-dot" />
-            <view class="wb-bar wb-bar-1" />
-            <view class="wb-bar wb-bar-2" />
+          <view class="life-card-icon" :style="{ background: card.iconBg }">
+            <text>{{ card.icon }}</text>
           </view>
         </view>
         <view class="widget-shimmer" />
@@ -267,9 +213,10 @@ import { useAiStore } from '@/stores/ai';
 import { useAuthStore } from '@/stores/auth';
 import { useMoney } from '@/composables/useMoney';
 import { budgetApi } from '@/api/budgets';
+import { lifeSpaceApi } from '@/api/life-spaces';
 import { wealthApi } from '@/api/wealth';
 import { growthApi } from '@/api/growth';
-import type { BudgetOverview, WealthOverview, WealthGoal, Badge } from '@/types/domain';
+import type { BudgetOverview, WealthOverview, WealthGoal, Badge, LifeSpace } from '@/types/domain';
 
 const finance = useFinanceStore();
 const aiStore = useAiStore();
@@ -280,6 +227,12 @@ const budgetOverview = ref<BudgetOverview | null>(null);
 const wealthOverview = ref<WealthOverview | null>(null);
 const topGoal = ref<WealthGoal | null>(null);
 const badges = ref<Badge[]>([]);
+const lifeSpaces = ref<LifeSpace[]>([]);
+const featureCards = ref([
+  { key: 'ai', title: 'AI分析', sub: '生活趋势洞察', icon: 'AI', visible: true, className: 'widget-ai', onTap: goAiChat },
+  { key: 'wealth', title: '财富成长', sub: '目标与存钱路径', icon: '财', visible: true, className: 'widget-wealth', onTap: goSavingGoals },
+  { key: 'budget', title: '预算提醒', sub: '提前看见节奏', icon: '预', visible: true, className: 'widget-budget', onTap: goBudget },
+]);
 const badgeEarnedCount = computed(() => badges.value.filter((b) => b.earned).length);
 const badgeTotal = computed(() => badges.value.length);
 
@@ -345,6 +298,25 @@ const bars = computed(() => {
     amount: item.amount,
   }));
 });
+const overviewCards = computed(() => [
+  ...lifeSpaces.value
+    .filter((space) => space.isVisible)
+    .map((space) => ({
+      key: `space-${space.id}`,
+      title: space.name,
+      sub: space.description,
+      icon: space.icon,
+      iconBg: `linear-gradient(145deg, ${space.color}, rgba(255,255,255,0.72))`,
+      className: 'widget-life',
+      onTap: () => uni.navigateTo({ url: '/pages/shared-book/index' }),
+    })),
+  ...featureCards.value
+    .filter((card) => card.visible)
+    .map((card) => ({
+      ...card,
+      iconBg: 'linear-gradient(145deg, #4f8174, #9ee3d0)',
+    })),
+]);
 
 function barWidth(bar: { value: number; amount: number }) {
   const maxAmount = bars.value.length ? bars.value[0].amount : 1;
@@ -380,6 +352,7 @@ function goGrowth() {
 }
 
 function loadData() {
+  loadOverviewCards();
   Promise.all([
     authStore.loadProfile(),
     finance.loadCategories(),
@@ -395,6 +368,19 @@ function loadData() {
   ]).catch(() => {});
 }
 
+function loadOverviewCards() {
+  const saved = uni.getStorageSync('overview_feature_cards') as typeof featureCards.value | '';
+  if (Array.isArray(saved) && saved.length) {
+    featureCards.value = saved.map((item) => ({
+      ...item,
+      sub: (item as any).sub || (item as any).desc || '',
+      className: item.key === 'budget' ? 'widget-budget' : item.key === 'wealth' ? 'widget-wealth' : 'widget-ai',
+      onTap: item.key === 'budget' ? goBudget : item.key === 'wealth' ? goSavingGoals : goAiChat,
+    }));
+  }
+  lifeSpaceApi.list().then((items) => { lifeSpaces.value = items; }).catch(() => {});
+}
+
 function onLoginSuccessReload() {
   if (authStore.isLoggedIn) loadData();
 }
@@ -403,9 +389,14 @@ function onTransactionsUpdatedReload() {
   if (authStore.isLoggedIn) loadData();
 }
 
+function onCardSettingsUpdated() {
+  if (authStore.isLoggedIn) loadOverviewCards();
+}
+
 onMounted(() => {
   uni.$on('login-success', onLoginSuccessReload);
   uni.$on('transactions-updated', onTransactionsUpdatedReload);
+  uni.$on('overview-card-settings-updated', onCardSettingsUpdated);
   if (authStore.isLoggedIn) {
     loadData();
   }
@@ -414,6 +405,7 @@ onMounted(() => {
 onUnmounted(() => {
   uni.$off('login-success', onLoginSuccessReload);
   uni.$off('transactions-updated', onTransactionsUpdatedReload);
+  uni.$off('overview-card-settings-updated', onCardSettingsUpdated);
 });
 </script>
 
@@ -572,6 +564,23 @@ onUnmounted(() => {
   overflow: hidden;
   box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.06);
   transition: transform 0.2s ease;
+}
+.widget-life {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.76), rgba(232,250,245,0.56)),
+    radial-gradient(circle at 85% 14%, rgba(116,214,188,0.28), transparent 46%);
+}
+.life-card-icon {
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 850;
+  box-shadow: 0 18rpx 34rpx rgba(67, 98, 91, 0.12);
 }
 
 .widget-card:active {

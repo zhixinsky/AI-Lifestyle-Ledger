@@ -44,8 +44,8 @@ export class SharedBookService {
     const already = book.members.find((m) => m.userId === userId);
     if (already) throw new BadRequestException('你已经在这个账本中了');
 
-    if (book.type === BookType.couple && book.members.length >= 2) {
-      throw new BadRequestException('情侣账本最多只能有2人');
+    if ((book.type === BookType.couple || book.type === BookType.love) && book.members.length >= 2) {
+      throw new BadRequestException('恋爱空间最多只能有2人');
     }
 
     await this.prisma.bookMember.create({

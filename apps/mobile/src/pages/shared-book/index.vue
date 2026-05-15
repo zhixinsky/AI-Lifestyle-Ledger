@@ -9,6 +9,12 @@
       <view class="nav-placeholder" />
     </view>
 
+    <view class="space-hero">
+      <text class="hero-kicker">AI Life Spaces</text>
+      <text class="hero-title">经营不同的人生空间</text>
+      <text class="hero-sub">记录生活、时刻和记忆，让 AI 看见每个场景里的节奏。</text>
+    </view>
+
     <!-- 创建/加入 -->
     <view class="action-row">
       <button class="action-btn primary" @tap="showCreateSheet = true">创建空间</button>
@@ -20,7 +26,7 @@
       <view
         v-for="book in books"
         :key="book.id"
-        :class="['book-card', book.type === 'couple' ? 'book-card--couple' : 'book-card--family']"
+        :class="['book-card', `book-card--${spaceMeta(book.type).theme}`]"
         @tap="goDetail(book.id)"
       >
         <view class="book-art" aria-hidden="true">
@@ -31,12 +37,12 @@
         </view>
         <view class="book-content">
           <view class="book-header">
-            <view :class="['book-type-icon', book.type === 'couple' ? 'life' : 'family']">
-              <text>{{ book.type === 'couple' ? 'AI' : '家' }}</text>
+            <view class="book-type-icon" :style="{ background: iconGradient(book.type) }">
+              <text>{{ spaceMeta(book.type).icon }}</text>
             </view>
             <view class="book-info">
               <text class="book-name">{{ book.name }}</text>
-              <text class="book-meta">{{ book.type === 'couple' ? 'AI双人生活空间' : '家庭生活空间' }} · {{ book.memberCount }}人</text>
+              <text class="book-meta">{{ spaceMeta(book.type).description }} · {{ book.memberCount }}人</text>
             </view>
             <text class="book-role">{{ roleText(book.myRole) }}</text>
           </view>
@@ -50,22 +56,29 @@
     <view v-else class="empty">
       <text class="empty-icon">AI</text>
       <text class="empty-text">还没有生活空间</text>
-      <text class="empty-sub">为两个人创建一个能记录生活、观察节奏的空间</text>
+      <text class="empty-sub">创建一个场景，让生活记录变成可回看的记忆</text>
     </view>
 
     <!-- 创建弹窗 -->
     <view v-if="showCreateSheet" class="sheet-mask" @tap="showCreateSheet = false">
       <view class="sheet" @tap.stop>
         <text class="sheet-title">创建生活空间</text>
-        <input class="sheet-input" v-model="createName" placeholder="空间名称，例如：我们的生活" />
-        <view class="type-row">
-          <view :class="['type-option', { active: createType === 'family' }]" @tap="createType = 'family'">
-            <text class="type-icon">家</text>
-            <text class="type-label">家庭生活空间</text>
-          </view>
-          <view :class="['type-option', { active: createType === 'couple' }]" @tap="createType = 'couple'">
-            <text class="type-icon">AI</text>
-            <text class="type-label">双人生活空间</text>
+        <input class="sheet-input" v-model="createName" :placeholder="`空间名称，例如：${spaceMeta(createType).name}`" />
+        <view class="type-grid">
+          <view
+            v-for="item in creatableLifeSpaceMetas"
+            :key="item.type"
+            :class="['type-option', `type-option--${item.theme}`, { active: createType === item.type }]"
+            @tap="selectCreateType(item.type)"
+          >
+            <view class="type-icon" :style="{ background: iconGradient(item.type) }">
+              <text>{{ item.icon }}</text>
+            </view>
+            <view class="type-copy">
+              <text class="type-label">{{ item.name }}</text>
+              <text class="type-desc">{{ item.description }}</text>
+              <text class="type-ai">{{ item.aiIntro }}</text>
+            </view>
           </view>
         </view>
         <button class="sheet-btn" @tap="doCreate">创建</button>
@@ -89,14 +102,16 @@
 import { ref, onMounted } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
+import { lifeSpaceApi } from '@/api/life-spaces';
 import { sharedBookApi } from '@/api/shared-book';
-import type { SharedBook } from '@/types/domain';
+import type { BookType, SharedBook } from '@/types/domain';
+import { creatableLifeSpaceMetas, getLifeSpaceMeta } from '@/utils/life-space';
 
 const books = ref<SharedBook[]>([]);
 const showCreateSheet = ref(false);
 const showJoinSheet = ref(false);
 const createName = ref('');
-const createType = ref<'family' | 'couple'>('family');
+const createType = ref<BookType>('love');
 const joinCode = ref('');
 
 function goBack() {
@@ -109,6 +124,15 @@ function goDetail(id: string) { uni.navigateTo({ url: `/pages/shared-book/detail
 function roleText(role: string) {
   return role === 'owner' ? '创建者' : role === 'admin' ? '管理员' : '成员';
 }
+function spaceMeta(type: BookType) { return getLifeSpaceMeta(type); }
+function iconGradient(type: BookType) {
+  const color = spaceMeta(type).color;
+  return `linear-gradient(145deg, ${color}, rgba(255,255,255,0.76))`;
+}
+function selectCreateType(type: BookType) {
+  createType.value = type;
+  if (!createName.value.trim()) createName.value = spaceMeta(type).name;
+}
 
 function copyCode(code: string) {
   uni.setClipboardData({ data: code });
@@ -119,9 +143,10 @@ async function loadBooks() {
 }
 
 async function doCreate() {
-  if (!createName.value.trim()) return uni.showToast({ title: '请输入名称', icon: 'none' });
+  const name = createName.value.trim() || spaceMeta(createType.value).name;
   try {
-    await sharedBookApi.create({ name: createName.value.trim(), type: createType.value });
+    await lifeSpaceApi.create(createType.value);
+    await sharedBookApi.create({ name, type: createType.value });
     showCreateSheet.value = false;
     createName.value = '';
     uni.showToast({ title: '创建成功', icon: 'success' });
@@ -150,6 +175,20 @@ onMounted(loadBooks);
 .back-icon { position: relative; z-index: 1; width: 36rpx; height: 36rpx; margin-left: -4rpx; }
 .nav-title { font-size: 34rpx; font-weight: 700; color: #1e1e1e; }
 .nav-placeholder { width: 60rpx; }
+
+.space-hero {
+  margin-bottom: 24rpx;
+  padding: 34rpx 32rpx;
+  border-radius: 36rpx;
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.88), rgba(229,249,244,0.68)),
+    radial-gradient(circle at 86% 20%, rgba(131,215,196,0.42), transparent 42%);
+  border: 1rpx solid rgba(255,255,255,0.72);
+  box-shadow: 0 24rpx 70rpx rgba(79, 129, 116, 0.12);
+}
+.hero-kicker { display: block; font-size: 21rpx; font-weight: 780; color: #6b9188; }
+.hero-title { display: block; margin-top: 10rpx; font-size: 42rpx; line-height: 1.25; font-weight: 850; color: #20352f; }
+.hero-sub { display: block; margin-top: 12rpx; max-width: 560rpx; font-size: 25rpx; line-height: 1.55; color: #64766f; }
 
 .action-row { display: flex; gap: 16rpx; margin-bottom: 16rpx; }
 .action-btn {
@@ -187,6 +226,37 @@ onMounted(loadBooks);
     linear-gradient(145deg, rgba(255,255,255,0.9), rgba(239,248,230,0.82)),
     linear-gradient(28deg, rgba(209,228,159,0.48), rgba(255,255,255,0) 58%);
   box-shadow: 0 24rpx 62rpx rgba(124, 151, 104, 0.13);
+}
+.book-card--mint,
+.book-card--cyan {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(231,249,245,0.78)),
+    linear-gradient(28deg, rgba(131,215,196,0.42), rgba(255,255,255,0) 58%);
+  box-shadow: 0 24rpx 62rpx rgba(76, 151, 134, 0.13);
+}
+.book-card--rose {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,236,238,0.8)),
+    linear-gradient(28deg, rgba(255,210,197,0.52), rgba(255,255,255,0) 58%);
+  box-shadow: 0 24rpx 62rpx rgba(201, 126, 133, 0.14);
+}
+.book-card--olive {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(239,248,230,0.82)),
+    linear-gradient(28deg, rgba(209,228,159,0.48), rgba(255,255,255,0) 58%);
+  box-shadow: 0 24rpx 62rpx rgba(124, 151, 104, 0.13);
+}
+.book-card--blue {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(235,240,255,0.82)),
+    linear-gradient(28deg, rgba(141,167,242,0.42), rgba(255,255,255,0) 58%);
+  box-shadow: 0 24rpx 62rpx rgba(91, 112, 180, 0.13);
+}
+.book-card--amber {
+  background:
+    linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,247,225,0.82)),
+    linear-gradient(28deg, rgba(217,183,110,0.42), rgba(255,255,255,0) 58%);
+  box-shadow: 0 24rpx 62rpx rgba(163, 127, 57, 0.12);
 }
 .book-content {
   position: relative;
@@ -280,17 +350,21 @@ onMounted(loadBooks);
 .sheet-title { font-size: 34rpx; font-weight: 700; color: #1e1e1e; text-align: center; }
 .sheet-input { height: 88rpx; border-radius: 16rpx; background: #f7f8fa; padding: 0 24rpx; font-size: 28rpx; }
 .type-row { display: flex; gap: 16rpx; }
+.type-grid { display: flex; flex-direction: column; gap: 16rpx; max-height: 640rpx; overflow: auto; }
 .type-option {
-  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 8rpx; padding: 24rpx; border-radius: 16rpx;
-  background: #f7f8fa; border: 2rpx solid transparent;
+  display: flex; align-items: center; gap: 18rpx; padding: 22rpx; border-radius: 26rpx;
+  background: rgba(247,248,250,0.86); border: 2rpx solid transparent;
 }
-.type-option.active { border-color: #70ad9e; background: rgba(112,173,158,0.08); }
+.type-option.active { border-color: rgba(112,173,158,0.5); background: rgba(240,250,247,0.92); box-shadow: 0 16rpx 36rpx rgba(79,129,116,0.1); }
 .type-icon {
-  width: 54rpx; height: 54rpx; border-radius: 18rpx;
+  width: 68rpx; height: 68rpx; border-radius: 24rpx; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
-  background: #edf5f2; color: #4f8174; font-size: 22rpx; font-weight: 850;
+  color: #fff; font-size: 24rpx; font-weight: 850;
 }
-.type-label { font-size: 24rpx; color: #1e1e1e; font-weight: 600; }
+.type-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 5rpx; }
+.type-label { font-size: 27rpx; color: #1e1e1e; font-weight: 760; }
+.type-desc { font-size: 22rpx; color: #667770; }
+.type-ai { font-size: 21rpx; color: #8a9692; line-height: 1.35; }
 .sheet-btn {
   height: 88rpx; line-height: 88rpx; border-radius: 44rpx;
   color: #1f5147; font-size: 32rpx; font-weight: 700;

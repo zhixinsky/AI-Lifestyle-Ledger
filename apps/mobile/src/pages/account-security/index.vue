@@ -62,6 +62,10 @@
 
     <view class="section-title">操作</view>
     <view class="ios-card">
+      <view class="row" @tap="goCardSettings">
+        <text class="action-text">首页卡片管理</text>
+        <text class="arrow">›</text>
+      </view>
       <view class="row" @tap="openPhoneForm">
         <text class="action-text">{{ profile?.phone ? '更换手机号' : '绑定手机号' }}</text>
         <text class="arrow">›</text>
@@ -202,6 +206,10 @@ async function loadProfile() {
 
 function goMembership() {
   uni.navigateTo({ url: '/pages/membership/index' });
+}
+
+function goCardSettings() {
+  uni.navigateTo({ url: '/pages/card-settings/index' });
 }
 
 function openProfileForm() {

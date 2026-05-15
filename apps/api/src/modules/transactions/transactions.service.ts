@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import * as dayjs from 'dayjs';
 import { CategoriesService } from '../categories/categories.service';
 import { GrowthService } from '../growth/growth.service';
+import { LifeSpacesService } from '../life-spaces/life-spaces.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { WealthAiService } from '../wealth/wealth-ai.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -14,6 +15,7 @@ export class TransactionsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly categoriesService: CategoriesService,
+    private readonly lifeSpacesService: LifeSpacesService,
     @Optional() @Inject(WealthAiService) private readonly wealthAi?: WealthAiService,
     @Optional() @Inject(GrowthService) private readonly growthService?: GrowthService,
   ) {}
@@ -47,10 +49,12 @@ export class TransactionsService {
 
   async create(userId: string, dto: CreateTransactionDto) {
     await this.categoriesService.ensureDefaults();
+    const defaultSpace = dto.lifeSpaceId ? null : await this.lifeSpacesService.ensureDefault(userId);
     const row = await this.prisma.transaction.create({
       data: {
         userId,
         categoryId: dto.categoryId,
+        lifeSpaceId: dto.lifeSpaceId || defaultSpace?.id,
         type: dto.type,
         amount: dto.amount,
         occurredAt: new Date(dto.occurredAt),

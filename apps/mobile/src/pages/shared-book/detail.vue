@@ -134,6 +134,7 @@ import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import { sharedBookApi } from '@/api/shared-book';
 import type { AAStats, BookMember, SharedBook, Transaction } from '@/types/domain';
+import { getLifeSpaceMeta } from '@/utils/life-space';
 
 type SharedTransaction = Transaction & {
   user?: { id: string; nickname: string; avatarUrl?: string };
@@ -144,19 +145,18 @@ const aaStats = ref<AAStats | null>(null);
 const transactions = ref<SharedTransaction[]>([]);
 const bookId = ref('');
 
-const isCoupleSpace = computed(() => book.value?.type === 'couple');
-const spaceThemeClass = computed(() => (isCoupleSpace.value ? 'space-page--couple' : 'space-page--family'));
-const spaceNavTitle = computed(() => (isCoupleSpace.value ? '双人生活空间' : '家庭生活空间'));
-const defaultSpaceName = computed(() => (isCoupleSpace.value ? '我们的生活空间' : '家的生活空间'));
-const observeLabel = computed(() => (isCoupleSpace.value ? 'AI 双人观察' : 'AI 家庭观察'));
-const timelineTitle = computed(() => (isCoupleSpace.value ? '双人时间线' : '家庭时间线'));
+const spaceMeta = computed(() => getLifeSpaceMeta(book.value?.type));
+const isCoupleSpace = computed(() => book.value?.type === 'couple' || book.value?.type === 'love');
+const spaceThemeClass = computed(() => `space-page--${spaceMeta.value.theme}`);
+const spaceNavTitle = computed(() => spaceMeta.value.name);
+const defaultSpaceName = computed(() => spaceMeta.value.name);
+const observeLabel = computed(() => `AI ${spaceMeta.value.name}观察`);
+const timelineTitle = computed(() => `${spaceMeta.value.name}时间线`);
 const emptyTimelineText = computed(() =>
-  isCoupleSpace.value
-    ? '一次晚饭、一次打车、一笔共同收入，都会成为这里的时间线。'
-    : '一次采购、一顿家宴、一笔家庭支出，都会成为这里的时间线。'
+  `${spaceMeta.value.description}。每一次记录都会成为这里的生活片段。`
 );
-const badgeTitle = computed(() => (isCoupleSpace.value ? '情侣成长徽章' : '家庭成长徽章'));
-const badgeSubTitle = computed(() => (isCoupleSpace.value ? '慢慢攒出来的默契' : '一起经营出来的秩序感'));
+const badgeTitle = computed(() => `${spaceMeta.value.name}徽章`);
+const badgeSubTitle = computed(() => '慢慢经营出来的生活感');
 const coupleMembers = computed<BookMember[]>(() => book.value?.members || []);
 const totalExpense = computed(() =>
   transactions.value.filter((tx) => tx.type === 'expense').reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
@@ -188,19 +188,15 @@ const topCategoryName = computed(() => {
 const spaceObservation = computed(() => {
   if (!transactions.value.length) {
     return {
-      title: isCoupleSpace.value ? '这里会慢慢长出你们的生活节奏' : '这里会慢慢沉淀家的生活秩序',
-      text: isCoupleSpace.value
-        ? '开始记录共同晚餐、通勤、旅行和收入后，AI 会把消费背后的生活片段整理成双人观察。'
-        : '开始记录采购、孩子、住房和日常开销后，AI 会把家庭生活的节奏整理成可行动的观察。',
+      title: `${spaceMeta.value.name}会慢慢长出自己的节奏`,
+      text: spaceMeta.value.aiIntro,
     };
   }
   const top = topCategoryName.value;
   const perPerson = aaStats.value?.perPerson || totalExpense.value / Math.max(1, coupleMembers.value.length || 2);
   return {
     title: `${top} 是最近最明显的生活主题`,
-    text: isCoupleSpace.value
-      ? `这段时间你们共同记录了 ${transactions.value.length} 个片段，人均共同支出约 ¥${formatAmount(perPerson)}。米粒会继续观察哪些钱花得值得，哪些节奏可以一起调轻一点。`
-      : `这段时间家里共同记录了 ${transactions.value.length} 个片段，人均共同支出约 ¥${formatAmount(perPerson)}。米粒会继续观察家庭支出的重心和可以提前规划的事项。`,
+    text: `这段时间「${spaceMeta.value.name}」记录了 ${transactions.value.length} 个片段，人均支出约 ¥${formatAmount(perPerson)}。米粒会继续观察哪些钱花得值得，哪些节奏可以调轻一点。`,
   };
 });
 
@@ -219,7 +215,7 @@ const savingGoal = computed(() => {
   const target = Math.max(3000, Math.ceil((totalExpense.value + 1) / 1000) * 1000);
   const percent = Math.min(100, Math.round((saved / target) * 100));
   return {
-    title: isCoupleSpace.value ? '共同生活备用金' : '家庭安心备用金',
+    title: `${spaceMeta.value.name}备用金`,
     desc: saved > 0
       ? `已沉淀 ¥${formatAmount(saved)}，继续把确定的小钱留给未来。`
       : '记录共同收入后，米粒会自动追踪离目标还有多远。',
@@ -239,7 +235,7 @@ const monthlyRhythm = computed(() => {
 });
 
 const badges = computed(() => [
-  { icon: '01', name: isCoupleSpace.value ? '开始同频' : '开始共管', desc: isCoupleSpace.value ? '创建双人生活空间' : '创建家庭生活空间', earned: Boolean(book.value) },
+  { icon: '01', name: '开始经营', desc: `创建${spaceMeta.value.name}`, earned: Boolean(book.value) },
   { icon: '07', name: '七天生活感', desc: '一起记录满 7 天', earned: daysTogether.value >= 7 },
   { icon: '¥', name: '共同目标', desc: '开始追踪备用金', earned: totalIncome.value > 0 || totalExpense.value > 0 },
   { icon: 'AI', name: '米粒观察员', desc: '拥有可分析的生活片段', earned: transactions.value.length >= 5 },
@@ -502,4 +498,44 @@ onMounted(() => {
 }
 .space-page--family .progress-fill { background: linear-gradient(90deg, #eff7c9, #cde596); }
 .space-page--family .badge-icon { background: #f1f7e6; color: #617d43; }
+
+.space-page--mint .life-hero,
+.space-page--cyan .life-hero {
+  background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(231,249,245,0.84));
+  box-shadow: 0 24rpx 70rpx rgba(76, 151, 134, 0.13);
+}
+.space-page--mint .duo-avatar,
+.space-page--cyan .duo-avatar { background: linear-gradient(145deg, #4f9a8a, #9ae0ce); }
+.space-page--mint .time-dot,
+.space-page--cyan .time-dot { background: #75cdb8; box-shadow: 0 0 0 8rpx rgba(117,205,184,0.14); }
+
+.space-page--rose .life-hero { background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(255,235,237,0.84)); box-shadow: 0 24rpx 70rpx rgba(201,126,133,0.14); }
+.space-page--rose .duo-avatar { background: linear-gradient(145deg, #a95f6f, #efb4bc); }
+.space-page--rose .invite-pill { color: #9d6570; background: rgba(255,250,250,0.72); }
+.space-page--rose .eyebrow { color: #a7777d; }
+.space-page--rose .time-dot { background: #d98d99; box-shadow: 0 0 0 8rpx rgba(217,141,153,0.14); }
+.space-page--rose .saving-panel { background: linear-gradient(145deg, rgba(139,78,90,0.95), rgba(209,139,148,0.9)); }
+.space-page--rose .progress-fill { background: linear-gradient(90deg, #ffe0df, #ffd2bc); }
+.space-page--rose .badge-icon { background: #fff0f1; color: #a95f6f; }
+
+.space-page--olive .life-hero { background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(239,248,230,0.84)); box-shadow: 0 24rpx 70rpx rgba(124,151,104,0.13); }
+.space-page--olive .duo-avatar { background: linear-gradient(145deg, #617d43, #b8cd85); }
+.space-page--olive .time-dot { background: #9cb775; box-shadow: 0 0 0 8rpx rgba(156,183,117,0.14); }
+.space-page--olive .saving-panel { background: linear-gradient(145deg, rgba(83,104,55,0.95), rgba(141,160,93,0.9)); }
+.space-page--olive .progress-fill { background: linear-gradient(90deg, #eff7c9, #cde596); }
+.space-page--olive .badge-icon { background: #f1f7e6; color: #617d43; }
+
+.space-page--blue .life-hero { background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(235,240,255,0.84)); box-shadow: 0 24rpx 70rpx rgba(91,112,180,0.13); }
+.space-page--blue .duo-avatar { background: linear-gradient(145deg, #5d75c8, #b8c7ff); }
+.space-page--blue .time-dot { background: #8da7f2; box-shadow: 0 0 0 8rpx rgba(141,167,242,0.14); }
+.space-page--blue .saving-panel { background: linear-gradient(145deg, rgba(70,83,139,0.95), rgba(119,139,206,0.9)); }
+.space-page--blue .progress-fill { background: linear-gradient(90deg, #dfe6ff, #b9c7ff); }
+.space-page--blue .badge-icon { background: #eef2ff; color: #5d75c8; }
+
+.space-page--amber .life-hero { background: linear-gradient(145deg, rgba(255,255,255,0.94), rgba(255,247,225,0.84)); box-shadow: 0 24rpx 70rpx rgba(163,127,57,0.12); }
+.space-page--amber .duo-avatar { background: linear-gradient(145deg, #a98032, #e7c879); }
+.space-page--amber .time-dot { background: #d9b76e; box-shadow: 0 0 0 8rpx rgba(217,183,110,0.14); }
+.space-page--amber .saving-panel { background: linear-gradient(145deg, rgba(126,94,37,0.95), rgba(194,154,78,0.9)); }
+.space-page--amber .progress-fill { background: linear-gradient(90deg, #fff0c7, #e7c879); }
+.space-page--amber .badge-icon { background: #fff7e4; color: #a98032; }
 </style>

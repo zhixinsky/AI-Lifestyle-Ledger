@@ -1,8 +1,8 @@
 import { request } from '@/utils/request';
-import type { SharedBook, AAStats, Transaction } from '@/types/domain';
+import type { SharedBook, AAStats, Transaction, BookType } from '@/types/domain';
 
 export const sharedBookApi = {
-  create(data: { name: string; type?: string }) {
+  create(data: { name: string; type?: BookType }) {
     return request<SharedBook>('/shared-book', { method: 'POST', data });
   },
 

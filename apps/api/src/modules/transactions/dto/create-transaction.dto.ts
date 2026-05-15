@@ -26,5 +26,9 @@ export class CreateTransactionDto {
 
   @IsOptional()
   @IsString()
+  lifeSpaceId?: string;
+
+  @IsOptional()
+  @IsString()
   voucherUrl?: string;
 }
