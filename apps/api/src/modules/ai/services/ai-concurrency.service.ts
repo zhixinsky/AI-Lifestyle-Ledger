@@ -28,8 +28,9 @@ export class AiConcurrencyService {
     const controller = new AbortController();
     let timedOut = false;
 
+    let timeoutHandle: NodeJS.Timeout | undefined;
     const timeout = new Promise<AiRunResult<T>>((resolve) => {
-      setTimeout(() => {
+      timeoutHandle = setTimeout(() => {
         timedOut = true;
         controller.abort();
         resolve({
@@ -53,6 +54,7 @@ export class AiConcurrencyService {
       }
       throw err;
     } finally {
+      if (timeoutHandle) clearTimeout(timeoutHandle);
       this.currentAiRequests = Math.max(0, this.currentAiRequests - 1);
     }
   }

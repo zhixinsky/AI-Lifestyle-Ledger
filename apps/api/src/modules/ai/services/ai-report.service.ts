@@ -115,7 +115,7 @@ export class AiReportService {
 
     const prompt = this.prompts.getInsightPrompt();
     const userData = this.formatTransactionsForAi(transactions);
-    const result = await this.aiChat.complete([
+    const aiResult = await this.aiChat.completeWithMeta([
       { role: 'system', content: prompt },
       {
         role: 'user',
@@ -126,8 +126,9 @@ export class AiReportService {
         ].filter(Boolean).join('\n\n'),
       },
     ]);
+    const result = aiResult.content;
 
-    if (!result) {
+    if (!result || aiResult.busy || aiResult.timeout) {
       return this.fallbackInsight(transactions);
     }
 

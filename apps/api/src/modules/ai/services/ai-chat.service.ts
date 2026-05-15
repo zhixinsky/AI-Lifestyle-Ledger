@@ -103,6 +103,9 @@ export class AiChatService {
         console.log(`[AiChat] Response length: ${content?.length || 0}`);
         return content;
       } catch (err) {
+        if (signal.aborted) {
+          return null;
+        }
         console.error(`[AiChat] Fetch error attempt ${attempt}/${maxAttempts}:`, err);
         if (attempt >= maxAttempts || !this.isRetryableFetchError(err)) {
           return null;
