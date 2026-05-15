@@ -52,8 +52,10 @@ export class AiChatService {
       temperature: 0.1,
     };
     const maxAttempts = Number(this.config.get<string>('AI_CHAT_FETCH_ATTEMPTS') || 3);
-
-    const runResult = await this.concurrency.run((signal) => this.fetchCompletion(url, apiKey, payload, maxAttempts, signal));
+    // 总超时需覆盖多次重试（默认 45s，可在环境变量 AI_TIMEOUT_MS 调整）
+    const runResult = await this.concurrency.run((signal) =>
+      this.fetchCompletion(url, apiKey, payload, maxAttempts, signal),
+    );
     if (runResult.busy || runResult.timeout) {
       return {
         content: null,

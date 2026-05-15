@@ -46,7 +46,17 @@ export const useAiStore = defineStore('ai', {
       try {
         const history = this.chatMessages.slice(0, -1).slice(-10);
         const result = await aiApi.chat(message, history);
-        this.chatMessages.push({ role: 'assistant', content: result.reply });
+        if (result.busy || result.timeout) {
+          this.chatMessages.push({
+            role: 'assistant',
+            content: result.message || result.reply || '米粒思考得有点久，可以再试一次哦～',
+          });
+          return;
+        }
+        this.chatMessages.push({
+          role: 'assistant',
+          content: result.reply || '抱歉，AI 暂时无法响应，请稍后再试～',
+        });
         if (result.suggestions?.length) {
           this.suggestions = result.suggestions;
         }

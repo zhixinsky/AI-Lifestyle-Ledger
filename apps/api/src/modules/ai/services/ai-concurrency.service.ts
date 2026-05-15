@@ -8,6 +8,9 @@ export interface AiRunResult<T> {
   message?: string;
 }
 
+/** 默认 45s：DashScope / OpenAI 兼容接口常见响应 10–20s，10s 会误报超时 */
+const DEFAULT_AI_TIMEOUT_MS = 45000;
+
 @Injectable()
 export class AiConcurrencyService {
   private currentAiRequests = 0;
@@ -24,27 +27,49 @@ export class AiConcurrencyService {
     }
 
     this.currentAiRequests += 1;
-    const timeoutMs = Number(this.config.get<string>('AI_TIMEOUT_MS') || 10000);
+    const timeoutMs = Number(this.config.get<string>('AI_TIMEOUT_MS') || DEFAULT_AI_TIMEOUT_MS);
     const controller = new AbortController();
     let timedOut = false;
 
-    let timeoutHandle: NodeJS.Timeout | undefined;
-    const timeout = new Promise<AiRunResult<T>>((resolve) => {
-      timeoutHandle = setTimeout(() => {
-        timedOut = true;
-        controller.abort();
-        resolve({
-          timeout: true,
-          message: '米粒思考得有点久，可以再试一次哦～',
-        });
-      }, timeoutMs);
-    });
-
     try {
-      return await Promise.race([
-        runner(controller.signal).then((value) => ({ value })),
-        timeout,
-      ]);
+      return await new Promise<AiRunResult<T>>((resolve) => {
+        let settled = false;
+        let timeoutHandle: NodeJS.Timeout | undefined;
+
+        const settle = (result: AiRunResult<T>) => {
+          if (settled) return;
+          settled = true;
+          if (timeoutHandle) clearTimeout(timeoutHandle);
+          resolve(result);
+        };
+
+        timeoutHandle = setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+          console.warn(`[AiConcurrency] AI request timeout after ${timeoutMs}ms`);
+          settle({
+            timeout: true,
+            message: '米粒思考得有点久，可以再试一次哦～',
+          });
+        }, timeoutMs);
+
+        runner(controller.signal)
+          .then((value) => {
+            if (timedOut) return;
+            settle({ value });
+          })
+          .catch((err) => {
+            if (timedOut) {
+              settle({
+                timeout: true,
+                message: '米粒思考得有点久，可以再试一次哦～',
+              });
+              return;
+            }
+            console.error('[AiConcurrency] runner error:', err);
+            throw err;
+          });
+      });
     } catch (err) {
       if (timedOut) {
         return {
@@ -54,7 +79,6 @@ export class AiConcurrencyService {
       }
       throw err;
     } finally {
-      if (timeoutHandle) clearTimeout(timeoutHandle);
       this.currentAiRequests = Math.max(0, this.currentAiRequests - 1);
     }
   }
