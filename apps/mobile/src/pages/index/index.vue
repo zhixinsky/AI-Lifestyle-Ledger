@@ -9,6 +9,11 @@
       <view class="page-bg__grain" />
     </view>
 
+    <view class="ai-active-border" :class="{ active: isVoiceActive }" aria-hidden="true">
+      <view class="ai-active-border__glow" />
+      <view class="ai-active-border__ring" />
+    </view>
+
     <view class="mili-main">
       <view class="hub">
           <view class="hub-top" :style="{ paddingTop: statusPad }">
@@ -50,7 +55,12 @@
             </view>
           </view>
 
-          <view class="orb-stage">
+          <view class="orb-stage" :class="{ 'voice-active': isVoiceActive }">
+            <view v-if="isVoiceActive" class="orb-voice-ripples" aria-hidden="true">
+              <view class="orb-voice-ripple orb-voice-ripple--1" />
+              <view class="orb-voice-ripple orb-voice-ripple--2" />
+              <view class="orb-voice-ripple orb-voice-ripple--3" />
+            </view>
             <view class="ai-orbit-wrap" aria-hidden="true">
               <view class="glow-base" />
               <view class="orbit orbit-1" />
@@ -144,27 +154,45 @@
               <text v-if="parsing" class="voice-live-parsing">AI 理解中…</text>
             </view>
 
-            <view
-              class="voice-pill"
-              :class="{ active: recording, busy: parsing }"
-              @touchstart.prevent="onHoldStart"
-              @touchend.prevent="onHoldEnd"
-              @touchcancel.prevent="onHoldEnd"
-              @mousedown.prevent="onHoldStart"
-              @mouseup.prevent="onHoldEnd"
-              @mouseleave.prevent="onHoldEnd"
-            >
-              <view class="voice-pill__glass" aria-hidden="true" />
-              <view class="voice-pill__sheen" aria-hidden="true" />
-              <view class="voice-pill__rim" aria-hidden="true" />
-              <view class="voice-pill__content">
-                <view class="voice-pill__row">
-                  <image class="voice-pill__mic" :src="voiceMicSrc" mode="aspectFit" />
-                  <view class="voice-copy">
-                    <text class="voice-title">{{ recording ? '松开 识别' : parsing ? 'AI 识别中…' : '按住说话' }}</text>
-                    <text class="voice-sub">{{ voiceSubLine }}</text>
+            <view class="voice-pill-wrap">
+              <view v-if="recording" class="voice-pill-waves voice-pill-waves--left" aria-hidden="true">
+                <view
+                  v-for="bar in voiceWaveBars"
+                  :key="`l-${bar}`"
+                  class="voice-pill-wave-bar"
+                  :class="`voice-pill-wave-bar--${bar}`"
+                />
+              </view>
+              <view
+                class="voice-pill"
+                :class="{ active: recording, busy: parsing }"
+                @touchstart.prevent="onHoldStart"
+                @touchend.prevent="onHoldEnd"
+                @touchcancel.prevent="onHoldEnd"
+                @mousedown.prevent="onHoldStart"
+                @mouseup.prevent="onHoldEnd"
+                @mouseleave.prevent="onHoldEnd"
+              >
+                <view class="voice-pill__glass" aria-hidden="true" />
+                <view class="voice-pill__sheen" aria-hidden="true" />
+                <view class="voice-pill__rim" aria-hidden="true" />
+                <view class="voice-pill__content">
+                  <view class="voice-pill__row">
+                    <image class="voice-pill__mic" :src="voiceMicSrc" mode="aspectFit" />
+                    <view class="voice-copy">
+                      <text class="voice-title">{{ recording ? '松开 识别' : parsing ? 'AI 识别中…' : '按住说话' }}</text>
+                      <text class="voice-sub">{{ voiceSubLine }}</text>
+                    </view>
                   </view>
                 </view>
+              </view>
+              <view v-if="recording" class="voice-pill-waves voice-pill-waves--right" aria-hidden="true">
+                <view
+                  v-for="bar in voiceWaveBars"
+                  :key="`r-${bar}`"
+                  class="voice-pill-wave-bar"
+                  :class="`voice-pill-wave-bar--r${bar}`"
+                />
               </view>
             </view>
 
@@ -628,6 +656,7 @@ function initOrbFloatSlots() {
 
 const statusPad = ref('120rpx');
 const recording = ref(false);
+const isVoiceActive = ref(false);
 const parsing = ref(false);
 const editorVisible = ref(false);
 const editingTransactionId = ref('');
@@ -674,6 +703,7 @@ function closeChatPanel() {
 }
 
 function resetChatPanelState() {
+  isVoiceActive.value = false;
   closeChatPanel();
   chatPanelText.value = '';
   chatPanelReply.value = '';
@@ -711,6 +741,8 @@ const voiceMicSrc = makeSvgIcon(
   '#134338',
   '2'
 );
+
+const voiceWaveBars = [0, 1, 2, 3, 4];
 
 const MANUAL_TONE = '#4a5a54';
 
@@ -1131,6 +1163,7 @@ function onHoldStart() {
   }
   if (parsing.value) return;
   voiceLiveText.value = '';
+  isVoiceActive.value = true;
   recording.value = true;
   // #ifdef MP-WEIXIN
   startRecordWx();
@@ -1141,6 +1174,7 @@ function onHoldStart() {
 }
 
 function onHoldEnd() {
+  isVoiceActive.value = false;
   // #ifdef MP-WEIXIN
   stopRecordWx();
   // #endif
@@ -1170,6 +1204,7 @@ function initWxRecord() {
     }
   };
   wxRecordManager.onError = () => {
+    isVoiceActive.value = false;
     recording.value = false;
     voiceLiveText.value = '';
     uni.showToast({ title: '语音暂不可用', icon: 'none' });
@@ -1191,6 +1226,7 @@ function startRecordH5() {
   try {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) {
+      isVoiceActive.value = false;
       recording.value = false;
       uni.showToast({ title: '请使用手动记录', icon: 'none' });
       return;
@@ -1227,6 +1263,7 @@ function startRecordH5() {
     };
     recognition.start();
   } catch {
+    isVoiceActive.value = false;
     recording.value = false;
   }
 }
@@ -1243,6 +1280,7 @@ function stopRecordH5() {
 // #endif
 
 onUnmounted(() => {
+  isVoiceActive.value = false;
   recording.value = false;
   clearOrbFloatTimers();
   destroyTts();
@@ -1253,6 +1291,7 @@ onUnmounted(() => {
 @use '@/styles/mili-vision-page-bg.scss' as *;
 @use '@/styles/mili-ai-orbit.scss' as *;
 @use '@/styles/mili-orb-float-pills.scss' as *;
+@use '@/styles/mili-ai-voice-active.scss' as *;
 
 .page {
   position: relative;
@@ -1632,10 +1671,63 @@ onUnmounted(() => {
   color: rgba(46, 130, 108, 0.65);
 }
 
+.voice-pill-wrap {
+  width: 100%;
+  max-width: 620rpx;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 18rpx;
+}
+
+.voice-pill-waves {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 7rpx;
+  width: 44rpx;
+  height: 64rpx;
+  flex-shrink: 0;
+}
+
+.voice-pill-wave-bar {
+  width: 5rpx;
+  height: 16rpx;
+  border-radius: 999rpx;
+  background: rgba(46, 184, 160, 0.72);
+  animation: voice-pill-wave-bounce 0.52s ease-in-out infinite alternate;
+}
+
+.voice-pill-wave-bar--0 { animation-duration: 0.44s; animation-delay: 0s; }
+.voice-pill-wave-bar--1 { animation-duration: 0.58s; animation-delay: 0.08s; }
+.voice-pill-wave-bar--2 { animation-duration: 0.5s; animation-delay: 0.04s; }
+.voice-pill-wave-bar--3 { animation-duration: 0.62s; animation-delay: 0.12s; }
+.voice-pill-wave-bar--4 { animation-duration: 0.48s; animation-delay: 0.06s; }
+
+.voice-pill-wave-bar--r0 { animation-duration: 0.56s; animation-delay: 0.05s; }
+.voice-pill-wave-bar--r1 { animation-duration: 0.46s; animation-delay: 0.1s; }
+.voice-pill-wave-bar--r2 { animation-duration: 0.6s; animation-delay: 0.02s; }
+.voice-pill-wave-bar--r3 { animation-duration: 0.5s; animation-delay: 0.14s; }
+.voice-pill-wave-bar--r4 { animation-duration: 0.54s; animation-delay: 0.07s; }
+
+@keyframes voice-pill-wave-bounce {
+  from {
+    height: 12rpx;
+    opacity: 0.45;
+  }
+  to {
+    height: 44rpx;
+    opacity: 1;
+  }
+}
+
 .voice-pill {
   position: relative;
   margin-top: 0;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   max-width: 620rpx;
   min-height: 152rpx;
   padding: 0;
