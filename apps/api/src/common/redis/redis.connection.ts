@@ -9,14 +9,14 @@ export class RedisConnection implements OnModuleInit, OnModuleDestroy {
   private readonly port: number;
 
   constructor() {
-    const host = process.env.REDIS_HOST?.trim();
+    const host = (process.env.UPSTASH_REDIS_HOST || process.env.REDIS_HOST)?.trim();
     if (!host) {
-      throw new Error('REDIS_HOST is required for AI task queue Redis connection');
+      throw new Error('UPSTASH_REDIS_HOST or REDIS_HOST is required for AI task queue Redis connection');
     }
 
-    const port = Number(process.env.REDIS_PORT || 6379);
+    const port = Number(process.env.UPSTASH_REDIS_PORT || process.env.REDIS_PORT || 6379);
     if (!Number.isFinite(port)) {
-      throw new Error('REDIS_PORT must be a valid number');
+      throw new Error('UPSTASH_REDIS_PORT or REDIS_PORT must be a valid number');
     }
 
     this.host = host;
@@ -24,7 +24,7 @@ export class RedisConnection implements OnModuleInit, OnModuleDestroy {
     this.connection = new Redis({
       host,
       port,
-      password: process.env.REDIS_PASSWORD,
+      password: process.env.UPSTASH_REDIS_PASSWORD || process.env.REDIS_PASSWORD,
       tls: {},
       family: 4,
       maxRetriesPerRequest: null,

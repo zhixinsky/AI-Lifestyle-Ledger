@@ -36,20 +36,35 @@ function finishSpeaking() {
   resolve?.();
 }
 
-function getAudioContext() {
-  if (audioContext) return audioContext;
-  audioContext = uni.createInnerAudioContext();
-  return audioContext;
-}
-
 function recreateAudioContext() {
   try {
     audioContext?.destroy();
   } catch {
     /* ignore */
   }
+  // #ifdef MP-WEIXIN
+  audioContext = wx.createInnerAudioContext();
+  // #endif
+
+  // #ifndef MP-WEIXIN
   audioContext = uni.createInnerAudioContext();
+  // #endif
   return audioContext;
+}
+
+function configureMiniProgramAudio() {
+  // #ifdef MP-WEIXIN
+  try {
+    wx.setInnerAudioOption({
+      obeyMuteSwitch: false,
+      mixWithOther: true,
+      success: () => console.log('[TTS] inner audio option ready'),
+      fail: (err: unknown) => console.warn('[TTS] inner audio option failed:', err),
+    });
+  } catch (err) {
+    console.warn('[TTS] setInnerAudioOption unavailable:', err);
+  }
+  // #endif
 }
 
 function textToSpeechMp(text: string): Promise<string> {
@@ -116,6 +131,7 @@ export async function speakText(text: string) {
 
   try {
     // #ifdef MP-WEIXIN
+    configureMiniProgramAudio();
     const filename = await textToSpeechMp(content);
     await new Promise<void>((resolve, reject) => {
       const audio = recreateAudioContext();
@@ -135,7 +151,7 @@ export async function speakText(text: string) {
         finishSpeaking();
         reject(err instanceof Error ? err : new Error('语音播放失败'));
       });
-      audio.play();
+      setTimeout(() => audio.play(), 80);
     });
     // #endif
 

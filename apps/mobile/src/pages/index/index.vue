@@ -199,7 +199,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
+import { onHide, onShow } from '@dcloudio/uni-app';
 import AppTabbar from '@/components/AppTabbar.vue';
 import LoginModal from '@/components/LoginModal.vue';
 import TransactionEditor from '@/components/TransactionEditor.vue';
@@ -672,19 +672,18 @@ function closeChatPanel() {
   }
 }
 
+function resetChatPanelState() {
+  closeChatPanel();
+  chatPanelText.value = '';
+  chatPanelReply.value = '';
+}
+
 function closeSavedBillPanel() {
   savedBillPanelVisible.value = false;
   if (savedBillAutoCloseTimer) {
     clearTimeout(savedBillAutoCloseTimer);
     savedBillAutoCloseTimer = null;
   }
-}
-
-function scheduleChatPanelAutoClose(delay = 12000) {
-  if (chatPanelAutoCloseTimer) clearTimeout(chatPanelAutoCloseTimer);
-  chatPanelAutoCloseTimer = setTimeout(() => {
-    closeChatPanel();
-  }, delay);
 }
 
 function scheduleSavedBillAutoClose(delay = 8000) {
@@ -782,6 +781,7 @@ onUnmounted(() => {
 });
 
 onShow(() => {
+  resetChatPanelState();
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
@@ -796,6 +796,10 @@ onShow(() => {
       aiStore.loadInsight().catch(() => {}),
     ]);
   }
+});
+
+onHide(() => {
+  resetChatPanelState();
 });
 
 function openEditor() {
@@ -830,7 +834,6 @@ function showLoginRequiredChat() {
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   chatPanelLoading.value = false;
   chatPanelVisible.value = true;
-  scheduleChatPanelAutoClose(10000);
   loginSheet.open();
 }
 
@@ -992,7 +995,6 @@ async function showVoiceChat(text: string) {
   } finally {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelLoading.value = false;
-    scheduleChatPanelAutoClose();
   }
 }
 
