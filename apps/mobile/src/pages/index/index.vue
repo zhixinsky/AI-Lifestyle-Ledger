@@ -100,7 +100,7 @@
                 </view>
                 <view class="chat-panel__ai-row">
                   <view class="chat-panel__bubble chat-panel__bubble--ai">
-                    <text>{{ chatPanelLoading ? '正在思考…' : chatPanelReply }}</text>
+                    <text>{{ chatPanelLoading ? chatPanelThinkingText : chatPanelReply }}</text>
                   </view>
                 </view>
               </view>
@@ -637,6 +637,7 @@ const chatPanelVisible = ref(false);
 const chatPanelLoading = ref(false);
 const chatPanelText = ref('');
 const chatPanelReply = ref('');
+const chatPanelThinkingText = ref('正在思考…');
 const chatPanelSpeaking = ref(false);
 const chatPanelVoiceFailed = ref(false);
 const chatPanelVoiceEnabled = ref(false);
@@ -676,6 +677,7 @@ function resetChatPanelState() {
   closeChatPanel();
   chatPanelText.value = '';
   chatPanelReply.value = '';
+  chatPanelThinkingText.value = '正在思考…';
 }
 
 function closeSavedBillPanel() {
@@ -829,6 +831,7 @@ function showLoginRequiredChat() {
   voiceLiveText.value = '';
   chatPanelText.value = '按住说话';
   chatPanelReply.value = '登录后，AI米粒才能帮你识别语音、保存账单和延续聊天记忆。你也可以先返回继续浏览。';
+  chatPanelThinkingText.value = '正在思考…';
   chatPanelSpeaking.value = false;
   chatPanelVoiceFailed.value = false;
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
@@ -975,6 +978,7 @@ async function showVoiceChat(text: string) {
   clearPanelAutoCloseTimers();
   chatPanelText.value = text;
   chatPanelReply.value = '';
+  chatPanelThinkingText.value = '正在思考…';
   chatPanelSpeaking.value = false;
   chatPanelVoiceFailed.value = false;
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
@@ -1039,18 +1043,32 @@ function aiWaitingText(elapsedMs: number) {
   return '稍等一下，米粒还在思考～';
 }
 
+function showAiThinkingPanel(text: string, message = '米粒分析语音中…') {
+  clearPanelAutoCloseTimers();
+  chatPanelText.value = text;
+  chatPanelReply.value = '';
+  chatPanelThinkingText.value = message;
+  chatPanelSpeaking.value = false;
+  chatPanelVoiceFailed.value = false;
+  chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
+  chatPanelLoading.value = true;
+  chatPanelVisible.value = true;
+  savedBillPanelVisible.value = false;
+}
+
 async function parseVoiceBill(text: string) {
   const t = text.trim();
   if (!t || parsing.value) return;
   const session = ++voiceAiSession;
   parsing.value = true;
+  showAiThinkingPanel(t);
   try {
     const quickIntent = classifyVoiceIntent(t);
     if ((quickIntent.intent === 'expense' || quickIntent.intent === 'income') && quickIntent.amount && !quickIntent.needAiFallback && quickIntent.confidence >= 0.8) {
       if (!finance.categories.length) {
         await finance.loadCategories().catch(() => {});
       }
-      voiceLiveText.value = `已识别为记账：${quickIntent.category || '其它'} ${quickIntent.tag ? `· ${quickIntent.tag} ` : ''}¥${quickIntent.amount}`;
+      chatPanelThinkingText.value = `已识别为记账：${quickIntent.category || '其它'} ${quickIntent.tag ? `· ${quickIntent.tag} ` : ''}¥${quickIntent.amount}`;
       const quickBill = buildQuickParsedBill(t, quickIntent);
       const saved = await saveParsedBills([quickBill]);
       if (session !== voiceAiSession) return;
@@ -1070,7 +1088,7 @@ async function parseVoiceBill(text: string) {
       intervalMs: 800,
       onTick: (elapsedMs) => {
         if (session !== voiceAiSession) return;
-        voiceLiveText.value = aiWaitingText(elapsedMs);
+        chatPanelThinkingText.value = aiWaitingText(elapsedMs);
       },
     });
     if (session !== voiceAiSession) return;
@@ -1092,6 +1110,7 @@ async function parseVoiceBill(text: string) {
     if (session !== voiceAiSession) return;
     parsing.value = false;
     voiceLiveText.value = '';
+    chatPanelLoading.value = false;
   }
 }
 
@@ -1134,6 +1153,7 @@ function initWxRecord() {
     const text = (res.result || '').trim();
     voiceLiveText.value = text;
     if (text) {
+      voiceLiveText.value = '';
       parseVoiceBill(text);
     } else {
       voiceLiveText.value = '';
@@ -1186,6 +1206,7 @@ function startRecordH5() {
       const t = lastText.trim();
       voiceLiveText.value = t;
       if (t) {
+        voiceLiveText.value = '';
         parseVoiceBill(t);
       } else {
         voiceLiveText.value = '';
