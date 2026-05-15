@@ -241,7 +241,7 @@ function pickSubtitleAvoidRepeat(period: GreetingPeriod) {
     remoteGreetingPeriod.value === period &&
     remoteSubtitlePool.value &&
     remoteSubtitlePool.value.length > 0;
-  const pool = remoteOk ? remoteSubtitlePool.value : localPool;
+  const pool = remoteOk && remoteSubtitlePool.value ? remoteSubtitlePool.value : localPool;
   if (!pool.length) return '';
   let last = '';
   try {
@@ -854,7 +854,7 @@ function findCategoryId(name: string, type: 'expense' | 'income') {
   );
 }
 
-function buildQuickParsedBill(rawText: string, result: ReturnType<typeof classifyVoiceIntent>) {
+function buildQuickParsedBill(rawText: string, result: ReturnType<typeof classifyVoiceIntent>): AiParsedTransaction {
   const type = result.intent === 'income' ? 'income' : 'expense';
   const category = result.category || (type === 'income' ? '其它收入' : '其它');
   return {
@@ -961,6 +961,12 @@ async function showVoiceChat(text: string) {
   }
 }
 
+function aiWaitingText(elapsedMs: number) {
+  if (elapsedMs < 2000) return '米粒正在理解你的意思…';
+  if (elapsedMs < 5000) return '正在分析金额和分类…';
+  return '稍等一下，米粒还在思考～';
+}
+
 async function parseVoiceBill(text: string) {
   const t = text.trim();
   if (!t || parsing.value) return;
@@ -983,7 +989,14 @@ async function parseVoiceBill(text: string) {
       return;
     }
 
-    const result = await aiApi.parseBill(t);
+    const { taskId } = await aiApi.createTask({ type: 'parse_bill', inputText: t, intent: 'parse_bill' });
+    const result = await aiApi.waitTask<{ logId: string; transactions: AiParsedTransaction[] }>(taskId, {
+      timeoutMs: 15000,
+      intervalMs: 800,
+      onTick: (elapsedMs) => {
+        voiceLiveText.value = aiWaitingText(elapsedMs);
+      },
+    });
     if (result.transactions.length > 0) {
       const saved = await saveParsedBills(result.transactions, result.logId);
       await showSavedBillResult(saved);
@@ -991,8 +1004,11 @@ async function parseVoiceBill(text: string) {
     }
     // 未识别到账单：视为「聊天」，在当前页展示轻量聊天卡片，用户可继续按住说话追问。
     await showVoiceChat(t);
-  } catch {
-    uni.showToast({ title: '识别失败，请稍后再试', icon: 'none' });
+  } catch (err) {
+    const message = err instanceof Error && err.message.includes('超时')
+      ? '米粒还在处理，稍后再试一下'
+      : '识别失败，请稍后再试';
+    uni.showToast({ title: message, icon: 'none' });
   } finally {
     parsing.value = false;
     voiceLiveText.value = '';

@@ -43,6 +43,7 @@ model User {
   memories         UserMemory[]
   identities       UserIdentity[]
   aiGreetingDailies AiGreetingDaily[]
+  aiTasks          AiTask[]
 
   /// 是否开启 AI米粒页「智能问候」（关闭后仅用本地默认文案）
   smartGreetingEnabled Boolean @default(true)
@@ -174,6 +175,26 @@ model AiLog {
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
+}
+
+model AiTask {
+  id           String    @id @default(cuid())
+  userId       String?
+  type         String
+  inputText    String?   @db.Text
+  audioUrl     String?   @db.Text
+  intent       String?
+  status       String    @default("pending")
+  resultJson   Json?
+  errorMessage String?   @db.Text
+  retryCount   Int       @default(0)
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 enum ReportType {

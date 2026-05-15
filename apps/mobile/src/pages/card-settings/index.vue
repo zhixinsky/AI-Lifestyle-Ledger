@@ -217,7 +217,7 @@ const allCards = computed<CardItem[]>(() => [
       key: `space-${meta.type}`,
       title: meta.name,
       desc: meta.description,
-      icon: meta.icon,
+      icon: meta.name.slice(0, 1),
       visible: Boolean(space?.isVisible),
       className: `space-widget--${meta.theme}`,
       visual: meta.type,

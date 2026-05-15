@@ -44,8 +44,8 @@ export const useAiStore = defineStore('ai', {
       this.chatMessages.push({ role: 'user', content: message });
       this.chatLoading = true;
       try {
-        const history = this.chatMessages.slice(0, -1).slice(-10);
-        const result = await aiApi.chat(message, history);
+        const { taskId } = await aiApi.createTask({ type: 'chat', inputText: message, intent: 'chat' });
+        const result = await aiApi.waitTask<{ reply: string; suggestions?: string[] }>(taskId);
         this.chatMessages.push({ role: 'assistant', content: result.reply });
         if (result.suggestions?.length) {
           this.suggestions = result.suggestions;

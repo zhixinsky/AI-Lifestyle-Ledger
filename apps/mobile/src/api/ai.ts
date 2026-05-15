@@ -14,6 +14,28 @@ export interface ParseBillResult {
   transactions: AiParsedTransaction[];
 }
 
+export type AiTaskType = 'parse_bill' | 'chat';
+export type AiTaskStatus = 'pending' | 'processing' | 'success' | 'failed';
+
+export interface AiTask {
+  id: string;
+  type: AiTaskType;
+  intent?: string | null;
+  status: AiTaskStatus;
+  resultJson?: unknown;
+  errorMessage?: string | null;
+  retryCount: number;
+  createdAt: string;
+  startedAt?: string | null;
+  finishedAt?: string | null;
+}
+
+export interface CreateAiTaskResult {
+  taskId: string;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const aiApi = {
   parseBill(input: string) {
     return request<ParseBillResult>('/ai/bills/parse', {
@@ -53,5 +75,34 @@ export const aiApi = {
       method: 'POST',
       data: { message, history }
     });
+  },
+  createTask(data: { type: AiTaskType; inputText?: string; audioUrl?: string; intent?: string }) {
+    return request<CreateAiTaskResult>('/ai/tasks', {
+      method: 'POST',
+      data
+    });
+  },
+  getTask(id: string) {
+    return request<AiTask>(`/ai/tasks/${id}`);
+  },
+  async waitTask<T>(id: string, options: { timeoutMs?: number; intervalMs?: number; onTick?: (elapsedMs: number) => void } = {}) {
+    const timeoutMs = options.timeoutMs ?? 15000;
+    const intervalMs = options.intervalMs ?? 800;
+    const start = Date.now();
+
+    while (Date.now() - start <= timeoutMs) {
+      const elapsed = Date.now() - start;
+      options.onTick?.(elapsed);
+      const task = await this.getTask(id);
+      if (task.status === 'success') {
+        return task.resultJson as T;
+      }
+      if (task.status === 'failed') {
+        throw new Error(task.errorMessage || 'AI 任务处理失败');
+      }
+      await sleep(intervalMs);
+    }
+
+    throw new Error('AI 任务处理超时');
   },
 };
