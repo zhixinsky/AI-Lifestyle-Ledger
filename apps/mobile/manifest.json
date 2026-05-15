@@ -1,7 +1,13 @@
 {
     "mp-weixin" : {
         "appid" : "wx7813e423c1038e4e",
-        "entryPagePath" : "pages/index/index"
+        "entryPagePath" : "pages/index/index",
+        "plugins" : {
+            "WechatSI" : {
+                "version" : "0.3.7",
+                "provider" : "wx069ba97219f66d99"
+            }
+        }
     },
     "appid" : "__UNI__7E22740",
     "name" : "AI生活账本",

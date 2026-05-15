@@ -9,6 +9,14 @@
         <view v-if="msg.role === 'assistant'" class="avatar">
           <text class="avatar-t">米</text>
         </view>
+        <view
+          v-if="msg.role === 'assistant'"
+          :class="['voice-btn', { active: playingIndex === idx && isSpeaking, failed: failedIndex === idx }]"
+          @tap="playReply(msg.content, idx)"
+        >
+          <view class="voice-wave" />
+          <text class="voice-icon">{{ playingIndex === idx && isSpeaking ? 'Ⅱ' : '♪' }}</text>
+        </view>
         <view :class="['bubble', msg.role]">
           <text class="bubble-t">{{ msg.content }}</text>
         </view>
@@ -37,12 +45,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onUnmounted } from 'vue';
 import { useAiStore } from '@/stores/ai';
+import { destroyTts, getVoiceReplyEnabled, isSpeaking, speakText, stopSpeak } from '@/utils/tts';
 
 const aiStore = useAiStore();
 const text = ref('');
 const scrollTop = ref(0);
+const playingIndex = ref(-1);
+const failedIndex = ref(-1);
 
 async function send() {
   const t = text.value.trim();
@@ -53,13 +64,41 @@ async function send() {
   scrollTop.value = 999999;
 }
 
+async function playReply(content: string, index: number) {
+  if (playingIndex.value === index && isSpeaking.value) {
+    stopSpeak();
+    return;
+  }
+  failedIndex.value = -1;
+  playingIndex.value = index;
+  try {
+    await speakText(content);
+  } catch {
+    failedIndex.value = index;
+    uni.showToast({ title: '语音播放失败', icon: 'none' });
+  } finally {
+    if (playingIndex.value === index && !isSpeaking.value) {
+      playingIndex.value = -1;
+    }
+  }
+}
+
 watch(
   () => aiStore.chatMessages.length,
   async () => {
     await nextTick();
     scrollTop.value = 999999;
+    const lastIndex = aiStore.chatMessages.length - 1;
+    const last = aiStore.chatMessages[lastIndex];
+    if (last?.role === 'assistant' && getVoiceReplyEnabled()) {
+      playReply(last.content, lastIndex);
+    }
   }
 );
+
+onUnmounted(() => {
+  destroyTts();
+});
 </script>
 
 <style scoped>
@@ -96,6 +135,7 @@ watch(
   display: flex;
   margin-bottom: 20rpx;
   gap: 14rpx;
+  align-items: flex-start;
 }
 .row.user {
   flex-direction: row-reverse;
@@ -115,6 +155,53 @@ watch(
   font-size: 26rpx;
   font-weight: 800;
   color: rgba(28, 88, 72, 0.85);
+}
+.voice-btn {
+  position: relative;
+  width: 48rpx;
+  height: 48rpx;
+  margin-top: 4rpx;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: visible;
+  background: rgba(213, 255, 239, 0.58);
+  border: 1rpx solid rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(18rpx);
+  -webkit-backdrop-filter: blur(18rpx);
+  box-shadow: 0 8rpx 26rpx rgba(46, 184, 160, 0.14);
+}
+.voice-btn.failed {
+  background: rgba(255, 238, 238, 0.68);
+}
+.voice-icon {
+  position: relative;
+  z-index: 1;
+  font-size: 23rpx;
+  font-weight: 800;
+  color: rgba(28, 128, 104, 0.82);
+}
+.voice-wave {
+  position: absolute;
+  inset: -8rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(46, 184, 160, 0.2);
+  opacity: 0;
+}
+.voice-btn.active .voice-wave {
+  animation: voiceRipple 1.25s ease-out infinite;
+}
+@keyframes voiceRipple {
+  0% {
+    transform: scale(0.72);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
 }
 .bubble {
   max-width: 72%;

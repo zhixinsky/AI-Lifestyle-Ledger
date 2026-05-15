@@ -66,6 +66,13 @@
         <text class="action-text">智能问候</text>
         <switch :checked="smartGreetingOn" color="#00d4c8" @change="onSmartGreetingChange" />
       </view>
+      <view class="row">
+        <view class="action-main">
+          <text class="action-text">语音播放回复</text>
+          <text class="action-desc">开启后，AI米粒回复时可自动播放语音</text>
+        </view>
+        <switch :checked="voiceReplyEnabled" color="#00d4c8" @change="onVoiceReplyChange" />
+      </view>
       <view class="row" @tap="goCardSettings">
         <text class="action-text">概览卡片管理</text>
         <text class="arrow">›</text>
@@ -157,6 +164,7 @@ import { authApi } from '@/api/auth';
 import { membershipApi } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
 import { VERIFICATION_CODE_RESEND_SECONDS } from '@/constants/verification-code';
+import { getVoiceReplyEnabled, setVoiceReplyEnabled } from '@/utils/tts';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
@@ -205,6 +213,7 @@ const emailCodeText = computed(() => {
   return '获取验证码';
 });
 const smartGreetingOn = computed(() => authStore.user?.smartGreetingEnabled !== false);
+const voiceReplyEnabled = ref(false);
 
 async function onSmartGreetingChange(e: any) {
   if (!authStore.isLoggedIn) return;
@@ -216,6 +225,13 @@ async function onSmartGreetingChange(e: any) {
   } catch {
     uni.showToast({ title: '设置失败', icon: 'none' });
   }
+}
+
+function onVoiceReplyChange(e: any) {
+  const val = Boolean(e.detail?.value);
+  voiceReplyEnabled.value = val;
+  setVoiceReplyEnabled(val);
+  uni.showToast({ title: val ? '已开启语音播放' : '已关闭语音播放', icon: 'none' });
 }
 
 const sheetTitle = computed(() => {
@@ -465,8 +481,14 @@ async function handleDeleteAccount() {
   });
 }
 
-onMounted(loadProfile);
-onShow(loadProfile);
+onMounted(() => {
+  voiceReplyEnabled.value = getVoiceReplyEnabled();
+  loadProfile();
+});
+onShow(() => {
+  voiceReplyEnabled.value = getVoiceReplyEnabled();
+  loadProfile();
+});
 
 onUnmounted(() => {
   if (phoneCountdownTimer) clearInterval(phoneCountdownTimer);
@@ -541,6 +563,18 @@ onUnmounted(() => {
 .row-label, .action-text {
   font-size: 29rpx;
   color: #1e1e1e;
+}
+.action-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6rpx;
+}
+.action-desc {
+  max-width: 460rpx;
+  font-size: 23rpx;
+  line-height: 1.35;
+  color: #8b9490;
 }
 .status {
   max-width: 360rpx;
