@@ -58,10 +58,6 @@
           </view>
         </view>
         <view class="widget-shimmer" />
-        <view class="sort-row">
-          <text @tap.stop="moveDefault(index, -1)">↑</text>
-          <text @tap.stop="moveDefault(index, 1)">↓</text>
-        </view>
       </view>
     </view>
 
@@ -161,15 +157,6 @@ async function loadSpaces() {
   spaces.value = await lifeSpaceApi.list().catch(() => []);
 }
 
-function move<T>(items: T[], index: number, offset: number) {
-  const next = index + offset;
-  if (next < 0 || next >= items.length) return;
-  const [item] = items.splice(index, 1);
-  items.splice(next, 0, item);
-}
-
-function moveDefault(index: number, offset: number) { move(defaultCards.value, index, offset); }
-
 function toggleDefault(index: number) {
   if (!defaultCards.value[index].visible && selectedCount.value >= 4) {
     uni.showToast({ title: '首页最多显示4张卡片', icon: 'none' });
@@ -255,6 +242,10 @@ onMounted(() => {
   transition: transform 0.2s ease;
 }
 .widget-card.disabled { opacity: 0.58; }
+.widget-card .check-mark {
+  right: 10rpx;
+  top: 10rpx;
+}
 .widget-glass {
   position: absolute;
   top: 0; right: 0; bottom: 0; left: 0;
@@ -395,23 +386,6 @@ onMounted(() => {
 .overview-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
 .overview-title { font-size: 27rpx; font-weight: 820; color: #20352f; }
 .overview-sub { font-size: 20rpx; line-height: 1.35; color: #667770; }
-.overview-mini-icon {
-  position: absolute;
-  right: 8rpx;
-  bottom: -54rpx;
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 20rpx;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255,255,255,0.34);
-  color: rgba(33,53,47,0.72);
-  font-size: 21rpx;
-  font-weight: 850;
-}
-.sort-row { position: absolute; left: 14rpx; bottom: 10rpx; z-index: 4; display: flex; gap: 16rpx; color: rgba(79,129,116,0.76); font-size: 24rpx; font-weight: 850; }
 .overview-space-icon {
   width: 54rpx;
   height: 54rpx;
