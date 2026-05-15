@@ -62,30 +62,49 @@
     </view>
 
     <view class="section-title">可选生活空间</view>
-    <view class="overview-grid">
+    <view class="optional-widget-grid">
       <view
         v-for="meta in selectableSpaces"
         :key="meta.type"
-        :class="['overview-card', `space-card--${meta.theme}`, { disabled: !isSpaceVisible(meta.type) }]"
+        :class="['widget-card', 'space-widget-card', `space-widget--${meta.theme}`, { disabled: !isSpaceVisible(meta.type) }]"
         @tap="toggleLifeSpace(meta.type)"
       >
-        <view class="overview-glass" />
-        <view class="card-texture">
-          <view class="texture-orb" />
-          <view class="texture-line texture-line-1" />
-          <view class="texture-line texture-line-2" />
-        </view>
         <view :class="['check-mark', { active: isSpaceVisible(meta.type) }]"><text>✓</text></view>
-        <view class="overview-content">
-          <view class="overview-copy">
-            <text class="overview-title">{{ meta.name }}</text>
-            <text class="overview-sub">{{ meta.description }}</text>
+        <view class="widget-glass" />
+        <view class="widget-content">
+          <view class="widget-text">
+            <text class="widget-title">{{ meta.name }}</text>
+            <text class="widget-sub">{{ meta.description }}</text>
           </view>
-          <view class="overview-space-icon" :style="{ background: iconGradient(meta.color) }">
-            <text>{{ meta.icon }}</text>
+          <view :class="['widget-icon-area', `space-icon-${meta.theme}`]">
+            <template v-if="meta.type === 'love'">
+              <text class="love-heart">♥</text>
+              <view class="love-ring" />
+              <view class="love-dot" />
+            </template>
+            <template v-else-if="meta.type === 'family'">
+              <view class="home-roof" />
+              <view class="home-body" />
+              <view class="home-door" />
+            </template>
+            <template v-else-if="meta.type === 'work'">
+              <view class="work-case" />
+              <view class="work-handle" />
+              <view class="work-line" />
+            </template>
+            <template v-else-if="meta.type === 'travel'">
+              <view class="travel-route" />
+              <view class="travel-pin travel-pin-a" />
+              <view class="travel-pin travel-pin-b" />
+            </template>
+            <template v-else>
+              <view class="campus-book" />
+              <view class="campus-book campus-book-r" />
+              <view class="campus-line" />
+            </template>
           </view>
         </view>
-        <text class="space-status">{{ isSpaceVisible(meta.type) ? '已加入首页' : '点击添加' }}</text>
+        <view class="widget-shimmer" />
       </view>
     </view>
 
@@ -128,10 +147,6 @@ function goBack() {
   const pages = getCurrentPages();
   if (pages.length > 1) uni.navigateBack();
   else uni.switchTab({ url: '/pages/profile/index' });
-}
-
-function iconGradient(color: string) {
-  return `linear-gradient(145deg, ${color}, rgba(255,255,255,0.72))`;
 }
 
 function loadFeatureSettings() {
@@ -232,6 +247,11 @@ onMounted(() => {
   gap: 12rpx;
   margin: 0 0 6rpx;
 }
+.optional-widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14rpx;
+}
 .widget-card {
   flex: 1;
   position: relative;
@@ -245,6 +265,9 @@ onMounted(() => {
 .widget-card .check-mark {
   right: 10rpx;
   top: 10rpx;
+}
+.space-widget-card {
+  height: 132rpx;
 }
 .widget-glass {
   position: absolute;
@@ -325,45 +348,37 @@ onMounted(() => {
 .wb-bar { position: absolute; bottom: 2rpx; height: 6rpx; border-radius: 3rpx; background: linear-gradient(to right, rgba(56,189,248,0.3), rgba(14,165,233,0.15)); }
 .wb-bar-1 { left: 0; width: 42rpx; }
 .wb-bar-2 { left: 0; bottom: 14rpx; width: 28rpx; }
-.overview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14rpx; }
-.overview-card {
-  position: relative;
-  min-height: 132rpx;
-  overflow: hidden;
-  border-radius: 22rpx;
-  padding: 18rpx;
-  box-shadow: 0 10rpx 30rpx rgba(35, 56, 51, 0.08);
-  border-bottom: 4rpx solid rgba(79,129,116,0.2);
-}
-.overview-card.disabled { opacity: 0.58; }
-.overview-glass {
-  position: absolute;
-  inset: 0;
-  background: rgba(255,255,255,0.45);
-  border: 1rpx solid rgba(255,255,255,0.56);
-  backdrop-filter: blur(16px) saturate(160%);
-  -webkit-backdrop-filter: blur(16px) saturate(160%);
-}
-.card-texture { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
-.texture-orb {
-  position: absolute;
-  right: -18rpx;
-  top: -22rpx;
-  width: 116rpx;
-  height: 116rpx;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.28);
-  border: 2rpx solid rgba(255,255,255,0.34);
-}
-.texture-line {
-  position: absolute;
-  right: 18rpx;
-  height: 7rpx;
-  border-radius: 999rpx;
-  background: rgba(255,255,255,0.38);
-}
-.texture-line-1 { bottom: 30rpx; width: 68rpx; }
-.texture-line-2 { bottom: 16rpx; width: 44rpx; }
+.space-widget--rose { background: linear-gradient(145deg, rgba(255, 190, 202, 0.22), rgba(242, 167, 179, 0.28)); border-bottom: 4rpx solid rgba(242, 167, 179, 0.36); }
+.space-widget--rose .widget-title { color: #a95f6f; }
+.space-widget--rose .widget-sub { color: #c77b86; }
+.space-widget--olive { background: linear-gradient(145deg, rgba(202, 226, 150, 0.22), rgba(167, 201, 112, 0.28)); border-bottom: 4rpx solid rgba(167, 201, 112, 0.34); }
+.space-widget--olive .widget-title { color: #617d43; }
+.space-widget--olive .widget-sub { color: #789554; }
+.space-widget--blue { background: linear-gradient(145deg, rgba(160, 181, 245, 0.2), rgba(141, 167, 242, 0.28)); border-bottom: 4rpx solid rgba(141, 167, 242, 0.34); }
+.space-widget--blue .widget-title { color: #546bbd; }
+.space-widget--blue .widget-sub { color: #6379ca; }
+.space-widget--cyan { background: linear-gradient(145deg, rgba(138, 214, 238, 0.2), rgba(124, 199, 232, 0.28)); border-bottom: 4rpx solid rgba(124, 199, 232, 0.34); }
+.space-widget--cyan .widget-title { color: #247d9f; }
+.space-widget--cyan .widget-sub { color: #318cac; }
+.space-widget--amber { background: linear-gradient(145deg, rgba(237, 202, 132, 0.22), rgba(217, 183, 110, 0.3)); border-bottom: 4rpx solid rgba(217, 183, 110, 0.35); }
+.space-widget--amber .widget-title { color: #92700c; }
+.space-widget--amber .widget-sub { color: #a67d20; }
+.love-heart { position: absolute; right: 14rpx; top: 0; color: rgba(169,95,111,0.46); font-size: 48rpx; line-height: 1; }
+.love-ring { position: absolute; right: 0; top: -4rpx; width: 56rpx; height: 56rpx; border-radius: 50%; border: 2rpx solid rgba(169,95,111,0.16); }
+.love-dot { position: absolute; right: 44rpx; bottom: 10rpx; width: 10rpx; height: 10rpx; border-radius: 50%; background: rgba(169,95,111,0.28); }
+.home-roof { position: absolute; right: 14rpx; top: 4rpx; width: 34rpx; height: 34rpx; border-left: 5rpx solid rgba(97,125,67,0.34); border-top: 5rpx solid rgba(97,125,67,0.34); transform: rotate(45deg); border-radius: 4rpx; }
+.home-body { position: absolute; right: 10rpx; bottom: 8rpx; width: 46rpx; height: 34rpx; border-radius: 8rpx; background: rgba(97,125,67,0.16); border: 2rpx solid rgba(97,125,67,0.2); }
+.home-door { position: absolute; right: 28rpx; bottom: 8rpx; width: 12rpx; height: 20rpx; border-radius: 6rpx 6rpx 0 0; background: rgba(97,125,67,0.24); }
+.work-case { position: absolute; right: 8rpx; bottom: 8rpx; width: 52rpx; height: 38rpx; border-radius: 8rpx; background: rgba(84,107,189,0.16); border: 2rpx solid rgba(84,107,189,0.24); }
+.work-handle { position: absolute; right: 25rpx; top: 8rpx; width: 18rpx; height: 12rpx; border-radius: 8rpx 8rpx 0 0; border: 3rpx solid rgba(84,107,189,0.24); border-bottom: none; }
+.work-line { position: absolute; right: 12rpx; bottom: 26rpx; width: 44rpx; height: 4rpx; border-radius: 999rpx; background: rgba(84,107,189,0.2); }
+.travel-route { position: absolute; left: 8rpx; right: 8rpx; top: 28rpx; height: 26rpx; border-bottom: 4rpx dashed rgba(36,125,159,0.28); border-radius: 50%; transform: rotate(-10deg); }
+.travel-pin { position: absolute; width: 14rpx; height: 14rpx; border-radius: 50% 50% 50% 0; background: rgba(36,125,159,0.32); transform: rotate(-45deg); }
+.travel-pin-a { left: 8rpx; top: 8rpx; }
+.travel-pin-b { right: 8rpx; bottom: 8rpx; }
+.campus-book { position: absolute; right: 32rpx; top: 10rpx; width: 24rpx; height: 42rpx; border-radius: 6rpx 2rpx 2rpx 6rpx; background: rgba(146,112,12,0.18); border: 2rpx solid rgba(146,112,12,0.2); transform: rotate(-8deg); }
+.campus-book-r { right: 10rpx; transform: rotate(8deg); }
+.campus-line { position: absolute; right: 14rpx; bottom: 8rpx; width: 46rpx; height: 5rpx; border-radius: 999rpx; background: rgba(146,112,12,0.2); }
 .check-mark {
   position: absolute;
   right: 14rpx;
@@ -382,44 +397,5 @@ onMounted(() => {
   border: 1rpx solid rgba(255,255,255,0.62);
 }
 .check-mark.active { background: rgba(33,122,101,0.88); color: #fff; }
-.overview-content { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; gap: 10rpx; }
-.overview-copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4rpx; }
-.overview-title { font-size: 27rpx; font-weight: 820; color: #20352f; }
-.overview-sub { font-size: 20rpx; line-height: 1.35; color: #667770; }
-.overview-space-icon {
-  width: 54rpx;
-  height: 54rpx;
-  border-radius: 20rpx;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 21rpx;
-  font-weight: 850;
-}
-.space-status { position: absolute; left: 18rpx; bottom: 13rpx; z-index: 2; font-size: 21rpx; font-weight: 760; color: rgba(80,99,93,0.72); }
-.card-daily { background: linear-gradient(145deg, rgba(16,185,129,0.18), rgba(5,150,105,0.24)); }
-.card-ai { background: linear-gradient(145deg, rgba(139,92,246,0.18), rgba(99,102,241,0.24)); }
-.card-wealth { background: linear-gradient(145deg, rgba(245,208,120,0.22), rgba(212,175,55,0.2)); }
-.card-budget { background: linear-gradient(145deg, rgba(56,189,248,0.18), rgba(14,165,233,0.24)); }
-.card-daily .overview-title { color: #047857; }
-.card-daily .overview-sub { color: #059669; }
-.card-ai .overview-title { color: #6d28d9; }
-.card-ai .overview-sub { color: #7c3aed; }
-.card-wealth .overview-title { color: #92700c; }
-.card-wealth .overview-sub { color: #a16207; }
-.card-budget .overview-title { color: #0369a1; }
-.card-budget .overview-sub { color: #0284c7; }
-.space-card--rose { background: linear-gradient(145deg, rgba(255,245,247,0.9), rgba(242,167,179,0.28)); border-bottom-color: rgba(242,167,179,0.36); }
-.space-card--olive { background: linear-gradient(145deg, rgba(250,255,242,0.9), rgba(167,201,112,0.28)); border-bottom-color: rgba(167,201,112,0.34); }
-.space-card--blue { background: linear-gradient(145deg, rgba(246,248,255,0.9), rgba(141,167,242,0.28)); border-bottom-color: rgba(141,167,242,0.34); }
-.space-card--cyan { background: linear-gradient(145deg, rgba(244,253,255,0.9), rgba(124,199,232,0.28)); border-bottom-color: rgba(124,199,232,0.34); }
-.space-card--amber { background: linear-gradient(145deg, rgba(255,250,238,0.9), rgba(217,183,110,0.3)); border-bottom-color: rgba(217,183,110,0.35); }
-.space-card--rose .overview-title { color: #a95f6f; }
-.space-card--olive .overview-title { color: #617d43; }
-.space-card--blue .overview-title { color: #546bbd; }
-.space-card--cyan .overview-title { color: #247d9f; }
-.space-card--amber .overview-title { color: #92700c; }
 .save-btn { margin-top: 30rpx; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; color: #1f5147; font-size: 31rpx; font-weight: 780; background: linear-gradient(168deg, rgba(232,255,246,0.94), rgba(118,214,188,0.62)); box-shadow: 0 18rpx 48rpx rgba(92,200,168,0.2); }
 </style>
