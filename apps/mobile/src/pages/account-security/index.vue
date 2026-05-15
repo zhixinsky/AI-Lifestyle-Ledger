@@ -151,6 +151,7 @@ import { accountApi, type AccountProfile } from '@/api/account';
 import { authApi } from '@/api/auth';
 import { membershipApi } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
+import { VERIFICATION_CODE_RESEND_SECONDS } from '@/constants/verification-code';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
@@ -189,12 +190,14 @@ const memberActionText = computed(() => (membership.value?.level === 'free' ? '�
 const phoneCodeDisabled = computed(() => sendingPhoneCode.value || phoneCountdown.value > 0);
 const emailCodeDisabled = computed(() => sendingEmailCode.value || emailCountdown.value > 0);
 const phoneCodeText = computed(() => {
-  if (phoneCountdown.value > 0) return `${phoneCountdown.value}s`;
-  return sendingPhoneCode.value ? '发送中' : '获取验证码';
+  if (phoneCountdown.value > 0) return `${phoneCountdown.value}秒后可重发`;
+  if (sendingPhoneCode.value) return '发送中…';
+  return '获取验证码';
 });
 const emailCodeText = computed(() => {
-  if (emailCountdown.value > 0) return `${emailCountdown.value}s`;
-  return sendingEmailCode.value ? '发送中' : '获取验证码';
+  if (emailCountdown.value > 0) return `${emailCountdown.value}秒后可重发`;
+  if (sendingEmailCode.value) return '发送中…';
+  return '获取验证码';
 });
 const sheetTitle = computed(() => {
   if (activeForm.value === 'profile') return '编辑个人资料';
@@ -261,7 +264,7 @@ function startCountdown(target: 'phone' | 'email') {
   const countdown = target === 'phone' ? phoneCountdown : emailCountdown;
   const currentTimer = target === 'phone' ? phoneCountdownTimer : emailCountdownTimer;
   if (currentTimer) clearInterval(currentTimer);
-  countdown.value = 60;
+  countdown.value = VERIFICATION_CODE_RESEND_SECONDS;
   const timer = setInterval(() => {
     countdown.value -= 1;
     if (countdown.value <= 0) {
@@ -310,10 +313,14 @@ async function submitProfile() {
 
 async function sendPhoneCode() {
   if (phoneCodeDisabled.value) return;
-  if (!phoneForm.phone) return uni.showToast({ title: '请输入手机号', icon: 'none' });
+  const p = phoneForm.phone.trim();
+  if (!/^\d{11}$/.test(p)) {
+    uni.showToast({ title: '请输入11位手机号', icon: 'none' });
+    return;
+  }
   sendingPhoneCode.value = true;
   try {
-    await accountApi.sendPhoneCode(phoneForm.phone);
+    await accountApi.sendPhoneCode(p);
     startCountdown('phone');
     uni.showToast({ title: '验证码已发送', icon: 'success' });
   } catch (error: any) {
@@ -325,10 +332,14 @@ async function sendPhoneCode() {
 
 async function sendEmailCode() {
   if (emailCodeDisabled.value) return;
-  if (!emailForm.email) return uni.showToast({ title: '请输入邮箱', icon: 'none' });
+  const em = emailForm.email.trim();
+  if (!em || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
+    uni.showToast({ title: '请输入有效邮箱', icon: 'none' });
+    return;
+  }
   sendingEmailCode.value = true;
   try {
-    await accountApi.sendEmailCode(emailForm.email);
+    await accountApi.sendEmailCode(em);
     startCountdown('email');
     uni.showToast({ title: '验证码已发送', icon: 'success' });
   } catch (error: any) {
@@ -620,7 +631,7 @@ onUnmounted(() => {
 }
 .code-input { flex: 1; }
 .code-btn {
-  width: 210rpx;
+  width: 240rpx;
   height: 88rpx;
   line-height: 88rpx;
   border-radius: 18rpx;

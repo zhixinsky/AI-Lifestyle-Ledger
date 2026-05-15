@@ -63,9 +63,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, onUnmounted } from 'vue';
 import { useAuthStore } from '@/stores/auth';
 import { authApi } from '@/api/auth';
+import { VERIFICATION_CODE_RESEND_SECONDS } from '@/constants/verification-code';
 
 const auth = useAuthStore();
 const phone = ref('');
@@ -76,7 +77,11 @@ const countdown = ref(0);
 const agreementAccepted = ref(false);
 let countdownTimer: ReturnType<typeof setInterval> | null = null;
 
-const codeBtnText = computed(() => countdown.value > 0 ? `${countdown.value}s` : '获取验证码');
+const codeBtnText = computed(() => {
+  if (sendingCode.value) return '发送中…';
+  if (countdown.value > 0) return `${countdown.value}秒后可重发`;
+  return '获取验证码';
+});
 const codeBtnDisabled = computed(() => sendingCode.value || countdown.value > 0);
 
 function toggleAgreement() {
@@ -108,9 +113,13 @@ async function sendCode() {
   try {
     await authApi.sendCode(phone.value);
     uni.showToast({ title: '验证码已发送', icon: 'success' });
-    countdown.value = 60;
+    if (countdownTimer) {
+      clearInterval(countdownTimer);
+      countdownTimer = null;
+    }
+    countdown.value = VERIFICATION_CODE_RESEND_SECONDS;
     countdownTimer = setInterval(() => {
-      countdown.value--;
+      countdown.value -= 1;
       if (countdown.value <= 0 && countdownTimer) {
         clearInterval(countdownTimer);
         countdownTimer = null;
@@ -159,6 +168,13 @@ async function submit() {
     loading.value = false;
   }
 }
+
+onUnmounted(() => {
+  if (countdownTimer) {
+    clearInterval(countdownTimer);
+    countdownTimer = null;
+  }
+});
 </script>
 
 <style scoped>
@@ -290,7 +306,7 @@ async function submit() {
 
 .code-btn {
   flex-shrink: 0;
-  min-width: 180rpx;
+  min-width: 240rpx;
   height: 88rpx;
   padding: 0 28rpx;
   border-radius: 20rpx;
