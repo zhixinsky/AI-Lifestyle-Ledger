@@ -14,86 +14,143 @@
   opacity: 1;
 }
 
-/* 外缘柔光 + 呼吸，不铺前景色 */
+/* 全屏四周：绿色只在靠边一圈晕染，中间保持通透 */
+.ai-active-border__wash {
+  position: absolute;
+  inset: -32rpx;
+  border-radius: 72rpx;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+  background:
+    radial-gradient(
+      ellipse 98% 96% at 50% 50%,
+      rgba(92, 255, 210, 0) 0%,
+      rgba(92, 255, 210, 0) 72%,
+      rgba(92, 255, 210, 0.045) 82%,
+      rgba(92, 255, 210, 0.1) 92%,
+      rgba(72, 220, 190, 0.12) 100%
+    ),
+    radial-gradient(
+      ellipse 102% 102% at 50% 50%,
+      rgba(120, 240, 255, 0) 0%,
+      rgba(120, 240, 255, 0) 78%,
+      rgba(120, 240, 255, 0.035) 92%,
+      rgba(120, 240, 255, 0.06) 100%
+    );
+  opacity: 0.88;
+}
+
+/* 仅外缘柔光，不用 inset（内阴影会把中间也染绿） */
 .ai-active-border__glow {
   position: absolute;
   inset: 0;
   border-radius: inherit;
+  background: transparent;
   box-shadow:
-    0 0 28rpx rgba(92, 255, 210, 0.35),
-    inset 0 0 32rpx rgba(92, 255, 210, 0.22);
+    0 0 100rpx 40rpx rgba(92, 255, 210, 0.12),
+    0 0 180rpx 80rpx rgba(120, 255, 230, 0.07),
+    0 0 260rpx 120rpx rgba(160, 255, 240, 0.045);
   animation: ai-border-glow-breath 1.6s ease-in-out infinite;
 }
 
-/* 仅描边渐变，无旋转前景 */
-.ai-active-border__ring {
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: 3rpx;
-  background: linear-gradient(
-    145deg,
-    rgba(122, 255, 218, 0.88) 0%,
-    rgba(200, 255, 245, 0.72) 28%,
-    rgba(255, 255, 255, 0.65) 50%,
-    rgba(120, 228, 255, 0.78) 72%,
-    rgba(140, 255, 220, 0.9) 100%
-  );
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  opacity: 0.92;
+.ai-active-border.active .ai-active-border__wash {
+  animation: ai-border-wash-breath 1.6s ease-in-out infinite;
 }
 
-.ai-active-border.active .ai-active-border__ring {
-  animation: ai-border-ring-pulse 1.6s ease-in-out infinite;
+@keyframes ai-border-wash-breath {
+  0%,
+  100% {
+    opacity: 0.82;
+    transform: scale(0.998);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.002);
+  }
 }
 
 @keyframes ai-border-glow-breath {
   0%,
   100% {
     box-shadow:
-      0 0 22rpx rgba(92, 255, 210, 0.28),
-      inset 0 0 26rpx rgba(92, 255, 210, 0.18);
+      0 0 88rpx 36rpx rgba(92, 255, 210, 0.09),
+      0 0 160rpx 72rpx rgba(120, 255, 230, 0.055),
+      0 0 240rpx 108rpx rgba(160, 255, 240, 0.035);
   }
   50% {
     box-shadow:
-      0 0 44rpx rgba(92, 255, 210, 0.52),
-      inset 0 0 40rpx rgba(92, 255, 210, 0.3);
+      0 0 120rpx 52rpx rgba(92, 255, 210, 0.14),
+      0 0 200rpx 96rpx rgba(120, 255, 230, 0.09),
+      0 0 280rpx 132rpx rgba(160, 255, 240, 0.055);
   }
 }
 
-@keyframes ai-border-ring-pulse {
-  0%,
-  100% {
-    opacity: 0.82;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-/* orb-stage 激活 */
-.orb-stage.voice-active .ai-orbit-wrap {
+/* 提亮在旋转层上；垂直位移由 index.vue 内联 :style 绑定（小程序 scoped 下更可靠） */
+.orb-stage.voice-active .ai-orbit-field {
   filter: brightness(1.14) saturate(1.08);
 }
 
 .orb-stage.voice-active .glow-base {
   opacity: 0.92;
   animation-duration: 7s;
+  width: 680rpx;
+  height: 280rpx;
+  bottom: 4%;
+  filter: blur(18rpx);
 }
 
+/* 能量环：去掉细 border / 1rpx 硬边，改成多层柔光「粗模型线」 */
+.orb-stage.voice-active .orbit {
+  border-width: 0;
+  border-color: transparent;
+}
+
+.orb-stage.voice-active .orbit-1 {
+  width: 720rpx;
+  height: 278rpx;
+  margin-left: -360rpx;
+  margin-top: -139rpx;
+  box-shadow:
+    0 0 0 16rpx rgba(160, 250, 225, 0.09),
+    0 0 0 32rpx rgba(120, 230, 215, 0.05),
+    0 0 40rpx rgba(160, 250, 225, 0.26),
+    0 0 80rpx rgba(120, 230, 220, 0.14),
+    inset 0 0 36rpx rgba(255, 255, 255, 0.1);
+}
+
+.orb-stage.voice-active .orbit-2 {
+  width: 600rpx;
+  height: 220rpx;
+  margin-left: -300rpx;
+  margin-top: -110rpx;
+  box-shadow:
+    0 0 0 12rpx rgba(140, 245, 225, 0.08),
+    0 0 0 26rpx rgba(110, 220, 200, 0.045),
+    0 0 34rpx rgba(130, 238, 215, 0.22),
+    0 0 68rpx rgba(110, 220, 200, 0.12),
+    inset 0 0 28rpx rgba(255, 255, 255, 0.08);
+}
+
+.orb-stage.voice-active .orbit-3 {
+  width: 500rpx;
+  height: 176rpx;
+  margin-left: -250rpx;
+  margin-top: -88rpx;
+  box-shadow:
+    0 0 0 10rpx rgba(180, 252, 232, 0.1),
+    0 0 0 22rpx rgba(150, 240, 218, 0.05),
+    0 0 28rpx rgba(180, 252, 232, 0.2),
+    0 0 56rpx rgba(150, 240, 218, 0.11),
+    inset 0 0 24rpx rgba(255, 255, 255, 0.1);
+}
+
+/* 果冻球体不位移、不缩放，仅外发光呼吸 */
 .orb-stage.voice-active .mili-orb {
   animation: orb-breathe-voice 1.35s ease-in-out infinite;
   filter: brightness(1.1) saturate(1.08);
   box-shadow:
-    0 0 48rpx rgba(92, 255, 210, 0.45),
-    0 0 96rpx rgba(120, 255, 220, 0.22);
+    0 0 52rpx rgba(92, 255, 210, 0.48),
+    0 0 110rpx rgba(120, 255, 220, 0.24);
 }
 
 .orb-stage.voice-active .mili-orb.listen {
@@ -103,10 +160,14 @@
 @keyframes orb-breathe-voice {
   0%,
   100% {
-    transform: scale(1.05);
+    box-shadow:
+      0 0 44rpx rgba(92, 255, 210, 0.4),
+      0 0 92rpx rgba(120, 255, 220, 0.2);
   }
   50% {
-    transform: scale(1.12);
+    box-shadow:
+      0 0 62rpx rgba(92, 255, 210, 0.55),
+      0 0 128rpx rgba(120, 255, 220, 0.3);
   }
 }
 
@@ -120,16 +181,20 @@
   pointer-events: none;
 }
 
+/* 扩散波纹：不用细线描边，用柔光带 */
 .orb-voice-ripple {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 276rpx;
-  height: 276rpx;
-  margin: -138rpx 0 0 -138rpx;
+  width: 320rpx;
+  height: 320rpx;
+  margin: -160rpx 0 0 -160rpx;
   border-radius: 50%;
-  border: 2rpx solid rgba(92, 255, 210, 0.45);
-  box-shadow: 0 0 20rpx rgba(92, 255, 210, 0.22);
+  border: none;
+  box-shadow:
+    0 0 0 12rpx rgba(92, 255, 210, 0.07),
+    0 0 28rpx rgba(92, 255, 210, 0.22),
+    0 0 52rpx rgba(120, 255, 220, 0.12);
   opacity: 0;
   animation: orb-voice-ripple-out 2s ease-out infinite;
 }
@@ -144,11 +209,11 @@
 
 @keyframes orb-voice-ripple-out {
   0% {
-    transform: scale(0.92);
+    transform: scale(0.88);
     opacity: 0.55;
   }
   100% {
-    transform: scale(1.45);
+    transform: scale(1.78);
     opacity: 0;
   }
 }

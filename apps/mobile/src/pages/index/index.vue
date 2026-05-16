@@ -10,8 +10,8 @@
     </view>
 
     <view class="ai-active-border" :class="{ active: isVoiceActive }" aria-hidden="true">
+      <view class="ai-active-border__wash" />
       <view class="ai-active-border__glow" />
-      <view class="ai-active-border__ring" />
     </view>
 
     <view class="mili-main">
@@ -61,11 +61,13 @@
               <view class="orb-voice-ripple orb-voice-ripple--2" />
               <view class="orb-voice-ripple orb-voice-ripple--3" />
             </view>
-            <view class="ai-orbit-wrap" aria-hidden="true">
-              <view class="glow-base" />
-              <view class="orbit orbit-1" />
-              <view class="orbit orbit-2" />
-              <view class="orbit orbit-3" />
+            <view class="ai-orbit-wrap" aria-hidden="true" :style="aiOrbitWrapStyle">
+              <view class="ai-orbit-field">
+                <view class="glow-base" />
+                <view class="orbit orbit-1" />
+                <view class="orbit orbit-2" />
+                <view class="orbit orbit-3" />
+              </view>
             </view>
             <view
               v-for="p in orbFloatSlots"
@@ -657,6 +659,10 @@ function initOrbFloatSlots() {
 const statusPad = ref('120rpx');
 const recording = ref(false);
 const isVoiceActive = ref(false);
+/** 光圈上移：用内联 style，避免小程序端 scoped + @use 样式未命中或 transform 被丢弃 */
+const aiOrbitWrapStyle = computed(() =>
+  isVoiceActive.value ? { transform: 'translateY(-56rpx)' } : {},
+);
 const parsing = ref(false);
 const editorVisible = ref(false);
 const editingTransactionId = ref('');

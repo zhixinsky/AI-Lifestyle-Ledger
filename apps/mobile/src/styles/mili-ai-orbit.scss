@@ -1,6 +1,7 @@
 /**
  * AI米粒果冻背后的液态光圈 / 能量环（纯 CSS，无图）
- * 依赖结构：.orb-stage > .ai-orbit-wrap > .glow-base + .orbit.orbit-{1,2,3}
+ * 依赖结构：.orb-stage > .ai-orbit-wrap > .ai-orbit-field > .glow-base + .orbit.orbit-{1,2,3}
+ * 旋转放在 .ai-orbit-field，外层 .ai-orbit-wrap 可单独做 translate（如语音按住上移）
  */
 
 $orbit-ease: cubic-bezier(0.45, 0.05, 0.25, 1);
@@ -12,6 +13,16 @@ $orbit-ease: cubic-bezier(0.45, 0.05, 0.25, 1);
   right: 0;
   bottom: 0;
   z-index: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.ai-orbit-field {
+  position: absolute;
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
   pointer-events: none;
   overflow: visible;
   transform-origin: 50% 50%;
