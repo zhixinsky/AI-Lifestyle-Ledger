@@ -14,18 +14,17 @@ function mountAdminUi(app: NestExpressApplication) {
     console.warn(`[admin] 未找到 ${adminIndex}，/admin 不可用（请确认镜像已构建 admin 前端）`);
     return;
   }
-  const adminRouter = express.Router();
-  adminRouter.use(express.static(adminDist, { index: ['index.html'], redirect: false }));
-  adminRouter.get(/^(.*)$/, (req, res, next) => {
+  // 不做 /admin → /admin/ 重定向，避免与云托管网关「去尾斜杠」形成死循环
+  const staticAdmin = express.static(adminDist, { index: 'index.html', redirect: false });
+  const spaFallback = (req: express.Request, res: express.Response, next: express.NextFunction) => {
     if (req.method !== 'GET' && req.method !== 'HEAD') return next();
-    const sub = req.path || '';
-    if (sub.includes('.') && !sub.endsWith('.html')) return next();
+    const rel = req.path.replace(/^\/admin\/?/, '') || '';
+    if (rel && /\.[a-z0-9]+$/i.test(rel) && !rel.endsWith('.html')) return next();
     res.sendFile(adminIndex, (err) => (err ? next(err) : undefined));
-  });
-  const http = app.getHttpAdapter().getInstance();
-  http.get('/admin', (_req: express.Request, res: express.Response) => res.redirect(301, '/admin/'));
-  app.use('/admin', adminRouter);
-  console.log(`[admin] 已挂载运营后台: /admin/ → ${adminDist}`);
+  };
+  app.use('/admin', staticAdmin);
+  app.use('/admin', spaFallback);
+  console.log(`[admin] 已挂载运营后台: /admin → ${adminDist}`);
 }
 
 async function bootstrap() {
