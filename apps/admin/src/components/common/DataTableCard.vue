@@ -50,10 +50,12 @@ const emptyProps = computed(() => ({
 <style scoped lang="scss">
 .data-table-card {
   overflow: hidden;
+  width: 100%;
 }
 
 .data-table-card__body {
   min-height: 120px;
+  width: 100%;
 }
 
 .data-table-card__footer {

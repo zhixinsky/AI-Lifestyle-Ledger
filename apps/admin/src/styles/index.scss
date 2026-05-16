@@ -25,8 +25,39 @@ a {
 }
 
 .page-shell {
+  width: 100%;
   max-width: var(--moona-content-max);
-  margin: 0 auto;
+  min-width: 0;
+  min-height: calc(100vh - 64px - var(--moona-content-padding-y) - 24px);
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-shell > .data-table-card:last-of-type {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.page-shell > .data-table-card:last-of-type .data-table-card__body {
+  flex: 1;
+}
+
+.page-shell > .page-header {
+  margin-bottom: 16px;
+}
+
+.page-shell > .data-table-card,
+.page-shell > .moona-card,
+.page-shell > .stat-row,
+.page-shell > .chart-row,
+.page-shell > .section-title:first-child {
+  width: 100%;
+}
+
+.page-shell :deep(.el-table) {
+  width: 100% !important;
 }
 
 .moona-card {

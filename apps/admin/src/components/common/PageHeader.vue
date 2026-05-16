@@ -23,7 +23,7 @@ defineProps<{
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 20px;
+  margin-bottom: 16px;
 }
 
 .page-header__title {

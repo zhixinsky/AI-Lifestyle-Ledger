@@ -4,9 +4,7 @@
     <div class="admin-layout__main">
       <Topbar />
       <main class="admin-layout__content">
-        <div class="page-shell">
-          <router-view />
-        </div>
+        <router-view />
       </main>
     </div>
   </div>
@@ -41,7 +39,10 @@ onMounted(() => {
 
 .admin-layout__content {
   flex: 1;
-  padding: 24px;
+  width: 100%;
+  min-width: 0;
+  padding: var(--moona-content-padding-y) var(--moona-content-padding-x);
+  padding-bottom: 24px;
   overflow: auto;
 }
 </style>
