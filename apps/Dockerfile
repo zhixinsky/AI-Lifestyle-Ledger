@@ -47,4 +47,4 @@ ENV MYSQL_DATABASE=moona
 ENV NODE_EXTRA_CA_CERTS=/app/cert/certificate.crt
 EXPOSE 80
 
-CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && echo 'Running migrate deploy...' && npx prisma migrate deploy 2>&1 ; echo 'Starting node...' && exec node dist/main.js"]
+CMD ["sh", "-c", "export DATABASE_URL=\"mysql://${MYSQL_USERNAME}:${MYSQL_PASSWORD}@${MYSQL_ADDRESS}/${MYSQL_DATABASE}\" && echo \"DATABASE_URL=$DATABASE_URL\" && echo 'Running migrate deploy...' && npx prisma migrate deploy && echo 'Starting node...' && exec node dist/main.js"]

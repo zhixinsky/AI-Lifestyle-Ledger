@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { BookType, Prisma, TransactionType } from '@prisma/client';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const SPACE_LABELS: Record<string, string> = {
@@ -28,6 +28,8 @@ function pickLifeSpaceIdFromJson(json: unknown): string | null {
 
 @Injectable()
 export class AdminUserInsightService {
+  private readonly logger = new Logger(AdminUserInsightService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private async ensureUser(id: string) {
@@ -40,6 +42,28 @@ export class AdminUserInsightService {
   }
 
   async getInsight(userId: string) {
+    try {
+      return await this.buildInsight(userId);
+    } catch (err) {
+      this.logger.error(`getInsight failed userId=${userId}`, err instanceof Error ? err.stack : err);
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        const colMissing =
+          err.code === 'P2022' ||
+          (typeof err.message === 'string' &&
+            (err.message.includes('source') ||
+              err.message.includes('inputType') ||
+              err.message.includes('lifeSpaceId')));
+        if (colMissing) {
+          throw new BadRequestException(
+            '数据库结构未更新：请在云托管重新部署并确认启动日志中 prisma migrate deploy 成功',
+          );
+        }
+      }
+      throw err;
+    }
+  }
+
+  private async buildInsight(userId: string) {
     const user = await this.ensureUser(userId);
     const since30 = dayjs().subtract(29, 'day').startOf('day').toDate();
     const monthStart = dayjs().startOf('month').toDate();
@@ -82,9 +106,10 @@ export class AdminUserInsightService {
     const sortedCategoryGroups = [...categoryGroups]
       .sort((a, b) => num(b._sum.amount) - num(a._sum.amount))
       .slice(0, 5);
-    const categories = await this.prisma.category.findMany({
-      where: { id: { in: sortedCategoryGroups.map((g) => g.categoryId) } },
-    });
+    const categoryIds = sortedCategoryGroups.map((g) => g.categoryId);
+    const categories = categoryIds.length
+      ? await this.prisma.category.findMany({ where: { id: { in: categoryIds } } })
+      : [];
     const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
     const aiStats = this.buildAiStats(aiLogsAll, aiLogs30);
@@ -100,7 +125,7 @@ export class AdminUserInsightService {
     const summary = this.buildSummary(tags, aiStats, billStats);
     const behaviorGraph = this.buildBehaviorGraph(user, aiLogs30, transactions30, lifeSpaceCards);
 
-    const timelinePage = await this.getAiTimeline(userId, 1, 20);
+    const timelinePage = await this.buildAiTimeline(userId, 1, 20);
 
     return {
       profile: {
@@ -136,7 +161,11 @@ export class AdminUserInsightService {
       recentAiTimeline: timelinePage.items,
       correctionSummary: {
         total: await this.prisma.aiCorrection.count({ where: { userId } }),
-        recent: corrections,
+        recent: corrections.map((c) => ({
+          ...c,
+          aiResultJson: c.aiResultJson ?? null,
+          correctedResultJson: c.correctedResultJson ?? null,
+        })),
       },
       behaviorGraph,
     };
@@ -144,6 +173,10 @@ export class AdminUserInsightService {
 
   async getAiTimeline(userId: string, page = 1, pageSize = 20) {
     await this.ensureUser(userId);
+    return this.buildAiTimeline(userId, page, pageSize);
+  }
+
+  private async buildAiTimeline(userId: string, page = 1, pageSize = 20) {
     const take = Math.min(50, Math.max(1, pageSize));
     const skip = (Math.max(1, page) - 1) * take;
 
@@ -249,7 +282,7 @@ export class AdminUserInsightService {
     const expense = all.filter((t) => t.type === TransactionType.expense);
     const income = all.filter((t) => t.type === TransactionType.income);
     const aiSource = all.filter((t) => t.source === 'ai').length;
-    const manual = all.length - aiSource;
+    const manual = Math.max(0, all.length - aiSource);
     const monthExpense = monthTx.filter((t) => t.type === TransactionType.expense);
     const monthIncome = monthTx.filter((t) => t.type === TransactionType.income);
     const amounts = expense.map((t) => num(t.amount));
@@ -332,7 +365,7 @@ export class AdminUserInsightService {
     userId: string,
     spaces: Array<Prisma.LifeSpaceGetPayload<object>>,
     templates: Array<Prisma.LifeSpaceTemplateGetPayload<object>>,
-    transactions: Array<Prisma.TransactionGetPayload<{ include: { lifeSpace: true } }>>,
+    transactions: Array<Prisma.TransactionGetPayload<{ include: { category: true; lifeSpace: true } }>>,
     aiLogs: Array<Prisma.AiLogGetPayload<object>>,
   ) {
     const spaceById = new Map(spaces.map((s) => [s.id, s]));
@@ -373,7 +406,7 @@ export class AdminUserInsightService {
       const income = txs.filter((t) => t.type === TransactionType.income);
       const categoryCount = new Map<string, number>();
       for (const t of expense) {
-        const name = (t as { category?: { name: string } }).category?.name || '其它';
+        const name = t.category?.name || '其它';
         categoryCount.set(name, (categoryCount.get(name) || 0) + 1);
       }
       const topCategories = [...categoryCount.entries()]
@@ -480,8 +513,9 @@ export class AdminUserInsightService {
       const name = t.category.name;
       catMap.set(name, (catMap.get(name) || 0) + num(t.amount));
     }
+    let catIdx = 0;
     for (const [name, amount] of [...catMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6)) {
-      const id = `cat_${name}`;
+      const id = `cat_${catIdx++}`;
       nodes.push({ id, name, category: 'category', value: amount });
       links.push({ source: userNode, target: id, value: Math.round(amount) });
     }
@@ -491,8 +525,9 @@ export class AdminUserInsightService {
       const k = l.intent || 'unknown';
       intentMap.set(k, (intentMap.get(k) || 0) + 1);
     }
+    let intentIdx = 0;
     for (const [intent, count] of intentMap.entries()) {
-      const id = `intent_${intent}`;
+      const id = `intent_${intentIdx++}`;
       nodes.push({ id, name: intent, category: 'ai', value: count });
       links.push({ source: userNode, target: id, value: count });
     }
