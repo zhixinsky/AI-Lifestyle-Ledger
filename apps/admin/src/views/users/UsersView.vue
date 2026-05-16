@@ -124,10 +124,25 @@ async function load() {
 
 async function toggleStatus(row: UserRow) {
   const next = row.status === 'enabled' ? 'disabled' : 'enabled';
-  await ElMessageBox.confirm(`确认${next === 'disabled' ? '封禁' : '解封'}该用户？`);
-  await request.patch(`/admin/users/${row.id}/status`, { status: next });
-  ElMessage.success('已更新');
-  load();
+  const action = next === 'disabled' ? '封禁' : '解封';
+  const label = row.nickname || row.phone || row.id;
+  try {
+    await ElMessageBox.confirm(`确认${action}用户「${label}」？封禁后该用户将无法登录小程序。`, `${action}用户`, {
+      type: 'warning',
+      confirmButtonText: action,
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+  try {
+    await request.patch(`/admin/users/${row.id}/status`, { status: next });
+    row.status = next;
+    ElMessage.success(`${action}成功`);
+    load();
+  } catch {
+    /* 错误由 request 拦截器提示 */
+  }
 }
 
 onMounted(load);

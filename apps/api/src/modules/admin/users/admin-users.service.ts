@@ -105,6 +105,9 @@ export class AdminUsersService {
   }
 
   async updateStatus(adminId: string, userId: string, status: UserStatus, ip?: string) {
+    const existing = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!existing) throw new NotFoundException('用户不存在');
+
     const user = await this.prisma.user.update({
       where: { id: userId },
       data: { status },

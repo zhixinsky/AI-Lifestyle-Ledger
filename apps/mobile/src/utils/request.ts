@@ -241,6 +241,13 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
             reject(new Error(normalizeAuthMessage(msg)));
             return;
           }
+          if (res.statusCode === 403) {
+            if (!reqPath.includes('/auth/') && token) {
+              clearExpiredLogin();
+            }
+            reject(new Error(msg || '账号已被封禁'));
+            return;
+          }
           reject(new Error(msg || '请求失败'));
         },
         fail: (err: any) => {
@@ -274,6 +281,13 @@ export async function request<T>(url: string, options: RequestOptions = {}): Pro
             clearExpiredLogin();
           }
           reject(new Error(normalizeAuthMessage(msg)));
+          return;
+        }
+        if (res.statusCode === 403) {
+          if (!url.includes('/auth/') && token) {
+            clearExpiredLogin();
+          }
+          reject(new Error(msg || '账号已被封禁'));
           return;
         }
         reject(new Error(msg || '请求失败'));

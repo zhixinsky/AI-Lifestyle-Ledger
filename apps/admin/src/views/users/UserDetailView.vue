@@ -2,6 +2,14 @@
   <div v-loading="loading" class="page-shell">
     <PageHeader :title="pageTitle" subtitle="查看用户基础信息、账单与生活空间">
       <template #extra>
+        <el-button
+          v-if="user"
+          link
+          :type="user.status === 'enabled' ? 'danger' : 'success'"
+          @click="toggleUserStatus"
+        >
+          {{ user.status === 'enabled' ? '封禁' : '解封' }}
+        </el-button>
         <el-button @click="$router.push('/users')">返回列表</el-button>
       </template>
     </PageHeader>
@@ -83,6 +91,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import dayjs from 'dayjs';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import PageHeader from '@/components/common/PageHeader.vue';
 import DataTableCard from '@/components/common/DataTableCard.vue';
 import request from '@/utils/request';
@@ -131,6 +140,28 @@ function formatTime(v?: string) {
 
 function formatAmount(v: number) {
   return Number(v).toFixed(2);
+}
+
+async function toggleUserStatus() {
+  if (!user.value) return;
+  const next = user.value.status === 'enabled' ? 'disabled' : 'enabled';
+  const action = next === 'disabled' ? '封禁' : '解封';
+  const label = user.value.nickname || user.value.phone || user.value.id;
+  try {
+    await ElMessageBox.confirm(`确认${action}用户「${label}」？封禁后该用户将无法登录小程序。`, `${action}用户`, {
+      type: 'warning',
+      confirmButtonText: action,
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+  try {
+    await request.patch(`/admin/users/${user.value.id}/status`, { status: next });
+    user.value.status = next;
+    ElMessage.success(`${action}成功`);
+  } catch {
+  }
 }
 
 onMounted(async () => {

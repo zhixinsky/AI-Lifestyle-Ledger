@@ -1,4 +1,11 @@
-import { Injectable, UnauthorizedException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
+import { UserStatus } from '@prisma/client';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Resolver } from 'dns/promises';
@@ -65,6 +72,11 @@ export class AuthService {
       throw new UnauthorizedException('验证码错误或已过期');
     }
     this.codeStore.delete(dto.phone);
+
+    const existing = await this.prisma.user.findUnique({ where: { phone: dto.phone } });
+    if (existing?.status === UserStatus.disabled) {
+      throw new ForbiddenException('账号已被封禁，如有疑问请联系客服');
+    }
 
     const user = await this.prisma.user.upsert({
       where: { phone: dto.phone },
@@ -167,6 +179,10 @@ export class AuthService {
 
       let user = await this.prisma.user.findUnique({ where: { openid } });
 
+      if (user?.status === UserStatus.disabled) {
+        throw new ForbiddenException('账号已被封禁，如有疑问请联系客服');
+      }
+
       if (!user) {
         user = await this.prisma.user.create({
           data: {
@@ -222,6 +238,9 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new BadRequestException('用户不存在');
+    if (user.status === UserStatus.disabled) {
+      throw new ForbiddenException('账号已被封禁，如有疑问请联系客服');
+    }
 
     const appId = this.configService.get<string>('WX_APPID');
     const appSecret = this.configService.get<string>('WX_APP_SECRET');

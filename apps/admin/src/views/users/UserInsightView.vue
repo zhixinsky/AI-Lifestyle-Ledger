@@ -2,6 +2,14 @@
   <div v-loading="loading" class="page-shell insight-page">
     <PageHeader :title="pageTitle" subtitle="单用户 AI 行为画像">
       <template #extra>
+        <el-button
+          v-if="profile?.id"
+          link
+          :type="profile?.status === 'enabled' ? 'danger' : 'success'"
+          @click="toggleUserStatus"
+        >
+          {{ profile?.status === 'enabled' ? '封禁' : '解封' }}
+        </el-button>
         <el-button @click="$router.push('/users')">返回列表</el-button>
       </template>
     </PageHeader>
@@ -185,6 +193,7 @@ import { computed, nextTick, onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import * as echarts from 'echarts';
 import dayjs from 'dayjs';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import PageHeader from '@/components/common/PageHeader.vue';
 import StatCard from '@/components/common/StatCard.vue';
 import BrandLogo from '@/components/BrandLogo.vue';
@@ -237,6 +246,7 @@ const spacePieRef = ref<HTMLDivElement>();
 const graphRef = ref<HTMLDivElement>();
 
 type Profile = {
+  id?: string;
   nickname?: string;
   phone?: string;
   email?: string;
@@ -281,6 +291,32 @@ const billStatCards = computed(() => {
 
 function fmt(v: unknown) {
   return v ? dayjs(String(v)).format('YYYY-MM-DD HH:mm') : '—';
+}
+
+async function toggleUserStatus() {
+  const p = profile.value;
+  if (!p?.id) return;
+  const next = p.status === 'enabled' ? 'disabled' : 'enabled';
+  const action = next === 'disabled' ? '封禁' : '解封';
+  const label = p.nickname || p.phone || p.id;
+  try {
+    await ElMessageBox.confirm(`确认${action}用户「${label}」？封禁后该用户将无法登录小程序。`, `${action}用户`, {
+      type: 'warning',
+      confirmButtonText: action,
+      cancelButtonText: '取消',
+    });
+  } catch {
+    return;
+  }
+  try {
+    await request.patch(`/admin/users/${p.id}/status`, { status: next });
+    if (data.value?.profile) {
+      (data.value.profile as Profile).status = next;
+    }
+    ElMessage.success(`${action}成功`);
+  } catch {
+    /* 错误由 request 拦截器提示 */
+  }
 }
 
 async function loadInsight() {
