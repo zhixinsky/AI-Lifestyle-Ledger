@@ -9,7 +9,7 @@
       <view class="page-bg__grain" />
     </view>
 
-    <view class="ai-active-border" :class="{ active: isVoiceActive }" aria-hidden="true">
+    <view class="ai-active-border" :class="{ active: isVoiceActive || voiceIntroCelebration }" aria-hidden="true">
       <view class="ai-active-border__wash" />
       <view class="ai-active-border__glow" />
     </view>
@@ -18,14 +18,18 @@
       <view class="hub">
           <view class="hub-top" :style="{ paddingTop: statusPad }">
             <text class="hub-greet">{{ greetingTitle }}</text>
-            <text class="hub-sub">{{ miliSubtitle }}</text>
-            <LifeSpacePickerBar
-              v-if="lifeSpace.showPicker"
-              :show="lifeSpace.showPicker"
-              :name="lifeSpace.currentName"
-              :type="lifeSpace.currentSpace?.type"
-              @pick="lifeSpace.openPicker()"
-            />
+            <view class="hub-sub-row">
+              <text class="hub-sub">{{ miliSubtitle }}</text>
+              <LifeSpacePickerBar
+                v-if="showLifeSpacePicker"
+                inline
+                :show="showLifeSpacePicker"
+                :spaces="lifeSpaces"
+                :current-id="currentLifeSpaceId"
+                :color="currentLifeSpaceColor"
+                @select="selectLifeSpace"
+              />
+            </view>
           </view>
 
           <view class="air-cards">
@@ -62,7 +66,7 @@
             </view>
           </view>
 
-          <view class="orb-stage" :class="{ 'voice-active': isVoiceActive }">
+          <view class="orb-stage" :class="{ 'voice-active': isVoiceActive || voiceIntroCelebration }">
             <view v-if="isVoiceActive" class="orb-voice-ripples" aria-hidden="true">
               <view class="orb-voice-ripple orb-voice-ripple--1" />
               <view class="orb-voice-ripple orb-voice-ripple--2" />
@@ -87,7 +91,7 @@
                 <view class="orb-float-pill__tail" aria-hidden="true" />
               </view>
             </view>
-            <view class="mili-orb" :class="orbState">
+            <view class="mili-orb" :class="[orbState, { 'orb-intro-glow': voiceIntroCelebration }]">
               <view class="orb-mascot-slot">
                 <image
                   class="orb-mascot"
@@ -97,13 +101,18 @@
               </view>
             </view>
 
-            <view v-if="chatPanelVisible" class="chat-panel">
+            <view
+              v-if="chatPanelVisible"
+              class="chat-panel"
+              :class="{ 'chat-panel--intro': voiceIntroActive }"
+            >
               <view class="chat-panel__glass" aria-hidden="true" />
               <view class="chat-panel__shine" aria-hidden="true" />
               <view class="chat-panel__head">
                 <view class="chat-panel__title-wrap chat-panel__title-wrap--inline">
                   <text class="chat-panel__eyebrow">AI米粒</text>
                   <view
+                    v-if="!voiceIntroActive"
                     :class="['chat-panel__sound-toggle', { on: chatPanelVoiceEnabled, active: chatPanelSpeaking && isSpeaking, failed: chatPanelVoiceFailed }]"
                     @tap="toggleChatPanelVoice"
                   >
@@ -111,9 +120,34 @@
                     <text>{{ chatPanelSpeaking && isSpeaking ? 'Ⅱ' : chatPanelVoiceEnabled ? '♪' : '×' }}</text>
                   </view>
                 </view>
-                <view class="chat-panel__close" @tap="closeChatPanel">×</view>
+                <view
+                  v-if="!voiceIntroActive || voiceIntroFinished"
+                  class="chat-panel__close"
+                  @tap="closeChatPanel"
+                >×</view>
               </view>
-              <view class="chat-panel__body">
+              <view v-if="voiceIntroActive" class="chat-panel__body chat-panel__body--intro">
+                <view
+                  v-for="msg in voiceIntroMessages"
+                  :key="msg.id"
+                  class="chat-panel__intro-row"
+                >
+                  <view class="chat-panel__bubble chat-panel__bubble--ai chat-panel__bubble--intro">
+                    <text class="chat-panel__intro-text">{{ msg.displayText }}<text v-if="msg.typing" class="chat-panel__caret">▍</text></text>
+                  </view>
+                </view>
+                <view v-if="voiceIntroShowAuthBtn" class="voice-intro-auth-wrap">
+                  <view
+                    class="voice-intro-auth-btn"
+                    :class="{ 'voice-intro-auth-btn--loading': voiceIntroAuthLoading }"
+                    @tap="onVoiceIntroAuthorize"
+                  >
+                    <view class="voice-intro-auth-btn__glass" aria-hidden="true" />
+                    <text>立即开启语音</text>
+                  </view>
+                </view>
+              </view>
+              <view v-else class="chat-panel__body">
                 <view class="chat-panel__bubble chat-panel__bubble--user">
                   <text>{{ chatPanelText }}</text>
                 </view>
@@ -174,7 +208,7 @@
               </view>
               <view
                 class="voice-pill"
-                :class="{ active: recording, busy: parsing }"
+                :class="{ active: recording, busy: parsing, 'voice-pill--ready': voiceIntroCelebration }"
                 @touchstart.prevent="onHoldStart"
                 @touchend.prevent="onHoldEnd"
                 @touchcancel.prevent="onHoldEnd"
@@ -235,7 +269,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
 import AppTabbar from '@/components/AppTabbar.vue';
 import LifeSpacePickerBar from '@/components/LifeSpacePickerBar.vue';
@@ -252,6 +286,7 @@ import { useAiStore } from '@/stores/ai';
 import { useFinanceStore } from '@/stores/finance';
 import { useAuthStore } from '@/stores/auth';
 import { useTransactionForm } from '@/composables/useTransactionForm';
+import { useVoiceIntroFlow } from '@/composables/useVoiceIntroFlow';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
 import { classifyVoiceIntent } from '@/utils/intent-classifier';
 import { destroyTts, getVoiceReplyEnabled, isSpeaking, setVoiceReplyEnabled, speakText, stopSpeak } from '@/utils/tts';
@@ -262,10 +297,17 @@ const aiStore = useAiStore();
 const finance = useFinanceStore();
 const authStore = useAuthStore();
 const loginSheet = useLoginSheetStore();
-const lifeSpace = useLifeSpaceContext();
+const {
+  spaces: lifeSpaces,
+  showPicker: showLifeSpacePicker,
+  currentId: currentLifeSpaceId,
+  currentColor: currentLifeSpaceColor,
+  select: selectLifeSpace,
+  load: loadLifeSpaces,
+} = useLifeSpaceContext();
 
 function onLifeSpacesUpdated() {
-  if (authStore.isLoggedIn) void lifeSpace.load();
+  if (authStore.isLoggedIn) void loadLifeSpaces();
 }
 
 /** 云存储路径勿写成连续的 `/ai.png`，否则 Vite 会误当作根目录静态资源导入导致构建失败 */
@@ -675,12 +717,27 @@ const recording = ref(false);
 const isVoiceActive = ref(false);
 /** 光圈上移：用内联 style，避免小程序端 scoped + @use 样式未命中或 transform 被丢弃 */
 const aiOrbitWrapStyle = computed(() =>
-  isVoiceActive.value ? { transform: 'translateY(-56rpx)' } : {},
+  isVoiceActive.value || voiceIntroCelebration.value ? { transform: 'translateY(-56rpx)' } : {},
 );
 const parsing = ref(false);
 const editorVisible = ref(false);
 const editingTransactionId = ref('');
 const voiceLiveText = ref('');
+
+const {
+  active: voiceIntroActive,
+  messages: voiceIntroMessages,
+  showAuthBtn: voiceIntroShowAuthBtn,
+  authLoading: voiceIntroAuthLoading,
+  celebration: voiceIntroCelebration,
+  finished: voiceIntroFinished,
+  tryStart: tryStartVoiceIntro,
+  authorize: authorizeVoiceIntro,
+  destroy: destroyVoiceIntro,
+  dismissCelebration: dismissVoiceIntroCelebration,
+} = useVoiceIntroFlow();
+
+let voiceIntroCelebrateTimer: ReturnType<typeof setTimeout> | null = null;
 
 const chatPanelVisible = ref(false);
 const chatPanelLoading = ref(false);
@@ -708,6 +765,15 @@ function clearPanelAutoCloseTimers() {
 }
 
 function closeChatPanel() {
+  if (voiceIntroActive.value && !voiceIntroFinished.value) return;
+  if (voiceIntroActive.value) {
+    destroyVoiceIntro();
+    dismissVoiceIntroCelebration();
+    if (voiceIntroCelebrateTimer) {
+      clearTimeout(voiceIntroCelebrateTimer);
+      voiceIntroCelebrateTimer = null;
+    }
+  }
   voiceAiSession += 1;
   chatPanelVisible.value = false;
   chatPanelLoading.value = false;
@@ -775,10 +841,42 @@ const manualPencilIcon = makeSvgIcon(
 const manualChevronIcon = makeSvgIcon('<path d="M9 6l6 6-6 6"/>', MANUAL_TONE, '2.2');
 
 const voiceSubLine = computed(() => {
+  if (voiceIntroCelebration.value) return '麦克风已开启，随时可以说话';
   if (parsing.value) return '正在解析语音…';
   if (recording.value) return '松开后自动识别账单';
   return '让记账，像聊天一样简单';
 });
+
+watch(voiceIntroCelebration, (on) => {
+  if (voiceIntroCelebrateTimer) {
+    clearTimeout(voiceIntroCelebrateTimer);
+    voiceIntroCelebrateTimer = null;
+  }
+  if (on) {
+    isVoiceActive.value = true;
+    voiceIntroCelebrateTimer = setTimeout(() => {
+      isVoiceActive.value = false;
+      dismissVoiceIntroCelebration();
+      voiceIntroCelebrateTimer = null;
+    }, 5200);
+  }
+});
+
+async function initVoiceIntroOnShow() {
+  const started = await tryStartVoiceIntro(() => {
+    chatPanelVisible.value = true;
+    chatPanelLoading.value = false;
+    chatPanelText.value = '';
+    chatPanelReply.value = '';
+  });
+  if (!started) {
+    resetChatPanelState();
+  }
+}
+
+function onVoiceIntroAuthorize() {
+  void authorizeVoiceIntro();
+}
 
 const { saving, form, save } = useTransactionForm(async () => {
   await Promise.all([
@@ -816,7 +914,7 @@ onMounted(() => {
     /* ignore */
   }
   if (authStore.isLoggedIn) {
-    void lifeSpace.load();
+    void loadLifeSpaces();
     finance.loadDashboard().catch(() => {});
     authStore.loadProfile().catch(() => {});
     Promise.all([
@@ -829,6 +927,11 @@ onMounted(() => {
 
 onUnmounted(() => {
   uni.$off('life-spaces-updated', onLifeSpacesUpdated);
+  destroyVoiceIntro();
+  if (voiceIntroCelebrateTimer) {
+    clearTimeout(voiceIntroCelebrateTimer);
+    voiceIntroCelebrateTimer = null;
+  }
   clearPanelAutoCloseTimers();
   destroyTts();
   if (greetingTimer) {
@@ -838,7 +941,7 @@ onUnmounted(() => {
 });
 
 onShow(() => {
-  resetChatPanelState();
+  void initVoiceIntroOnShow();
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
@@ -846,7 +949,7 @@ onShow(() => {
     finance.loadCategories();
   }
   if (authStore.isLoggedIn) {
-    void lifeSpace.load();
+    void loadLifeSpaces();
     finance.loadDashboard().catch(() => {});
     authStore.loadProfile().catch(() => {});
     Promise.all([
@@ -857,6 +960,11 @@ onShow(() => {
 });
 
 onHide(() => {
+  destroyVoiceIntro();
+  if (voiceIntroCelebrateTimer) {
+    clearTimeout(voiceIntroCelebrateTimer);
+    voiceIntroCelebrateTimer = null;
+  }
   resetChatPanelState();
 });
 
@@ -873,7 +981,7 @@ function openEditor() {
     occurredAt: new Date().toISOString(),
     remark: '',
     tags: [],
-    lifeSpaceId: lifeSpace.currentId.value || undefined,
+    lifeSpaceId: currentLifeSpaceId.value || undefined,
   };
   editorVisible.value = true;
   if (!finance.categories.length) {
@@ -964,7 +1072,7 @@ function parsedBillToPayload(item: AiParsedTransaction): TransactionPayload {
     occurredAt: item.occurredAt || new Date().toISOString(),
     remark: item.remark,
     tags: item.tags || [],
-    lifeSpaceId: lifeSpace.currentId.value || undefined,
+    lifeSpaceId: currentLifeSpaceId.value || undefined,
   };
 }
 
@@ -980,7 +1088,7 @@ async function saveParsedBills(transactions: AiParsedTransaction[], logId = '') 
   if (!finance.categories.length) {
     await finance.loadCategories().catch(() => {});
   }
-  const spaceId = lifeSpace.currentId.value || undefined;
+  const spaceId = currentLifeSpaceId.value || undefined;
   if (logId) {
     const result = await aiApi.confirmBill(logId, transactions, spaceId);
     return result.transactions;
@@ -1013,7 +1121,7 @@ function editSavedBill() {
     occurredAt: savedBill.value.occurredAt,
     remark: savedBill.value.remark || '',
     tags: savedBill.value.tags || [],
-    lifeSpaceId: savedBill.value.lifeSpaceId || lifeSpace.currentId.value || undefined,
+    lifeSpaceId: savedBill.value.lifeSpaceId || currentLifeSpaceId.value || undefined,
   };
   editorVisible.value = true;
 }
@@ -1190,6 +1298,7 @@ async function parseVoiceBill(text: string) {
 }
 
 function onHoldStart() {
+  if (voiceIntroActive.value && !voiceIntroFinished.value) return;
   clearPanelAutoCloseTimers();
   if (!authStore.isLoggedIn) {
     showLoginRequiredChat();
@@ -1326,6 +1435,7 @@ onUnmounted(() => {
 @use '@/styles/mili-ai-orbit.scss' as *;
 @use '@/styles/mili-orb-float-pills.scss' as *;
 @use '@/styles/mili-ai-voice-active.scss' as *;
+@use '@/styles/mili-voice-intro.scss' as *;
 
 .page {
   position: relative;
@@ -1354,11 +1464,14 @@ onUnmounted(() => {
 }
 
 .hub-top {
+  position: relative;
+  z-index: 40;
   width: 100%;
   align-self: stretch;
   text-align: left;
   box-sizing: border-box;
   flex-shrink: 0;
+  overflow: visible;
 }
 
 .hub-greet {
@@ -1586,13 +1699,25 @@ onUnmounted(() => {
   opacity: 0.88;
 }
 
-.hub-sub {
-  display: block;
+.hub-sub-row {
+  position: relative;
+  z-index: 41;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12rpx;
   margin-top: 10rpx;
+  width: 100%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
+.hub-sub {
+  flex: 1;
+  min-width: 0;
   font-size: 26rpx;
   line-height: 1.45;
   color: rgba(48, 92, 80, 0.62);
-  padding-right: 24rpx;
 }
 
 .orb-stage {

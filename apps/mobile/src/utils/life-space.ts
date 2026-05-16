@@ -1,4 +1,4 @@
-import type { BookType } from '@/types/domain';
+import type { BookType, LifeSpace } from '@/types/domain';
 
 export interface LifeSpaceMeta {
   type: BookType;
@@ -33,4 +33,37 @@ export function getLifeSpaceMeta(type?: string) {
 export function isDefaultLifeSpaceName(name: string) {
   const trimmed = name.trim();
   return !trimmed || defaultNames.has(trimmed);
+}
+
+/** 展示用：去掉各类引号（含全角、弯引号、直角引号） */
+export function stripLifeSpaceQuotes(name: string) {
+  if (!name) return '';
+  return name
+    .replace(/[\u201C\u201D\u2018\u2019\uFF02"'`´＂＇「」『』《》〈〉【】]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function normalizeLifeSpace(space: LifeSpace): LifeSpace {
+  return { ...space, name: stripLifeSpaceQuotes(space.name) };
+}
+
+/** 展示/色条用：优先 API 返回的 color，否则按 type 取预设 */
+export function resolveLifeSpaceColor(space: Pick<LifeSpace, 'type' | 'color'>) {
+  const c = (space.color || '').trim();
+  if (c) return c;
+  return getLifeSpaceMeta(space.type).color;
+}
+
+/** 将 #RRGGBB 转为带透明度的 rgba，用于选项行浅底 */
+export function lifeSpaceColorAlpha(hex: string, alpha = 0.14) {
+  const raw = hex.replace('#', '').trim();
+  if (raw.length !== 6) return `rgba(131, 215, 196, ${alpha})`;
+  const r = parseInt(raw.slice(0, 2), 16);
+  const g = parseInt(raw.slice(2, 4), 16);
+  const b = parseInt(raw.slice(4, 6), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b)) {
+    return `rgba(131, 215, 196, ${alpha})`;
+  }
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }

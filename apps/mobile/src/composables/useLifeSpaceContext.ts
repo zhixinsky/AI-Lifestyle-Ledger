@@ -5,7 +5,7 @@ import {
   resolveCurrentLifeSpaceId,
   setCurrentLifeSpaceId,
 } from '@/utils/life-space-selection';
-
+import { normalizeLifeSpace, resolveLifeSpaceColor, stripLifeSpaceQuotes } from '@/utils/life-space';
 export function useLifeSpaceContext() {
   const spaces = ref<LifeSpace[]>([]);
   const currentId = ref('');
@@ -13,13 +13,21 @@ export function useLifeSpaceContext() {
 
   const showPicker = computed(() => spaces.value.length > 1);
   const currentSpace = computed(() => spaces.value.find((s) => s.id === currentId.value));
-  const currentName = computed(() => currentSpace.value?.name || '日常生活');
+  const currentName = computed(() =>
+    stripLifeSpaceQuotes(currentSpace.value?.name || '日常生活'),
+  );
+  const currentColor = computed(() => {
+    const s = currentSpace.value;
+    return s ? resolveLifeSpaceColor(s) : resolveLifeSpaceColor({ type: 'daily', color: '' });
+  });
 
   async function load() {
     loading.value = true;
     try {
       const list = await lifeSpaceApi.list();
-      spaces.value = list.filter((s) => s.isVisible !== false);
+      spaces.value = list
+        .filter((s) => s.isVisible !== false)
+        .map((s) => normalizeLifeSpace(s));
       currentId.value = resolveCurrentLifeSpaceId(spaces.value);
     } catch {
       spaces.value = [];
@@ -35,19 +43,6 @@ export function useLifeSpaceContext() {
     if (persist) setCurrentLifeSpaceId(id);
   }
 
-  function openPicker(onSelect?: (id: string) => void) {
-    if (spaces.value.length <= 1) return;
-    uni.showActionSheet({
-      itemList: spaces.value.map((s) => s.name),
-      success: (res) => {
-        const picked = spaces.value[res.tapIndex];
-        if (!picked) return;
-        if (onSelect) onSelect(picked.id);
-        else select(picked.id);
-      },
-    });
-  }
-
   return {
     spaces,
     currentId,
@@ -55,8 +50,8 @@ export function useLifeSpaceContext() {
     showPicker,
     currentSpace,
     currentName,
+    currentColor,
     load,
     select,
-    openPicker,
   };
 }

@@ -1,4 +1,5 @@
 import type { LifeSpace } from '@/types/domain';
+import { stripLifeSpaceQuotes } from '@/utils/life-space';
 
 export const STORAGE_CURRENT_LIFE_SPACE_ID = 'currentLifeSpaceId';
 export const STORAGE_DEFAULT_LIFE_SPACE_ID = 'defaultLifeSpaceId';
@@ -64,5 +65,6 @@ export function resolveCurrentLifeSpaceId(spaces: LifeSpace[]): string {
 export function resolveDefaultLifeSpaceLabel(spaces: LifeSpace[]): string {
   const id = getDefaultLifeSpaceId();
   if (!id) return '未设置（沿用上次选择）';
-  return spaces.find((s) => s.id === id)?.name || '未设置（沿用上次选择）';
+  const name = spaces.find((s) => s.id === id)?.name;
+  return name ? stripLifeSpaceQuotes(name) : '未设置（沿用上次选择）';
 }

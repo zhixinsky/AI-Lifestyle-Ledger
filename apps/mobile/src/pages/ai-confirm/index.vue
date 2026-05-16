@@ -18,15 +18,13 @@
 
     <view class="space-target">
       <text class="space-target__label">记录到</text>
-      <view class="space-target__picker" @tap="openSpacePicker">
-        <LifeSpaceTypeIcon
-          v-if="confirmSpace?.type"
-          class="space-target__icon"
-          :theme="getLifeSpaceMeta(confirmSpace.type).theme"
-        />
-        <text class="space-target__name">{{ confirmSpaceName }}</text>
-        <text class="space-target__caret">▼</text>
-      </view>
+      <LifeSpacePickerBar
+        :show="lifeSpaces.length > 1"
+        :spaces="lifeSpaces"
+        :current-id="confirmSpaceId"
+        :color="confirmSpaceColor"
+        @select="onConfirmSpaceSelect"
+      />
     </view>
 
     <!-- 账单卡片 -->
@@ -72,6 +70,7 @@
         {{ saving ? '保存中...' : `确认保存（${transactions.length}笔）` }}
       </button>
     </view>
+
   </PageShell>
 </template>
 
@@ -80,20 +79,25 @@ import { computed, onMounted, ref } from 'vue';
 import { backIcon } from '@/utils/icons';
 import PageShell from '@/components/PageShell.vue';
 import MoonaCard from '@/components/MoonaCard.vue';
-import LifeSpaceTypeIcon from '@/components/LifeSpaceTypeIcon.vue';
+import LifeSpacePickerBar from '@/components/LifeSpacePickerBar.vue';
 import { aiApi } from '@/api/ai';
 import { transactionApi } from '@/api/transactions';
 import { useAiStore } from '@/stores/ai';
 import { useFinanceStore } from '@/stores/finance';
-import type { AiParsedTransaction, LifeSpace } from '@/types/domain';
+import type { AiParsedTransaction } from '@/types/domain';
 import { saveVoiceCategoryPreference } from '@/utils/intent-classifier';
 import { useLifeSpaceContext } from '@/composables/useLifeSpaceContext';
-import { getLifeSpaceMeta } from '@/utils/life-space';
+import { resolveLifeSpaceColor } from '@/utils/life-space';
 import { setCurrentLifeSpaceId } from '@/utils/life-space-selection';
 
 const aiStore = useAiStore();
 const finance = useFinanceStore();
-const lifeSpace = useLifeSpaceContext();
+const {
+  spaces: lifeSpaces,
+  currentId: currentLifeSpaceId,
+  load: loadLifeSpaces,
+  select: selectLifeSpace,
+} = useLifeSpaceContext();
 const saving = ref(false);
 const confirmSpaceId = ref('');
 
@@ -104,10 +108,14 @@ const transactions = computed({
   },
 });
 
-const confirmSpace = computed(() =>
-  lifeSpace.spaces.value.find((s) => s.id === confirmSpaceId.value) as LifeSpace | undefined,
-);
-const confirmSpaceName = computed(() => confirmSpace.value?.name || '日常生活');
+const confirmSpaceColor = computed(() => {
+  const s = lifeSpaces.value.find((item) => item.id === confirmSpaceId.value);
+  return s ? resolveLifeSpaceColor(s) : resolveLifeSpaceColor({ type: 'daily', color: '' });
+});
+
+function onConfirmSpaceSelect(id: string) {
+  confirmSpaceId.value = id;
+}
 
 const categoryIcons: Record<string, string> = {
   餐饮: '🍜', 交通: '🚗', 购物: '🛒', 娱乐: '🎮',
@@ -153,17 +161,6 @@ function back() {
   uni.navigateBack();
 }
 
-function openSpacePicker() {
-  if (lifeSpace.spaces.value.length <= 1) return;
-  uni.showActionSheet({
-    itemList: lifeSpace.spaces.value.map((s) => s.name),
-    success: (res) => {
-      const picked = lifeSpace.spaces.value[res.tapIndex];
-      if (picked) confirmSpaceId.value = picked.id;
-    },
-  });
-}
-
 async function ensureCategories() {
   if (!finance.categories.length) {
     await finance.loadCategories();
@@ -203,13 +200,13 @@ function saveVoicePreferencesIfNeeded() {
 }
 
 onMounted(async () => {
-  await lifeSpace.load();
-  confirmSpaceId.value = lifeSpace.currentId.value;
+  await loadLifeSpaces();
+  confirmSpaceId.value = currentLifeSpaceId.value || lifeSpaces.value[0]?.id || '';
 });
 
 async function confirm() {
   saving.value = true;
-  const spaceId = confirmSpaceId.value || lifeSpace.currentId.value || undefined;
+  const spaceId = confirmSpaceId.value || currentLifeSpaceId.value || undefined;
   try {
     await ensureCategories();
     if (aiStore.logId) {
@@ -231,7 +228,7 @@ async function confirm() {
       await Promise.all(payloads.map((item) => transactionApi.create(item)));
     }
     if (spaceId) {
-      lifeSpace.select(spaceId);
+      selectLifeSpace(spaceId);
       setCurrentLifeSpaceId(spaceId);
     }
     saveVoicePreferencesIfNeeded();
@@ -334,27 +331,19 @@ async function confirm() {
   margin-bottom: 12rpx;
 }
 
-.space-target__picker {
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
+.space-target .life-space-picker {
+  width: 100%;
 }
 
-.space-target__icon {
-  flex-shrink: 0;
-  transform: scale(0.9);
+.space-target .life-space-picker__trigger {
+  width: 100%;
+  justify-content: space-between;
+  box-sizing: border-box;
 }
 
-.space-target__name {
-  flex: 1;
-  font-size: 30rpx;
-  font-weight: 700;
-  color: #1e3a34;
-}
-
-.space-target__caret {
-  font-size: 20rpx;
-  color: rgba(48, 92, 80, 0.45);
+.space-target .life-space-picker__menu {
+  min-width: 220rpx;
+  max-width: 280rpx;
 }
 
 /* 卡片列表 */

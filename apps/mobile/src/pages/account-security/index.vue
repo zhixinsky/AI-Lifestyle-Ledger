@@ -155,6 +155,7 @@
         </view>
       </view>
     </view>
+
   </PageShell>
 </template>
 
@@ -179,9 +180,11 @@ import { lifeSpaceApi } from '@/api/life-spaces';
 import type { LifeSpace } from '@/types/domain';
 import {
   clearDefaultLifeSpaceId,
+  getDefaultLifeSpaceId,
   resolveDefaultLifeSpaceLabel,
   setDefaultLifeSpaceId,
 } from '@/utils/life-space-selection';
+import { normalizeLifeSpace, stripLifeSpaceQuotes } from '@/utils/life-space';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
@@ -294,7 +297,8 @@ async function loadLifeSpacesForDefault() {
     lifeSpacesForDefault.value = [];
     return;
   }
-  lifeSpacesForDefault.value = await lifeSpaceApi.list().catch(() => []);
+  const list = await lifeSpaceApi.list().catch(() => []);
+  lifeSpacesForDefault.value = list.map((s) => normalizeLifeSpace(s));
 }
 
 function openDefaultLifeSpacePicker() {
@@ -304,7 +308,7 @@ function openDefaultLifeSpacePicker() {
     return;
   }
   uni.showActionSheet({
-    itemList: [...spaces.map((s) => s.name), '清除默认（沿用上次选择）'],
+    itemList: [...spaces.map((s) => stripLifeSpaceQuotes(s.name)), '清除默认（沿用上次选择）'],
     success: (res) => {
       if (res.tapIndex === spaces.length) {
         clearDefaultLifeSpaceId();
@@ -314,7 +318,7 @@ function openDefaultLifeSpacePicker() {
       const picked = spaces[res.tapIndex];
       if (picked) {
         setDefaultLifeSpaceId(picked.id);
-        uni.showToast({ title: `已设为 ${picked.name}`, icon: 'success' });
+        uni.showToast({ title: `已设为 ${stripLifeSpaceQuotes(picked.name)}`, icon: 'success' });
       }
     },
   });
