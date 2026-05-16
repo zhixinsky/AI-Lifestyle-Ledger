@@ -19,6 +19,13 @@
           <view class="hub-top" :style="{ paddingTop: statusPad }">
             <text class="hub-greet">{{ greetingTitle }}</text>
             <text class="hub-sub">{{ miliSubtitle }}</text>
+            <LifeSpacePickerBar
+              v-if="lifeSpace.showPicker"
+              :show="lifeSpace.showPicker"
+              :name="lifeSpace.currentName"
+              :type="lifeSpace.currentSpace?.type"
+              @pick="lifeSpace.openPicker()"
+            />
           </view>
 
           <view class="air-cards">
@@ -231,8 +238,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
 import AppTabbar from '@/components/AppTabbar.vue';
+import LifeSpacePickerBar from '@/components/LifeSpacePickerBar.vue';
 import LoginModal from '@/components/LoginModal.vue';
 import TransactionEditor from '@/components/TransactionEditor.vue';
+import { useLifeSpaceContext } from '@/composables/useLifeSpaceContext';
 import { useLoginSheetStore } from '@/stores/login-sheet';
 import { aiGreetingsApi } from '@/api/ai-greetings';
 import { aiApi } from '@/api/ai';
@@ -253,6 +262,11 @@ const aiStore = useAiStore();
 const finance = useFinanceStore();
 const authStore = useAuthStore();
 const loginSheet = useLoginSheetStore();
+const lifeSpace = useLifeSpaceContext();
+
+function onLifeSpacesUpdated() {
+  if (authStore.isLoggedIn) void lifeSpace.load();
+}
 
 /** 云存储路径勿写成连续的 `/ai.png`，否则 Vite 会误当作根目录静态资源导入导致构建失败 */
 const orbMascotSrc =
@@ -794,6 +808,7 @@ onMounted(() => {
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
   greetingTimer = setInterval(() => refreshGreeting(), 60 * 1000);
+  uni.$on('life-spaces-updated', onLifeSpacesUpdated);
   try {
     const v = uni.getStorageSync(MILI_HIDE_SPEND_KEY);
     hideMonthSpend.value = v === true || v === 'true' || v === 1;
@@ -801,6 +816,7 @@ onMounted(() => {
     /* ignore */
   }
   if (authStore.isLoggedIn) {
+    void lifeSpace.load();
     finance.loadDashboard().catch(() => {});
     authStore.loadProfile().catch(() => {});
     Promise.all([
@@ -812,6 +828,7 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  uni.$off('life-spaces-updated', onLifeSpacesUpdated);
   clearPanelAutoCloseTimers();
   destroyTts();
   if (greetingTimer) {
@@ -829,6 +846,7 @@ onShow(() => {
     finance.loadCategories();
   }
   if (authStore.isLoggedIn) {
+    void lifeSpace.load();
     finance.loadDashboard().catch(() => {});
     authStore.loadProfile().catch(() => {});
     Promise.all([
@@ -855,6 +873,7 @@ function openEditor() {
     occurredAt: new Date().toISOString(),
     remark: '',
     tags: [],
+    lifeSpaceId: lifeSpace.currentId.value || undefined,
   };
   editorVisible.value = true;
   if (!finance.categories.length) {
@@ -945,7 +964,15 @@ function parsedBillToPayload(item: AiParsedTransaction): TransactionPayload {
     occurredAt: item.occurredAt || new Date().toISOString(),
     remark: item.remark,
     tags: item.tags || [],
+    lifeSpaceId: lifeSpace.currentId.value || undefined,
   };
+}
+
+function goAiConfirmPage(text: string, transactions: AiParsedTransaction[], logId: string) {
+  aiStore.setParsed(text, logId, transactions);
+  parsing.value = false;
+  chatPanelVisible.value = false;
+  uni.navigateTo({ url: '/pages/ai-confirm/index' });
 }
 
 async function saveParsedBills(transactions: AiParsedTransaction[], logId = '') {
@@ -953,8 +980,9 @@ async function saveParsedBills(transactions: AiParsedTransaction[], logId = '') 
   if (!finance.categories.length) {
     await finance.loadCategories().catch(() => {});
   }
+  const spaceId = lifeSpace.currentId.value || undefined;
   if (logId) {
-    const result = await aiApi.confirmBill(logId, transactions);
+    const result = await aiApi.confirmBill(logId, transactions, spaceId);
     return result.transactions;
   }
   const payloads = transactions.map(parsedBillToPayload);
@@ -985,6 +1013,7 @@ function editSavedBill() {
     occurredAt: savedBill.value.occurredAt,
     remark: savedBill.value.remark || '',
     tags: savedBill.value.tags || [],
+    lifeSpaceId: savedBill.value.lifeSpaceId || lifeSpace.currentId.value || undefined,
   };
   editorVisible.value = true;
 }
@@ -1140,9 +1169,8 @@ async function parseVoiceBill(text: string) {
       return;
     }
     if (result.transactions.length > 0) {
-      const saved = await saveParsedBills(result.transactions, result.logId);
       if (session !== voiceAiSession) return;
-      await showSavedBillResult(saved);
+      goAiConfirmPage(t, result.transactions, result.logId);
       return;
     }
     // 未识别到账单：视为「聊天」，在当前页展示轻量聊天卡片，用户可继续按住说话追问。

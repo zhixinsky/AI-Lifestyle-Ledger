@@ -25,6 +25,7 @@ export interface Transaction {
   amount: number;
   categoryId: string;
   category?: Category;
+  lifeSpaceId?: string;
   occurredAt: string;
   remark?: string;
   tags: string[];

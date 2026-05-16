@@ -73,6 +73,16 @@
         </view>
         <switch :checked="voiceReplyEnabled" color="#00d4c8" @change="onVoiceReplyChange" />
       </view>
+      <view v-if="authStore.isLoggedIn" class="row" @tap="openDefaultLifeSpacePicker">
+        <view class="action-main">
+          <text class="action-text">AI米粒默认空间</text>
+          <text class="action-desc">进入 AI米粒页面时默认使用哪个生活空间</text>
+        </view>
+        <view class="row-right">
+          <text class="status">{{ defaultLifeSpaceLabel }}</text>
+          <text class="arrow">›</text>
+        </view>
+      </view>
       <view class="row" @tap="goCardSettings">
         <text class="action-text">概览卡片管理</text>
         <text class="arrow">›</text>
@@ -165,6 +175,13 @@ import { membershipApi } from '@/api/membership';
 import type { MembershipStatus } from '@/types/domain';
 import { VERIFICATION_CODE_RESEND_SECONDS } from '@/constants/verification-code';
 import { getVoiceReplyEnabled, setVoiceReplyEnabled } from '@/utils/tts';
+import { lifeSpaceApi } from '@/api/life-spaces';
+import type { LifeSpace } from '@/types/domain';
+import {
+  clearDefaultLifeSpaceId,
+  resolveDefaultLifeSpaceLabel,
+  setDefaultLifeSpaceId,
+} from '@/utils/life-space-selection';
 
 const authStore = useAuthStore();
 const financeStore = useFinanceStore();
@@ -214,6 +231,8 @@ const emailCodeText = computed(() => {
 });
 const smartGreetingOn = computed(() => authStore.user?.smartGreetingEnabled !== false);
 const voiceReplyEnabled = ref(false);
+const lifeSpacesForDefault = ref<LifeSpace[]>([]);
+const defaultLifeSpaceLabel = computed(() => resolveDefaultLifeSpaceLabel(lifeSpacesForDefault.value));
 
 async function onSmartGreetingChange(e: any) {
   if (!authStore.isLoggedIn) return;
@@ -268,6 +287,37 @@ function goMembership() {
 
 function goCardSettings() {
   uni.navigateTo({ url: '/pages/card-settings/index' });
+}
+
+async function loadLifeSpacesForDefault() {
+  if (!authStore.isLoggedIn) {
+    lifeSpacesForDefault.value = [];
+    return;
+  }
+  lifeSpacesForDefault.value = await lifeSpaceApi.list().catch(() => []);
+}
+
+function openDefaultLifeSpacePicker() {
+  const spaces = lifeSpacesForDefault.value;
+  if (!spaces.length) {
+    uni.showToast({ title: '暂无生活空间', icon: 'none' });
+    return;
+  }
+  uni.showActionSheet({
+    itemList: [...spaces.map((s) => s.name), '清除默认（沿用上次选择）'],
+    success: (res) => {
+      if (res.tapIndex === spaces.length) {
+        clearDefaultLifeSpaceId();
+        uni.showToast({ title: '已清除默认空间', icon: 'none' });
+        return;
+      }
+      const picked = spaces[res.tapIndex];
+      if (picked) {
+        setDefaultLifeSpaceId(picked.id);
+        uni.showToast({ title: `已设为 ${picked.name}`, icon: 'success' });
+      }
+    },
+  });
 }
 
 function openProfileForm() {
@@ -484,10 +534,12 @@ async function handleDeleteAccount() {
 onMounted(() => {
   voiceReplyEnabled.value = getVoiceReplyEnabled();
   loadProfile();
+  void loadLifeSpacesForDefault();
 });
 onShow(() => {
   voiceReplyEnabled.value = getVoiceReplyEnabled();
   loadProfile();
+  void loadLifeSpacesForDefault();
 });
 
 onUnmounted(() => {

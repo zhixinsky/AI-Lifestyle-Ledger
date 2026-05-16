@@ -1,9 +1,10 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { TransactionType } from '@prisma/client';
 import { CurrentUser, type AuthUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BudgetsService } from '../budgets/budgets.service';
 import { CategoriesService } from '../categories/categories.service';
+import { LifeSpacesService } from '../life-spaces/life-spaces.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { TransactionsService } from '../transactions/transactions.service';
 import { AiChatDto } from './dto/ai-chat.dto';
@@ -23,6 +24,7 @@ export class AiController {
     private readonly prisma: PrismaService,
     private readonly categories: CategoriesService,
     private readonly transactions: TransactionsService,
+    private readonly lifeSpacesService: LifeSpacesService,
     private readonly reportService: AiReportService,
     private readonly chatService: AiFinancialChatService,
     private readonly budgetsService: BudgetsService,
@@ -54,6 +56,7 @@ export class AiController {
 
   @Post('bills/:logId/confirm')
   async confirmBill(@CurrentUser() user: AuthUser, @Param('logId') logId: string, @Body() dto: ConfirmBillDto) {
+    const lifeSpaceId = await this.resolveLifeSpaceId(user.sub, dto.lifeSpaceId);
     const enriched = await this.attachCategoryIds(dto.transactions.map((item) => ({
       ...item,
       tags: item.tags || []
@@ -67,7 +70,8 @@ export class AiController {
         categoryId: item.categoryId,
         occurredAt: item.occurredAt,
         remark: item.remark,
-        tags: item.tags
+        tags: item.tags,
+        lifeSpaceId,
       }));
     }
 
@@ -135,6 +139,18 @@ export class AiController {
   }
 
   /* ========== Private ========== */
+
+  private async resolveLifeSpaceId(userId: string, lifeSpaceId?: string) {
+    if (!lifeSpaceId) {
+      const daily = await this.lifeSpacesService.ensureDefault(userId);
+      return daily.id;
+    }
+    const spaces = await this.lifeSpacesService.list(userId);
+    if (!spaces.some((s) => s.id === lifeSpaceId)) {
+      throw new BadRequestException('生活空间不存在');
+    }
+    return lifeSpaceId;
+  }
 
   private async attachCategoryIds(transactions: ParsedBillTransaction[]) {
     await this.categories.ensureDefaults();

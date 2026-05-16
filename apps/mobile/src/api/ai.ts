@@ -28,10 +28,10 @@ export const aiApi = {
       }
     });
   },
-  confirmBill(logId: string, transactions: AiParsedTransaction[]) {
+  confirmBill(logId: string, transactions: AiParsedTransaction[], lifeSpaceId?: string) {
     return request<{ success: boolean; transactions: Transaction[] }>(`/ai/bills/${logId}/confirm`, {
       method: 'POST',
-      data: { transactions }
+      data: { transactions, ...(lifeSpaceId ? { lifeSpaceId } : {}) },
     });
   },
 

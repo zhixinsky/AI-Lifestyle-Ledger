@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { BudgetsModule } from '../budgets/budgets.module';
 import { CategoriesModule } from '../categories/categories.module';
+import { LifeSpacesModule } from '../life-spaces/life-spaces.module';
 import { TransactionsModule } from '../transactions/transactions.module';
 import { AiController } from './ai.controller';
 import { AiChatService } from './services/ai-chat.service';
@@ -12,7 +13,7 @@ import { BillParserService } from './services/bill-parser.service';
 import { UserMemoryService } from './services/user-memory.service';
 
 @Module({
-  imports: [CategoriesModule, TransactionsModule, BudgetsModule],
+  imports: [CategoriesModule, TransactionsModule, BudgetsModule, LifeSpacesModule],
   controllers: [AiController],
   providers: [
     AiChatService,

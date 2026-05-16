@@ -9,6 +9,7 @@ export interface TransactionPayload {
   remark?: string;
   tags?: string[];
   voucherUrl?: string;
+  lifeSpaceId?: string;
 }
 
 export const transactionApi = {

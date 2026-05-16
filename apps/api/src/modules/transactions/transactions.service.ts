@@ -91,6 +91,7 @@ export class TransactionsService {
         ...(dto.occurredAt ? { occurredAt: new Date(dto.occurredAt) } : {}),
         ...(dto.remark !== undefined ? { remark: dto.remark } : {}),
         ...(dto.voucherUrl !== undefined ? { voucherUrl: dto.voucherUrl } : {}),
+        ...(dto.lifeSpaceId !== undefined ? { lifeSpaceId: dto.lifeSpaceId } : {}),
         ...(dto.tags ? {
           tags: {
             deleteMany: {},
@@ -132,6 +133,7 @@ export class TransactionsService {
       amount: Number(row.amount),
       categoryId: row.categoryId,
       category: row.category,
+      lifeSpaceId: row.lifeSpaceId || undefined,
       occurredAt: row.occurredAt.toISOString(),
       remark: row.remark,
       voucherUrl: row.voucherUrl,

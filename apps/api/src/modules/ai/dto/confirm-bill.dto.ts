@@ -34,4 +34,8 @@ export class ConfirmBillDto {
   @ValidateNested({ each: true })
   @Type(() => ConfirmBillTransactionDto)
   transactions: ConfirmBillTransactionDto[];
+
+  @IsOptional()
+  @IsString()
+  lifeSpaceId?: string;
 }
