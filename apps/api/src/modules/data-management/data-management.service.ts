@@ -44,6 +44,16 @@ export class DataManagementService {
     return this.lifeSpacesService.list(userId);
   }
 
+  async parseImportText(userId: string, content: string, fileName = 'paste.csv') {
+    const buffer = Buffer.from(content, 'utf8');
+    const pseudo = {
+      buffer,
+      originalname: fileName.endsWith('.csv') ? fileName : `${fileName}.csv`,
+      size: buffer.length,
+    } as Express.Multer.File;
+    return this.parseImport(userId, pseudo);
+  }
+
   async parseImport(userId: string, file: Express.Multer.File) {
     if (!file?.buffer?.length) throw new BadRequestException('请上传文件');
     const maxSize = 8 * 1024 * 1024;

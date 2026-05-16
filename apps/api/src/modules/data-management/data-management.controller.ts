@@ -29,6 +29,15 @@ class ParseBase64Dto {
   contentBase64: string;
 }
 
+class ParseTextDto {
+  @IsString()
+  content: string;
+
+  @IsOptional()
+  @IsString()
+  fileName?: string;
+}
+
 class ConfirmImportDto {
   @IsString()
   sessionId: string;
@@ -101,6 +110,16 @@ export class DataManagementController {
       size: buffer.length,
     } as Express.Multer.File;
     return this.dataManagement.parseImport(req.user.sub, pseudo);
+  }
+
+  @Post('import/parse-text')
+  parseImportText(@Req() req: { user: { sub: string } }, @Body() body: ParseTextDto) {
+    if (!body.content?.trim()) throw new BadRequestException('请粘贴 CSV 内容');
+    return this.dataManagement.parseImportText(
+      req.user.sub,
+      body.content,
+      body.fileName || 'paste.csv',
+    );
   }
 
   @Post('import/confirm')

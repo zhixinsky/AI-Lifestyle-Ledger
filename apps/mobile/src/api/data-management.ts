@@ -46,6 +46,12 @@ export const dataManagementApi = {
     });
   },
 
+  parseImportText: (content: string, fileName = 'paste.csv') =>
+    request<ParseResult>(`${base}/import/parse-text`, {
+      method: 'POST',
+      data: { content, fileName },
+    }),
+
   confirmImport: (sessionId: string, lifeSpaceId: string) =>
     request<Record<string, unknown>>(`${base}/import/confirm`, {
       method: 'POST',
