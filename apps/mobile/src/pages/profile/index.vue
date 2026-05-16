@@ -187,7 +187,7 @@ const menuGroups = [
   ],
   [
     { icon: '🔐', label: '账户设置', url: '/pages/account-security/index' },
-    { icon: '💾', label: '数据备份', url: '' },
+    { icon: '💾', label: '数据管理', url: '/pages/data-management/index' },
   ],
   [
     { icon: '💬', label: '帮助与反馈', url: '/pages/help/index' },
@@ -203,6 +203,7 @@ const protectedPages = [
   '/pages/shared-book/index',
   '/pages/growth/index',
   '/pages/category-settings/index',
+  '/pages/data-management/index',
 ];
 
 function onMenuTap(item: { label: string; url: string }) {

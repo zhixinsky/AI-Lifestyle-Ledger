@@ -79,6 +79,13 @@
       }
     },
     {
+      "path": "pages/data-management/index",
+      "style": {
+        "navigationBarTitleText": "数据管理",
+        "navigationStyle": "custom"
+      }
+    },
+    {
       "path": "pages/budget/index",
       "style": {
         "navigationBarTitleText": "预算管理",

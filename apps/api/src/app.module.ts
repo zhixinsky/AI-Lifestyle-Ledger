@@ -23,6 +23,7 @@ import { LifeSpacesModule } from './modules/life-spaces/life-spaces.module';
 import { AiGreetingsModule } from './modules/ai-greetings/ai-greetings.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AnnouncementsModule } from './modules/announcements/announcements.module';
+import { DataManagementModule } from './modules/data-management/data-management.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -56,6 +57,7 @@ import { join } from 'path';
     AiGreetingsModule,
     AdminModule,
     AnnouncementsModule,
+    DataManagementModule,
   ]
 })
 export class AppModule {}

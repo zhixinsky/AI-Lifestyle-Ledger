@@ -13,6 +13,7 @@ import {
   UserFilled,
   DataAnalysis,
   Medal,
+  FolderOpened,
 } from '@element-plus/icons-vue';
 
 export type MenuItem = {
@@ -63,6 +64,7 @@ export const menuGroups: MenuGroup[] = [
     label: '系统管理',
     items: [
       { path: '/settings', title: '系统配置', icon: Setting },
+      { path: '/data-management', title: '数据管理', icon: FolderOpened },
       { path: '/admins', title: '管理员权限', icon: UserFilled },
       { path: '/logs', title: '操作日志', icon: Tickets },
     ],
@@ -82,6 +84,7 @@ export const routeMetaMap: Record<string, { title: string; subtitle?: string; pa
   '/articles': { title: '内容运营', subtitle: '管理发现页文章与内容发布' },
   '/banners': { title: 'Banner 运营', subtitle: '配置首页与发现页横幅展示' },
   '/settings': { title: '系统配置', subtitle: 'AI 限额、协议地址与全局开关' },
+  '/data-management': { title: '数据管理', subtitle: '账单导入、导出与批次记录管理' },
   '/admins': { title: '管理员权限', subtitle: '管理后台账号与角色权限' },
   '/logs': { title: '操作日志', subtitle: '审计关键运营与配置变更' },
   '/life-spaces': { title: '生活空间管理', subtitle: '空间模板与用户使用统计' },

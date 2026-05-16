@@ -30,10 +30,13 @@ import { AdminLifeSpacesService } from './life-spaces/admin-life-spaces.service'
 import { AdminLogsController } from './logs/admin-logs.controller';
 import { AdminAdminsController } from './admins/admin-admins.controller';
 import { AdminAdminsService } from './admins/admin-admins.service';
+import { AdminDataManagementController } from './data-management/admin-data-management.controller';
+import { DataManagementModule } from '../data-management/data-management.module';
 
 @Module({
   imports: [
     PrismaModule,
+    DataManagementModule,
     PassportModule.register({ defaultStrategy: 'admin-jwt' }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -57,6 +60,7 @@ import { AdminAdminsService } from './admins/admin-admins.service';
     AdminLifeSpacesController,
     AdminLogsController,
     AdminAdminsController,
+    AdminDataManagementController,
   ],
   providers: [
     AdminAuthService,
