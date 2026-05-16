@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { MemberLevel, OrderStatus, Prisma } from '@prisma/client';
-import dayjs from 'dayjs';
+import * as dayjs from 'dayjs';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AdminOperationLogService } from '../services/admin-operation-log.service';
 

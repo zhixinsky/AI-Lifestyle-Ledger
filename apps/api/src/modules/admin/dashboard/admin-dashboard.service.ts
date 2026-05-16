@@ -1,15 +1,46 @@
-import { Injectable } from '@nestjs/common';
-import dayjs from 'dayjs';
+import { Injectable, Logger } from '@nestjs/common';
+import * as dayjs from 'dayjs';
 import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class AdminDashboardService {
+  private readonly logger = new Logger(AdminDashboardService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   private todayRange() {
     const start = dayjs().startOf('day').toDate();
     const end = dayjs().endOf('day').toDate();
     return { start, end };
+  }
+
+  private async safeCount(label: string, fn: () => Promise<number>) {
+    try {
+      return await fn();
+    } catch (err) {
+      this.logger.warn(`${label} 统计失败: ${err instanceof Error ? err.message : err}`);
+      return 0;
+    }
+  }
+
+  private async recentFailedLogs() {
+    try {
+      return await this.prisma.aiLog.findMany({
+        where: { status: 'failed' },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          userId: true,
+          rawInput: true,
+          errorMessage: true,
+          createdAt: true,
+        },
+      });
+    } catch (err) {
+      this.logger.warn(`aiLog.recentFailed 查询失败: ${err instanceof Error ? err.message : err}`);
+      return [];
+    }
   }
 
   async summary() {
@@ -29,24 +60,17 @@ export class AdminDashboardService {
       this.prisma.user.count({ where: { createdAt: { gte: start, lte: end } } }),
       this.prisma.transaction.count({ where: { createdAt: { gte: start, lte: end } } }),
       this.prisma.aiLog.count({ where: { createdAt: { gte: start, lte: end } } }),
-      this.prisma.aiLog.count({ where: { createdAt: { gte: start, lte: end }, status: 'failed' } }),
-      this.prisma.aiCorrection.count({ where: { createdAt: { gte: start, lte: end } } }),
+      this.safeCount('aiLog.failed', () =>
+        this.prisma.aiLog.count({ where: { createdAt: { gte: start, lte: end }, status: 'failed' } }),
+      ),
+      this.safeCount('aiCorrection', () =>
+        this.prisma.aiCorrection.count({ where: { createdAt: { gte: start, lte: end } } }),
+      ),
       this.prisma.membership.count({
         where: { level: { not: 'free' }, updatedAt: { gte: start, lte: end } },
       }),
       this.prisma.order.count({ where: { createdAt: { gte: start, lte: end }, status: 'paid' } }),
-      this.prisma.aiLog.findMany({
-        where: { status: 'failed' },
-        orderBy: { createdAt: 'desc' },
-        take: 10,
-        select: {
-          id: true,
-          userId: true,
-          rawInput: true,
-          errorMessage: true,
-          createdAt: true,
-        },
-      }),
+      this.recentFailedLogs(),
     ]);
 
     const todayAiSuccess = todayAiLogs - todayAiFailed;
