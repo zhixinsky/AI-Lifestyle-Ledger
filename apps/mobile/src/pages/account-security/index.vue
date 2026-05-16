@@ -74,10 +74,7 @@
         <switch :checked="voiceReplyEnabled" color="#00d4c8" @change="onVoiceReplyChange" />
       </view>
       <view v-if="authStore.isLoggedIn" class="row" @tap="openDefaultLifeSpacePicker">
-        <view class="action-main">
-          <text class="action-text">AI米粒默认空间</text>
-          <text class="action-desc">进入 AI米粒页面时默认使用哪个生活空间</text>
-        </view>
+        <text class="action-text">AI米粒默认空间</text>
         <view class="row-right">
           <text class="status">{{ defaultLifeSpaceLabel }}</text>
           <text class="arrow">›</text>
@@ -233,7 +230,7 @@ const emailCodeText = computed(() => {
   return '获取验证码';
 });
 const smartGreetingOn = computed(() => authStore.user?.smartGreetingEnabled !== false);
-const voiceReplyEnabled = ref(false);
+const voiceReplyEnabled = ref(true);
 const lifeSpacesForDefault = ref<LifeSpace[]>([]);
 const defaultLifeSpaceLabel = computed(() => resolveDefaultLifeSpaceLabel(lifeSpacesForDefault.value));
 

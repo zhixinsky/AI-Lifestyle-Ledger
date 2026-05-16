@@ -162,6 +162,15 @@ export function useVoiceIntroFlow() {
     celebration.value = false;
   }
 
+  /** 引导结束，退出欢迎 UI，便于进入正常语音/文字聊天 */
+  function dismissUi() {
+    clearAllTimers();
+    active.value = false;
+    showAuthBtn.value = false;
+    authLoading.value = false;
+    messages.value = [];
+  }
+
   return {
     active,
     messages,
@@ -173,5 +182,6 @@ export function useVoiceIntroFlow() {
     authorize,
     destroy,
     dismissCelebration,
+    dismissUi,
   };
 }

@@ -3,7 +3,7 @@ export const VOICE_INTRO_STORAGE_KEY = 'hasShownVoiceIntro';
 export const VOICE_INTRO_MSG = {
   hello: '你好呀，我是AI米粒 ✨',
   invite:
-    '允许麦克风后，\n你可以直接对我说：\n\n下午茶30\n今天买菜68\n帮我分析最近消费',
+    '开启麦克风后，你可以直接对我说：下午茶30 今天买菜68 帮我分析最近消费等',
   granted: '太好啦，现在可以直接和我说话了 🎤',
   denied: '没关系，你也可以先打字和我聊天哦 ✨',
 } as const;

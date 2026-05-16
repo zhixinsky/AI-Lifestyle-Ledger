@@ -15,7 +15,7 @@
     </view>
 
     <view class="mili-main">
-      <view class="hub">
+      <view class="hub" :class="{ 'hub--text-keyboard': hubInputMode === 'text' && hubKeyboardHeight > 0 }">
           <view class="hub-top" :style="{ paddingTop: statusPad }">
             <text class="hub-greet">{{ greetingTitle }}</text>
             <view class="hub-sub-row">
@@ -66,7 +66,13 @@
             </view>
           </view>
 
-          <view class="orb-stage" :class="{ 'voice-active': isVoiceActive || voiceIntroCelebration }">
+          <view
+            class="orb-stage"
+            :class="{
+              'voice-active': isVoiceActive || voiceIntroCelebration,
+              'orb-stage--intro': voiceIntroActive,
+            }"
+          >
             <view v-if="isVoiceActive" class="orb-voice-ripples" aria-hidden="true">
               <view class="orb-voice-ripple orb-voice-ripple--1" />
               <view class="orb-voice-ripple orb-voice-ripple--2" />
@@ -127,15 +133,17 @@
                 >×</view>
               </view>
               <view v-if="voiceIntroActive" class="chat-panel__body chat-panel__body--intro">
-                <view
-                  v-for="msg in voiceIntroMessages"
-                  :key="msg.id"
-                  class="chat-panel__intro-row"
-                >
-                  <view class="chat-panel__bubble chat-panel__bubble--ai chat-panel__bubble--intro">
-                    <text class="chat-panel__intro-text">{{ msg.displayText }}<text v-if="msg.typing" class="chat-panel__caret">▍</text></text>
+                <scroll-view class="chat-panel__intro-scroll" scroll-y :show-scrollbar="false">
+                  <view
+                    v-for="msg in voiceIntroMessages"
+                    :key="msg.id"
+                    class="chat-panel__ai-row chat-panel__intro-row"
+                  >
+                    <view class="chat-panel__bubble chat-panel__bubble--ai">
+                      <text>{{ msg.displayText }}<text v-if="msg.typing" class="chat-panel__caret">▍</text></text>
+                    </view>
                   </view>
-                </view>
+                </scroll-view>
                 <view v-if="voiceIntroShowAuthBtn" class="voice-intro-auth-wrap">
                   <view
                     class="voice-intro-auth-btn"
@@ -190,7 +198,11 @@
             </view>
           </view>
 
-          <view class="hub-bottom-actions">
+          <view
+            class="hub-bottom-actions"
+            :class="{ 'hub-bottom-actions--keyboard': hubInputMode === 'text' && hubKeyboardHeight > 0 }"
+            :style="hubBottomActionsStyle"
+          >
             <view v-if="voiceTranscriptVisible" class="voice-live-zone">
               <text v-if="voiceLiveText" class="voice-live-text">{{ voiceLiveText }}</text>
               <text v-else-if="recording" class="voice-live-placeholder">正在聆听…</text>
@@ -198,7 +210,7 @@
             </view>
 
             <view class="voice-pill-wrap">
-              <view v-if="recording" class="voice-pill-waves voice-pill-waves--left" aria-hidden="true">
+              <view v-if="hubInputMode === 'voice' && recording" class="voice-pill-waves voice-pill-waves--left" aria-hidden="true">
                 <view
                   v-for="bar in voiceWaveBars"
                   :key="`l-${bar}`"
@@ -207,18 +219,24 @@
                 />
               </view>
               <view
+                v-if="hubInputMode === 'voice'"
                 class="voice-pill"
-                :class="{ active: recording, busy: parsing, 'voice-pill--ready': voiceIntroCelebration }"
-                @touchstart.prevent="onHoldStart"
-                @touchend.prevent="onHoldEnd"
-                @touchcancel.prevent="onHoldEnd"
-                @mousedown.prevent="onHoldStart"
-                @mouseup.prevent="onHoldEnd"
-                @mouseleave.prevent="onHoldEnd"
+                :class="{
+                  active: recording,
+                  busy: parsing,
+                  'voice-pill--ready': voiceIntroCelebration,
+                  'voice-pill--swiping': pillSwipeActive,
+                }"
+                @touchstart.stop.prevent="onVoicePillTouchStart"
+                @touchmove.stop.prevent="onVoicePillTouchMove"
+                @touchend.stop.prevent="onVoicePillTouchEnd"
+                @touchcancel.stop.prevent="onVoicePillTouchCancel"
               >
                 <view class="voice-pill__glass" aria-hidden="true" />
                 <view class="voice-pill__sheen" aria-hidden="true" />
                 <view class="voice-pill__rim" aria-hidden="true" />
+                <view class="voice-pill__swipe-edge voice-pill__swipe-edge--left" aria-hidden="true" />
+                <view class="voice-pill__swipe-edge voice-pill__swipe-edge--right" aria-hidden="true" />
                 <view class="voice-pill__content">
                   <view class="voice-pill__row">
                     <image class="voice-pill__mic" :src="voiceMicSrc" mode="aspectFit" />
@@ -229,7 +247,49 @@
                   </view>
                 </view>
               </view>
-              <view v-if="recording" class="voice-pill-waves voice-pill-waves--right" aria-hidden="true">
+              <view
+                v-else
+                class="voice-pill voice-pill--text"
+                :class="{ busy: parsing }"
+              >
+                <view class="voice-pill__glass" aria-hidden="true" />
+                <view class="voice-pill__sheen" aria-hidden="true" />
+                <view class="voice-pill__rim" aria-hidden="true" />
+                <view class="voice-pill__content voice-pill__content--text">
+                  <view class="voice-pill__mic-btn" @tap.stop="switchHubToVoiceMode">
+                    <image
+                      class="voice-pill__mic"
+                      :src="voiceMicSrc"
+                      mode="aspectFit"
+                    />
+                  </view>
+                  <input
+                    v-model="hubTextDraft"
+                    class="voice-pill__input"
+                    type="text"
+                    confirm-type="send"
+                    :focus="hubTextFocus"
+                    :disabled="parsing"
+                    :adjust-position="false"
+                    :cursor-spacing="20"
+                    @keyboardheightchange="onHubInputKeyboardHeight"
+                    placeholder="输入想对米粒说的话"
+                    placeholder-class="voice-pill__input-ph"
+                    @focus="hubTextFocus = true"
+                    @blur="onHubTextBlur"
+                    @tap.stop="focusHubTextInput"
+                    @confirm="submitHubTextInput"
+                  />
+                  <view
+                    class="voice-pill__send"
+                    :class="{ disabled: !hubTextDraft.trim() || parsing }"
+                    @tap.stop="submitHubTextInput"
+                  >
+                    <text>发送</text>
+                  </view>
+                </view>
+              </view>
+              <view v-if="hubInputMode === 'voice' && recording" class="voice-pill-waves voice-pill-waves--right" aria-hidden="true">
                 <view
                   v-for="bar in voiceWaveBars"
                   :key="`r-${bar}`"
@@ -238,8 +298,16 @@
                 />
               </view>
             </view>
+            <text
+              v-if="hubInputMode === 'text' && hubKeyboardHeight <= 0"
+              class="voice-mode-hint"
+            >点击左侧麦克风返回语音</text>
 
-            <view class="manual-glass" @tap="openEditor">
+            <view
+              v-if="!(hubInputMode === 'text' && hubKeyboardHeight > 0)"
+              class="manual-glass"
+              @tap="openEditor"
+            >
               <image class="manual-icon" :src="manualPencilIcon" mode="aspectFit" />
               <text class="manual-label">手动记录</text>
               <image class="manual-chevron" :src="manualChevronIcon" mode="aspectFit" />
@@ -269,7 +337,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { onHide, onShow } from '@dcloudio/uni-app';
 import AppTabbar from '@/components/AppTabbar.vue';
 import LifeSpacePickerBar from '@/components/LifeSpacePickerBar.vue';
@@ -289,7 +357,8 @@ import { useTransactionForm } from '@/composables/useTransactionForm';
 import { useVoiceIntroFlow } from '@/composables/useVoiceIntroFlow';
 import { svgToUri, makeSvgIcon } from '@/utils/icons';
 import { classifyVoiceIntent } from '@/utils/intent-classifier';
-import { destroyTts, getVoiceReplyEnabled, isSpeaking, setVoiceReplyEnabled, speakText, stopSpeak } from '@/utils/tts';
+import { readHubInputMode, writeHubInputMode, type HubInputMode } from '@/utils/hub-input-mode';
+import { destroyTts, getVoiceReplyEnabled, isSpeaking, setVoiceReplyEnabled, speakText, stopSpeak, warmupTtsAudio } from '@/utils/tts';
 import type { AiParsedTransaction, Transaction } from '@/types/domain';
 import { dailyExpenseFromTrend, buildSpendCurveSvgRaw } from './spend-curve';
 
@@ -308,6 +377,27 @@ const {
 
 function onLifeSpacesUpdated() {
   if (authStore.isLoggedIn) void loadLifeSpaces();
+}
+
+/** 登录成功后在当前页立即拉取生活空间等数据（否则切换器要等下次 onShow） */
+function reloadLoggedInHubData() {
+  if (!authStore.isLoggedIn) return;
+  void loadLifeSpaces();
+  finance.loadDashboard().catch(() => {});
+  authStore.loadProfile().catch(() => {});
+  if (!finance.categories.length) {
+    finance.loadCategories();
+  }
+  Promise.all([
+    finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
+    aiStore.loadInsight().catch(() => {}),
+  ]);
+}
+
+function onLoginSuccess() {
+  reloadLoggedInHubData();
+  refreshGreeting(true);
+  scheduleFetchRemoteGreeting();
 }
 
 /** 云存储路径勿写成连续的 `/ai.png`，否则 Vite 会误当作根目录静态资源导入导致构建失败 */
@@ -735,6 +825,7 @@ const {
   authorize: authorizeVoiceIntro,
   destroy: destroyVoiceIntro,
   dismissCelebration: dismissVoiceIntroCelebration,
+  dismissUi: dismissVoiceIntroUi,
 } = useVoiceIntroFlow();
 
 let voiceIntroCelebrateTimer: ReturnType<typeof setTimeout> | null = null;
@@ -767,7 +858,7 @@ function clearPanelAutoCloseTimers() {
 function closeChatPanel() {
   if (voiceIntroActive.value && !voiceIntroFinished.value) return;
   if (voiceIntroActive.value) {
-    destroyVoiceIntro();
+    dismissVoiceIntroUi();
     dismissVoiceIntroCelebration();
     if (voiceIntroCelebrateTimer) {
       clearTimeout(voiceIntroCelebrateTimer);
@@ -840,11 +931,175 @@ const manualPencilIcon = makeSvgIcon(
 
 const manualChevronIcon = makeSvgIcon('<path d="M9 6l6 6-6 6"/>', MANUAL_TONE, '2.2');
 
+const hubInputMode = ref<HubInputMode>('voice');
+const hubTextDraft = ref('');
+const hubTextFocus = ref(false);
+const hubKeyboardHeight = ref(0);
+const pillSwipeActive = ref(false);
+
+const hubBottomActionsStyle = computed(() => {
+  if (hubInputMode.value === 'text' && hubKeyboardHeight.value > 0) {
+    return { bottom: `${hubKeyboardHeight.value}px` };
+  }
+  return {};
+});
+
+function onHubInputKeyboardHeight(e: { detail?: { height?: number } }) {
+  const h = e.detail?.height ?? 0;
+  hubKeyboardHeight.value = h > 0 ? h : 0;
+}
+
+function onKeyboardHeightChange(res: { height: number }) {
+  if (hubInputMode.value !== 'text') return;
+  hubKeyboardHeight.value = res.height > 0 ? res.height : 0;
+}
+
+let keyboardHeightListener: ((res: { height: number }) => void) | null = null;
+
+const PILL_SWIPE_THRESHOLD_PX = 40;
+const PILL_HOLD_DELAY_MS = 200;
+
+let pillTouchStartX = 0;
+let pillTouchStartY = 0;
+let pillDidSwipe = false;
+let pillDidStartRecord = false;
+let pillHoldTimer: ReturnType<typeof setTimeout> | null = null;
+
+function clearPillHoldTimer() {
+  if (pillHoldTimer) {
+    clearTimeout(pillHoldTimer);
+    pillHoldTimer = null;
+  }
+}
+
+function pillTouchPoint(e: { touches: Touch[]; changedTouches: Touch[] }) {
+  const t = e.touches[0] || e.changedTouches[0];
+  return { x: t?.clientX ?? 0, y: t?.clientY ?? 0 };
+}
+
+function isHorizontalSwipe(dx: number, dy: number) {
+  return Math.abs(dx) >= PILL_SWIPE_THRESHOLD_PX && Math.abs(dx) > Math.abs(dy) * 1.15;
+}
+
+function switchHubToTextMode() {
+  if (hubInputMode.value === 'text') return;
+  if (recording.value) onHoldEnd();
+  hubInputMode.value = 'text';
+  writeHubInputMode('text');
+  void nextTick(() => focusHubTextInput());
+}
+
+function switchHubToVoiceMode() {
+  if (hubInputMode.value === 'voice') return;
+  hubTextFocus.value = false;
+  hubKeyboardHeight.value = 0;
+  hubInputMode.value = 'voice';
+  hubTextDraft.value = '';
+  writeHubInputMode('voice');
+}
+
+function focusHubTextInput() {
+  hubTextFocus.value = false;
+  void nextTick(() => {
+    hubTextFocus.value = true;
+  });
+}
+
+function onHubTextBlur() {
+  hubTextFocus.value = false;
+  setTimeout(() => {
+    if (!hubTextFocus.value) hubKeyboardHeight.value = 0;
+  }, 120);
+}
+
+/** 欢迎引导结束后，进入正常 AI 聊天（关闭欢迎面板内容） */
+function exitVoiceIntroForChat() {
+  if (!voiceIntroActive.value) return;
+  dismissVoiceIntroUi();
+  dismissVoiceIntroCelebration();
+  if (voiceIntroCelebrateTimer) {
+    clearTimeout(voiceIntroCelebrateTimer);
+    voiceIntroCelebrateTimer = null;
+  }
+  chatPanelVisible.value = false;
+  chatPanelText.value = '';
+  chatPanelReply.value = '';
+  chatPanelLoading.value = false;
+}
+
+function onVoicePillTouchStart(e: TouchEvent) {
+  if (voiceIntroActive.value && !voiceIntroFinished.value) return;
+  if (parsing.value) return;
+  const p = pillTouchPoint(e);
+  pillTouchStartX = p.x;
+  pillTouchStartY = p.y;
+  pillDidSwipe = false;
+  pillDidStartRecord = false;
+  pillSwipeActive.value = false;
+  clearPillHoldTimer();
+  pillHoldTimer = setTimeout(() => {
+    if (pillDidSwipe) return;
+    pillDidStartRecord = true;
+    onHoldStart();
+  }, PILL_HOLD_DELAY_MS);
+}
+
+function onVoicePillTouchMove(e: TouchEvent) {
+  if (pillDidStartRecord) return;
+  const p = pillTouchPoint(e);
+  const dx = p.x - pillTouchStartX;
+  const dy = p.y - pillTouchStartY;
+  if (isHorizontalSwipe(dx, dy)) {
+    pillDidSwipe = true;
+    pillSwipeActive.value = true;
+    clearPillHoldTimer();
+  }
+}
+
+function onVoicePillTouchEnd() {
+  clearPillHoldTimer();
+  pillSwipeActive.value = false;
+  if (pillDidSwipe) {
+    switchHubToTextMode();
+    pillDidSwipe = false;
+    return;
+  }
+  if (pillDidStartRecord) {
+    onHoldEnd();
+    pillDidStartRecord = false;
+  }
+}
+
+function onVoicePillTouchCancel() {
+  clearPillHoldTimer();
+  pillSwipeActive.value = false;
+  if (pillDidStartRecord) {
+    onHoldEnd();
+    pillDidStartRecord = false;
+  }
+  pillDidSwipe = false;
+}
+
+function submitHubTextInput() {
+  const text = hubTextDraft.value.trim();
+  if (!text || parsing.value) return;
+  if (!authStore.isLoggedIn) {
+    loginSheet.open();
+    return;
+  }
+  exitVoiceIntroForChat();
+  hubTextDraft.value = '';
+  hubTextFocus.value = false;
+  void parseVoiceBill(text);
+}
+
 const voiceSubLine = computed(() => {
+  if (hubInputMode.value === 'text') return '点击麦克风返回语音';
+  if (voiceIntroActive.value && voiceIntroFinished.value) return '按住说话，开始与米粒对话';
   if (voiceIntroCelebration.value) return '麦克风已开启，随时可以说话';
   if (parsing.value) return '正在解析语音…';
   if (recording.value) return '松开后自动识别账单';
-  return '让记账，像聊天一样简单';
+  return '左右滑动切换文字输入';
 });
 
 watch(voiceIntroCelebration, (on) => {
@@ -907,32 +1162,36 @@ onMounted(() => {
   scheduleFetchRemoteGreeting();
   greetingTimer = setInterval(() => refreshGreeting(), 60 * 1000);
   uni.$on('life-spaces-updated', onLifeSpacesUpdated);
+  uni.$on('login-success', onLoginSuccess);
   try {
     const v = uni.getStorageSync(MILI_HIDE_SPEND_KEY);
     hideMonthSpend.value = v === true || v === 'true' || v === 1;
   } catch {
     /* ignore */
   }
+  hubInputMode.value = readHubInputMode();
   if (authStore.isLoggedIn) {
-    void loadLifeSpaces();
-    finance.loadDashboard().catch(() => {});
-    authStore.loadProfile().catch(() => {});
-    Promise.all([
-      finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
-      aiStore.loadInsight().catch(() => {}),
-    ]);
+    reloadLoggedInHubData();
   }
   initOrbFloatSlots();
+  keyboardHeightListener = onKeyboardHeightChange;
+  uni.onKeyboardHeightChange(keyboardHeightListener);
 });
 
 onUnmounted(() => {
+  if (keyboardHeightListener) {
+    uni.offKeyboardHeightChange(keyboardHeightListener);
+    keyboardHeightListener = null;
+  }
   uni.$off('life-spaces-updated', onLifeSpacesUpdated);
+  uni.$off('login-success', onLoginSuccess);
   destroyVoiceIntro();
   if (voiceIntroCelebrateTimer) {
     clearTimeout(voiceIntroCelebrateTimer);
     voiceIntroCelebrateTimer = null;
   }
   clearPanelAutoCloseTimers();
+  clearPillHoldTimer();
   destroyTts();
   if (greetingTimer) {
     clearInterval(greetingTimer);
@@ -945,17 +1204,8 @@ onShow(() => {
   chatPanelVoiceEnabled.value = getVoiceReplyEnabled();
   refreshGreeting(true);
   scheduleFetchRemoteGreeting();
-  if (authStore.isLoggedIn && !finance.categories.length) {
-    finance.loadCategories();
-  }
   if (authStore.isLoggedIn) {
-    void loadLifeSpaces();
-    finance.loadDashboard().catch(() => {});
-    authStore.loadProfile().catch(() => {});
-    Promise.all([
-      finance.loadStatistics({ period: 'month', month: statsQueryMonth() }).catch(() => {}),
-      aiStore.loadInsight().catch(() => {}),
-    ]);
+    reloadLoggedInHubData();
   }
 });
 
@@ -1165,13 +1415,13 @@ async function showVoiceChat(text: string) {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     const last = [...aiStore.chatMessages].reverse().find((m) => m.role === 'assistant');
     chatPanelReply.value = last?.content || '我暂时没想好怎么回答，换个说法试试？';
-    tryPlayChatPanelVoice();
   } catch {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelReply.value = '抱歉，AI 暂时无法响应，请稍后再试～';
   } finally {
     if (session !== voiceAiSession || !chatPanelVisible.value) return;
     chatPanelLoading.value = false;
+    void nextTick(() => tryPlayChatPanelVoice());
   }
 }
 
@@ -1190,7 +1440,9 @@ function toggleChatPanelVoice() {
 }
 
 function tryPlayChatPanelVoice() {
-  if (!chatPanelVoiceEnabled.value || !chatPanelReply.value || chatPanelLoading.value) return;
+  const enabled = getVoiceReplyEnabled();
+  chatPanelVoiceEnabled.value = enabled;
+  if (!enabled || !chatPanelReply.value || chatPanelLoading.value) return;
   void playChatPanelReply();
 }
 
@@ -1222,6 +1474,7 @@ function aiWaitingText(elapsedMs: number) {
 }
 
 function showAiThinkingPanel(text: string, message = '米粒分析语音中…') {
+  if (voiceIntroActive.value) exitVoiceIntroForChat();
   clearPanelAutoCloseTimers();
   chatPanelText.value = text;
   chatPanelReply.value = '';
@@ -1273,7 +1526,7 @@ async function parseVoiceBill(text: string) {
     if (result.busy || result.timeout) {
       chatPanelReply.value = result.message || '米粒思考得有点久，可以再试一次哦～';
       chatPanelLoading.value = false;
-      tryPlayChatPanelVoice();
+      void nextTick(() => tryPlayChatPanelVoice());
       return;
     }
     if (result.transactions.length > 0) {
@@ -1298,6 +1551,7 @@ async function parseVoiceBill(text: string) {
 }
 
 function onHoldStart() {
+  if (hubInputMode.value === 'text') return;
   if (voiceIntroActive.value && !voiceIntroFinished.value) return;
   clearPanelAutoCloseTimers();
   if (!authStore.isLoggedIn) {
@@ -1305,6 +1559,7 @@ function onHoldStart() {
     return;
   }
   if (parsing.value) return;
+  if (getVoiceReplyEnabled()) warmupTtsAudio();
   voiceLiveText.value = '';
   isVoiceActive.value = true;
   recording.value = true;
@@ -1461,6 +1716,10 @@ onUnmounted(() => {
   box-sizing: border-box;
   overflow-y: auto;
   overflow-x: hidden;
+}
+
+.hub--text-keyboard {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 120rpx);
 }
 
 .hub-top {
@@ -1732,6 +1991,11 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.orb-stage--intro .mili-orb {
+  align-self: center;
+  flex-shrink: 0;
+}
+
 .mili-orb {
   position: relative;
   z-index: 3;
@@ -1797,6 +2061,25 @@ onUnmounted(() => {
   gap: 12rpx;
   flex-shrink: 0;
   padding-top: 8rpx;
+  box-sizing: border-box;
+}
+
+.hub-bottom-actions--keyboard {
+  position: fixed;
+  left: 0;
+  right: 0;
+  z-index: 120;
+  max-width: none;
+  margin-top: 0;
+  padding: 12rpx 36rpx calc(12rpx + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(
+    180deg,
+    rgba(247, 252, 250, 0) 0%,
+    rgba(247, 252, 250, 0.88) 28%,
+    rgba(242, 250, 247, 0.96) 100%
+  );
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
 }
 
 .voice-live-zone {
@@ -2000,6 +2283,118 @@ onUnmounted(() => {
   font-weight: 600;
   color: rgba(46, 130, 108, 0.72);
   text-align: center;
+}
+
+.voice-pill--swiping {
+  transform: scale(0.985);
+  opacity: 0.94;
+}
+
+.voice-pill__swipe-edge {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 28rpx;
+  height: 28rpx;
+  margin-top: -14rpx;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.28;
+  background: radial-gradient(circle, rgba(46, 184, 160, 0.5) 0%, transparent 70%);
+}
+
+.voice-pill__swipe-edge--left {
+  left: 16rpx;
+}
+
+.voice-pill__swipe-edge--right {
+  right: 16rpx;
+}
+
+.voice-pill--text {
+  min-height: 96rpx;
+  box-shadow:
+    0 12rpx 36rpx rgba(92, 200, 168, 0.2),
+    0 4rpx 12rpx rgba(64, 160, 130, 0.1),
+    inset 0 1rpx 0 rgba(255, 255, 255, 0.82);
+}
+
+.voice-pill__content--text {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12rpx;
+  padding: 14rpx 16rpx;
+  min-height: 96rpx;
+}
+
+.voice-pill__mic-btn {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  width: 64rpx;
+  height: 64rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.voice-pill__input {
+  position: relative;
+  z-index: 4;
+  flex: 1;
+  min-width: 0;
+  height: 64rpx;
+  line-height: 64rpx;
+  padding: 0 18rpx;
+  border-radius: 999rpx;
+  font-size: 28rpx;
+  color: rgba(19, 67, 56, 0.94);
+  background: rgba(255, 255, 255, 0.52);
+  border: 1rpx solid rgba(255, 255, 255, 0.78);
+}
+
+.voice-pill__input-ph {
+  color: rgba(48, 92, 80, 0.42);
+  font-size: 26rpx;
+}
+
+.voice-pill__send {
+  position: relative;
+  z-index: 4;
+  flex-shrink: 0;
+  height: 64rpx;
+  padding: 0 24rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(
+    135deg,
+    rgba(72, 210, 178, 0.92) 0%,
+    rgba(46, 184, 160, 0.9) 100%
+  );
+  border: 1rpx solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8rpx 20rpx rgba(46, 184, 160, 0.2);
+}
+
+.voice-pill__send text {
+  font-size: 26rpx;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.98);
+}
+
+.voice-pill__send.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.voice-mode-hint {
+  display: block;
+  margin-top: 10rpx;
+  text-align: center;
+  font-size: 22rpx;
+  color: rgba(46, 130, 108, 0.58);
 }
 
 .manual-glass {

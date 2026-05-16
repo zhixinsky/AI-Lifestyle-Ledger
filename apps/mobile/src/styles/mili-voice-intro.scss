@@ -1,18 +1,57 @@
+.orb-stage--intro {
+  height: auto;
+  min-height: 520rpx;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  padding-top: 8rpx;
+  gap: 12rpx;
+}
+
 .chat-panel--intro {
+  position: relative;
+  top: auto;
+  bottom: auto;
+  left: auto;
+  right: auto;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+
+  .chat-panel__head {
+    flex-shrink: 0;
+  }
+
   .chat-panel__body--intro {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+    padding: 4rpx 20rpx 20rpx;
     display: flex;
     flex-direction: column;
-    gap: 18rpx;
-    padding: 8rpx 4rpx 12rpx;
-    max-height: 52vh;
-    overflow-y: auto;
+    gap: 0;
+    overflow: hidden;
   }
 }
 
+.chat-panel__intro-scroll {
+  flex: 1;
+  min-height: 200rpx;
+  max-height: 52vh;
+  width: 100%;
+}
+
 .chat-panel__intro-row {
-  display: flex;
-  justify-content: flex-start;
+  margin-bottom: 12rpx;
   animation: voiceIntroRowIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+
+  &:last-child {
+    margin-bottom: 4rpx;
+  }
 }
 
 @keyframes voiceIntroRowIn {
@@ -26,27 +65,8 @@
   }
 }
 
-.chat-panel__bubble--intro {
-  max-width: 92%;
-  padding: 22rpx 26rpx;
-  border-radius: 26rpx 26rpx 26rpx 10rpx;
-  background: linear-gradient(
-    145deg,
-    rgba(255, 255, 255, 0.72) 0%,
-    rgba(232, 252, 246, 0.58) 100%
-  );
-  border: 1rpx solid rgba(255, 255, 255, 0.82);
-  box-shadow:
-    0 10rpx 28rpx rgba(46, 184, 160, 0.08),
-    inset 0 1rpx 0 rgba(255, 255, 255, 0.9);
-}
-
-.chat-panel__intro-text {
-  font-size: 28rpx;
-  line-height: 1.62;
-  color: rgba(19, 67, 56, 0.9);
+.chat-panel__intro-scroll .chat-panel__bubble--ai text {
   white-space: pre-wrap;
-  word-break: break-word;
 }
 
 .chat-panel__caret {
@@ -67,17 +87,20 @@
 }
 
 .voice-intro-auth-wrap {
+  flex-shrink: 0;
   display: flex;
   justify-content: center;
-  padding: 8rpx 0 4rpx;
+  padding: 12rpx 8rpx 4rpx;
   animation: voiceIntroRowIn 0.6s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
 }
 
 .voice-intro-auth-btn {
   position: relative;
-  min-width: 320rpx;
-  height: 88rpx;
-  padding: 0 40rpx;
+  width: auto;
+  min-width: 240rpx;
+  max-width: 320rpx;
+  height: 68rpx;
+  padding: 0 32rpx;
   border-radius: 999rpx;
   display: flex;
   align-items: center;
@@ -91,7 +114,7 @@
   );
   border: 1rpx solid rgba(255, 255, 255, 0.55);
   box-shadow:
-    0 14rpx 36rpx rgba(46, 184, 160, 0.28),
+    0 10rpx 24rpx rgba(46, 184, 160, 0.22),
     inset 0 1rpx 0 rgba(255, 255, 255, 0.45);
 }
 
@@ -110,8 +133,8 @@
 .voice-intro-auth-btn text {
   position: relative;
   z-index: 1;
-  font-size: 30rpx;
-  font-weight: 750;
+  font-size: 26rpx;
+  font-weight: 700;
   letter-spacing: 0.02em;
   color: rgba(255, 255, 255, 0.98);
   text-shadow: 0 1rpx 2rpx rgba(19, 67, 56, 0.12);

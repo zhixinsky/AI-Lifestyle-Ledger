@@ -22,8 +22,19 @@ export function readStorageFlag(key: string) {
   }
 }
 
+/** 未设置过时默认开启，并写入本地持久化 */
 export function getVoiceReplyEnabled() {
-  return readStorageFlag(VOICE_REPLY_STORAGE_KEY);
+  try {
+    const value = uni.getStorageSync(VOICE_REPLY_STORAGE_KEY);
+    if (value === '' || value === undefined || value === null) {
+      uni.setStorageSync(VOICE_REPLY_STORAGE_KEY, true);
+      return true;
+    }
+    if (value === false || value === 0 || value === '0' || value === 'false') return false;
+    return true;
+  } catch {
+    return true;
+  }
 }
 
 export function setVoiceReplyEnabled(enabled: boolean) {
@@ -182,6 +193,13 @@ export function stopSpeak() {
   }
   // #endif
   finishSpeaking();
+}
+
+/** 在用户交互时预热音频（如按住说话），提高后续自动播报成功率 */
+export function warmupTtsAudio() {
+  // #ifdef MP-WEIXIN
+  configureMiniProgramAudio();
+  // #endif
 }
 
 export function destroyTts() {
