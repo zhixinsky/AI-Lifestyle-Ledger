@@ -17,7 +17,7 @@
       />
       <el-dropdown trigger="click" @command="onCommand">
         <button type="button" class="topbar__user">
-          <span class="topbar__avatar">{{ avatarText }}</span>
+          <BrandLogo size="sm" class="topbar__avatar" />
           <span class="topbar__name">{{ auth.admin?.nickname || auth.admin?.username }}</span>
           <el-icon><ArrowDown /></el-icon>
         </button>
@@ -37,6 +37,7 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ArrowDown, Search } from '@element-plus/icons-vue';
 import { ElMessage } from 'element-plus';
+import BrandLogo from '@/components/BrandLogo.vue';
 import { useAuthStore } from '@/stores/auth';
 import { routeMetaMap } from '@/config/menu';
 
@@ -48,8 +49,6 @@ const searchKeyword = ref('');
 const meta = computed(() => routeMetaMap[route.path] || routeMetaMap[route.matched.at(-1)?.path || ''] || { title: '运营中台' });
 const pageTitle = computed(() => meta.value.title);
 const parentTitle = computed(() => meta.value.parent);
-const avatarText = computed(() => (auth.admin?.nickname || auth.admin?.username || 'A').slice(0, 1).toUpperCase());
-
 function onSearch() {
   if (!searchKeyword.value.trim()) return;
   ElMessage.info(`搜索「${searchKeyword.value}」即将支持`);
@@ -121,16 +120,7 @@ async function onCommand(cmd: string) {
 }
 
 .topbar__avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: var(--moona-primary-soft);
-  color: var(--moona-primary-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 13px;
+  flex-shrink: 0;
 }
 
 .topbar__name {

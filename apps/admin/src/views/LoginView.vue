@@ -2,19 +2,27 @@
   <div class="login-page">
     <div class="login-page__panel">
       <div class="login-card">
-        <div class="login-card__logo">🌙</div>
+        <BrandLogo size="lg" class="login-card__logo" />
         <h1 class="login-card__title">Moona</h1>
         <p class="login-card__sub">AI 运营中台</p>
-        <el-form :model="form" size="large" @submit.prevent="onSubmit">
+        <el-form
+          :model="form"
+          size="large"
+          label-width="72px"
+          class="login-form"
+          @submit.prevent="onSubmit"
+        >
           <el-form-item label="用户名">
             <el-input v-model="form.username" placeholder="admin" />
           </el-form-item>
           <el-form-item label="密码">
             <el-input v-model="form.password" type="password" show-password placeholder="admin123456" />
           </el-form-item>
-          <el-button type="primary" native-type="submit" :loading="loading" class="login-card__btn">
-            登录
-          </el-button>
+          <el-form-item class="login-form__submit">
+            <el-button type="primary" native-type="submit" :loading="loading" class="login-card__btn">
+              登录
+            </el-button>
+          </el-form-item>
         </el-form>
       </div>
     </div>
@@ -25,6 +33,7 @@
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import BrandLogo from '@/components/BrandLogo.vue';
 import { useAuthStore } from '@/stores/auth';
 
 const auth = useAuthStore();
@@ -61,7 +70,7 @@ async function onSubmit() {
 }
 
 .login-card {
-  padding: 40px 36px;
+  padding: 40px 36px 36px;
   background: #fff;
   border: 1px solid var(--moona-border);
   border-radius: 20px;
@@ -70,15 +79,7 @@ async function onSubmit() {
 }
 
 .login-card__logo {
-  width: 56px;
-  height: 56px;
   margin: 0 auto 16px;
-  border-radius: 16px;
-  background: var(--moona-primary-soft);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
 }
 
 .login-card__title {
@@ -94,12 +95,40 @@ async function onSubmit() {
   color: var(--moona-text-secondary);
 }
 
-.login-card__btn {
-  width: 100%;
-  margin-top: 8px;
+.login-form {
+  text-align: left;
+
+  :deep(.el-form-item) {
+    margin-bottom: 20px;
+  }
+
+  :deep(.el-form-item__label) {
+    width: 72px !important;
+    padding-right: 12px;
+    justify-content: flex-end;
+    font-size: var(--moona-font-body);
+    color: var(--moona-text-secondary);
+  }
+
+  :deep(.el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  :deep(.el-input) {
+    width: 100%;
+  }
 }
 
-:deep(.el-form-item__label) {
-  font-size: var(--moona-font-caption);
+.login-form__submit {
+  margin-bottom: 0 !important;
+
+  :deep(.el-form-item__content) {
+    margin-left: 72px !important;
+  }
+}
+
+.login-card__btn {
+  width: 100%;
 }
 </style>

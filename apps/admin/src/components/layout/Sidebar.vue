@@ -1,7 +1,7 @@
 <template>
   <aside class="sidebar">
     <div class="sidebar__brand">
-      <div class="sidebar__logo">🌙</div>
+      <BrandLogo size="md" class="sidebar__logo" />
       <div>
         <div class="sidebar__title">Moona</div>
         <div class="sidebar__sub">AI运营中台</div>
@@ -28,6 +28,7 @@
 
 <script setup lang="ts">
 import { useRoute } from 'vue-router';
+import BrandLogo from '@/components/BrandLogo.vue';
 import { menuGroups } from '@/config/menu';
 
 const route = useRoute();
@@ -59,14 +60,7 @@ function isActive(path: string) {
 }
 
 .sidebar__logo {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, #e9fbf6 0%, #d4f5ed 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 22px;
+  flex-shrink: 0;
 }
 
 .sidebar__title {
