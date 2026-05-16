@@ -34,11 +34,6 @@ import { join } from 'path';
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'admin-dist'),
-      serveRoot: '/admin',
-      exclude: ['/api*', '/uploads*'],
-    }),
     PrismaModule,
     SmsModule,
     AiModule,

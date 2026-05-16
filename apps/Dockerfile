@@ -38,6 +38,8 @@ COPY --from=api-builder /app/api/prisma ./prisma
 COPY api/scripts ./scripts
 COPY --from=admin-builder /app/admin/dist ./admin-dist
 
+RUN test -f /app/admin-dist/index.html || (echo "ERROR: admin-dist/index.html missing" && exit 1)
+
 RUN mkdir -p /app/uploads
 
 ENV PORT=80
