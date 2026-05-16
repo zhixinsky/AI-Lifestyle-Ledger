@@ -43,7 +43,8 @@
           </el-table-column>
           <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
-              <el-button link type="primary" @click="$router.push(`/users/${row.id}`)">详情</el-button>
+              <el-button link type="primary" @click="$router.push(`/users/${row.id}/insight`)">洞察</el-button>
+              <el-button link @click="$router.push(`/users/${row.id}`)">详情</el-button>
               <el-button link :type="row.status === 'enabled' ? 'danger' : 'success'" @click="toggleStatus(row)">
                 {{ row.status === 'enabled' ? '封禁' : '解封' }}
               </el-button>

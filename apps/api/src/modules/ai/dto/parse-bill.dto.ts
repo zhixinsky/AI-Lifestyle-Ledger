@@ -1,4 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { AiInputType } from '@prisma/client';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class ParseBillDto {
   @IsString()
@@ -8,4 +9,8 @@ export class ParseBillDto {
   @IsOptional()
   @IsString()
   occurredAt?: string;
+
+  @IsOptional()
+  @IsEnum(AiInputType)
+  inputType?: AiInputType;
 }

@@ -12,6 +12,7 @@ import { AdminDashboardController } from './dashboard/admin-dashboard.controller
 import { AdminDashboardService } from './dashboard/admin-dashboard.service';
 import { AdminUsersController } from './users/admin-users.controller';
 import { AdminUsersService } from './users/admin-users.service';
+import { AdminUserInsightService } from './users/admin-user-insight.service';
 import { AdminArticlesController } from './articles/admin-articles.controller';
 import { AdminArticlesService } from './articles/admin-articles.service';
 import { AdminAiController } from './ai/admin-ai.controller';
@@ -64,6 +65,7 @@ import { AdminAdminsService } from './admins/admin-admins.service';
     AdminOperationLogService,
     AdminDashboardService,
     AdminUsersService,
+    AdminUserInsightService,
     AdminArticlesService,
     AdminAiService,
     AdminAnnouncementsService,

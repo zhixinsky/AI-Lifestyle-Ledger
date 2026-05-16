@@ -1,5 +1,5 @@
 import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { AiCorrectionType, TransactionType } from '@prisma/client';
+import { AiCorrectionType, TransactionSource, TransactionType } from '@prisma/client';
 import { CurrentUser, type AuthUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BudgetsService } from '../budgets/budgets.service';
@@ -43,6 +43,7 @@ export class AiController {
         rawInput: dto.input,
         aiResponse: { transactions: enriched, intent: result.intent },
         intent: result.intent,
+        inputType: dto.inputType ?? 'text',
         status: result.busy || result.timeout ? 'failed' : 'success',
         durationMs: Date.now() - started,
         errorMessage: result.message,
@@ -80,6 +81,7 @@ export class AiController {
         remark: item.remark,
         tags: item.tags,
         lifeSpaceId,
+        source: TransactionSource.ai,
       }));
     }
 
@@ -89,6 +91,7 @@ export class AiController {
       where: { id: logId },
       data: {
         finalResult: { transactions: enriched, lifeSpaceId },
+        lifeSpaceId,
         userModified,
         confirmed: true,
       },

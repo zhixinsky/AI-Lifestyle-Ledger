@@ -12,6 +12,7 @@ const router = createRouter({
       children: [
         { path: 'dashboard', component: () => import('@/views/dashboard/DashboardView.vue') },
         { path: 'users', component: () => import('@/views/users/UsersView.vue') },
+        { path: 'users/:id/insight', component: () => import('@/views/users/UserInsightView.vue') },
         { path: 'users/:id', component: () => import('@/views/users/UserDetailView.vue') },
         { path: 'ai/logs', component: () => import('@/views/ai/AiLogsView.vue') },
         { path: 'ai/corrections', component: () => import('@/views/ai/AiCorrectionsView.vue') },

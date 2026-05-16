@@ -46,7 +46,12 @@ const router = useRouter();
 const auth = useAuthStore();
 const searchKeyword = ref('');
 
-const meta = computed(() => routeMetaMap[route.path] || routeMetaMap[route.matched.at(-1)?.path || ''] || { title: '运营中台' });
+const meta = computed(() => {
+  if (/^\/users\/[^/]+\/insight$/.test(route.path)) {
+    return routeMetaMap['/users/:id/insight'] ?? { title: '用户 AI 画像', parent: '用户洞察' };
+  }
+  return routeMetaMap[route.path] || routeMetaMap[route.matched.at(-1)?.path || ''] || { title: '运营中台' };
+});
 const pageTitle = computed(() => meta.value.title);
 const parentTitle = computed(() => meta.value.parent);
 function onSearch() {

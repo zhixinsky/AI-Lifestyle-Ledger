@@ -1,4 +1,4 @@
-import { TransactionType } from '@prisma/client';
+import { TransactionSource, TransactionType } from '@prisma/client';
 import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator';
 
 export class CreateTransactionDto {
@@ -31,4 +31,8 @@ export class CreateTransactionDto {
   @IsOptional()
   @IsString()
   voucherUrl?: string;
+
+  @IsOptional()
+  @IsEnum(TransactionSource)
+  source?: TransactionSource;
 }

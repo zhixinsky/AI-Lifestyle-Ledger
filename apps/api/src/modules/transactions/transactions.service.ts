@@ -60,6 +60,7 @@ export class TransactionsService {
         occurredAt: new Date(dto.occurredAt),
         remark: dto.remark,
         voucherUrl: dto.voucherUrl,
+        source: dto.source ?? 'manual',
         tags: dto.tags?.length ? {
           create: await Promise.all(dto.tags.map(async (name) => ({
             tag: {

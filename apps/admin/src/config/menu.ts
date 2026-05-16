@@ -72,6 +72,7 @@ export const menuGroups: MenuGroup[] = [
 export const routeMetaMap: Record<string, { title: string; subtitle?: string; parent?: string }> = {
   '/dashboard': { title: '运营驾驶舱', subtitle: '实时掌握用户、AI 与业务核心指标' },
   '/users': { title: '用户洞察', subtitle: '查看用户画像、会员状态与使用行为' },
+  '/users/:id/insight': { title: '用户 AI 画像', subtitle: '单用户行为分析与 AI 互动洞察', parent: '用户洞察' },
   '/memberships': { title: '会员运营', subtitle: '管理会员等级、到期与手动开通' },
   '/orders': { title: '订单列表', subtitle: '查看支付订单与交易状态', parent: '会员运营' },
   '/ai/logs': { title: '调用日志', subtitle: '追踪 AI 请求、耗时与失败原因' },

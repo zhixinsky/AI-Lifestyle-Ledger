@@ -5,6 +5,7 @@ import { UserStatus } from '@prisma/client';
 import { AdminJwtAuthGuard } from '../guards/admin-jwt-auth.guard';
 import { CurrentAdmin } from '../decorators/current-admin.decorator';
 import { AdminUsersService } from './admin-users.service';
+import { AdminUserInsightService } from './admin-user-insight.service';
 import type { Request } from 'express';
 
 class ListUsersQuery {
@@ -34,14 +35,51 @@ class UpdateUserStatusDto {
   status: UserStatus;
 }
 
+class PaginationQuery {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pageSize?: number;
+}
+
 @Controller('admin/users')
 @UseGuards(AdminJwtAuthGuard)
 export class AdminUsersController {
-  constructor(private readonly users: AdminUsersService) {}
+  constructor(
+    private readonly users: AdminUsersService,
+    private readonly insight: AdminUserInsightService,
+  ) {}
 
   @Get()
   list(@Query() query: ListUsersQuery) {
     return this.users.list(query);
+  }
+
+  @Get(':id/insight')
+  getInsight(@Param('id') id: string) {
+    return this.insight.getInsight(id);
+  }
+
+  @Get(':id/ai-timeline')
+  aiTimeline(@Param('id') id: string, @Query() query: PaginationQuery) {
+    return this.insight.getAiTimeline(id, query.page, query.pageSize);
+  }
+
+  @Get(':id/corrections')
+  corrections(@Param('id') id: string, @Query() query: PaginationQuery) {
+    return this.insight.getCorrections(id, query.page, query.pageSize);
+  }
+
+  @Get(':id/behavior-graph')
+  behaviorGraph(@Param('id') id: string) {
+    return this.insight.getBehaviorGraph(id);
   }
 
   @Get(':id')
