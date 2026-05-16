@@ -1,19 +1,22 @@
 <template>
   <div class="login-page">
-    <div class="login-card">
-      <div class="login-card__brand">🌙 Moona</div>
-      <p class="login-card__sub">AI生活账本 · 运营中台</p>
-      <el-form :model="form" @submit.prevent="onSubmit">
-        <el-form-item label="用户名">
-          <el-input v-model="form.username" placeholder="admin" />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input v-model="form.password" type="password" show-password placeholder="admin123456" />
-        </el-form-item>
-        <el-button type="primary" native-type="submit" :loading="loading" style="width: 100%">
-          登录
-        </el-button>
-      </el-form>
+    <div class="login-page__panel">
+      <div class="login-card">
+        <div class="login-card__logo">🌙</div>
+        <h1 class="login-card__title">Moona</h1>
+        <p class="login-card__sub">AI 运营中台</p>
+        <el-form :model="form" size="large" @submit.prevent="onSubmit">
+          <el-form-item label="用户名">
+            <el-input v-model="form.username" placeholder="admin" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="form.password" type="password" show-password placeholder="admin123456" />
+          </el-form-item>
+          <el-button type="primary" native-type="submit" :loading="loading" class="login-card__btn">
+            登录
+          </el-button>
+        </el-form>
+      </div>
     </div>
   </div>
 </template>
@@ -45,29 +48,58 @@ async function onSubmit() {
 <style scoped lang="scss">
 .login-page {
   min-height: 100vh;
+  background: var(--moona-bg);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #e8f1ff 0%, #f0fdf9 50%, #eef2ff 100%);
+  padding: 24px;
+}
+
+.login-page__panel {
+  width: 100%;
+  max-width: 420px;
 }
 
 .login-card {
-  width: 400px;
-  padding: 40px;
-  border-radius: 20px;
+  padding: 40px 36px;
   background: #fff;
-  box-shadow: 0 20px 60px rgba(91, 141, 239, 0.15);
+  border: 1px solid var(--moona-border);
+  border-radius: 20px;
+  box-shadow: var(--moona-shadow-card);
+  text-align: center;
 }
 
-.login-card__brand {
+.login-card__logo {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  border-radius: 16px;
+  background: var(--moona-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 28px;
+}
+
+.login-card__title {
+  margin: 0;
+  font-size: 24px;
   font-weight: 700;
-  text-align: center;
+  color: var(--moona-text);
 }
 
 .login-card__sub {
-  text-align: center;
-  color: var(--moona-muted);
   margin: 8px 0 28px;
+  font-size: var(--moona-font-body);
+  color: var(--moona-text-secondary);
+}
+
+.login-card__btn {
+  width: 100%;
+  margin-top: 8px;
+}
+
+:deep(.el-form-item__label) {
+  font-size: var(--moona-font-caption);
 }
 </style>

@@ -1,40 +1,57 @@
 <template>
-  <div class="page-card">
-    <div class="toolbar">
-      <el-button type="primary" @click="openEdit()">新增文章</el-button>
-    </div>
-    <el-table v-loading="loading" :data="items" stripe>
-      <el-table-column prop="title" label="标题" min-width="200" />
-      <el-table-column prop="category" label="分类" width="100" />
-      <el-table-column prop="published" label="发布" width="80">
-        <template #default="{ row }">
-          <el-tag :type="row.published ? 'success' : 'info'">{{ row.published ? '已发布' : '草稿' }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="viewCount" label="阅读" width="80" />
-      <el-table-column label="操作" width="180">
-        <template #default="{ row }">
-          <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
-          <el-button link type="danger" @click="remove(row.id)">删除</el-button>
-        </template>
-      </el-table-column>
-    </el-table>
+  <div class="page-shell">
+    <PageHeader title="内容运营" subtitle="管理发现页文章与内容发布">
+      <template #extra>
+        <el-button type="primary" @click="openEdit()">新增文章</el-button>
+      </template>
+    </PageHeader>
+
+    <DataTableCard
+      :show-empty="!loading && items.length === 0"
+      empty-title="还没有文章"
+      empty-description="发布第一篇文章，丰富发现页内容。"
+      empty-emoji="📝"
+    >
+      <template v-if="items.length">
+        <el-table v-loading="loading" :data="items">
+          <el-table-column prop="title" label="标题" min-width="200" />
+          <el-table-column prop="category" label="分类" width="100" />
+          <el-table-column prop="published" label="状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="row.published ? 'success' : 'info'" size="small">
+                {{ row.published ? '已发布' : '草稿' }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="viewCount" label="阅读" width="80" align="right" />
+          <el-table-column label="操作" width="160" fixed="right">
+            <template #default="{ row }">
+              <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
+              <el-button link type="danger" @click="remove(row.id)">删除</el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </template>
+      <template v-if="!loading && items.length === 0" #emptyAction>
+        <el-button type="primary" @click="openEdit()">新增文章</el-button>
+      </template>
+    </DataTableCard>
 
     <el-dialog v-model="dialogVisible" :title="form.id ? '编辑文章' : '新增文章'" width="720px">
       <el-form label-width="80px">
         <el-form-item label="标题"><el-input v-model="form.title" /></el-form-item>
         <el-form-item label="摘要"><el-input v-model="form.summary" type="textarea" :rows="2" /></el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="form.category">
+          <el-select v-model="form.category" style="width: 100%">
             <el-option label="技巧" value="tip" />
             <el-option label="知识" value="knowledge" />
             <el-option label="挑战" value="challenge" />
           </el-select>
         </el-form-item>
         <el-form-item label="封面">
-          <el-input v-model="form.coverUrl" placeholder="图片 URL 或上传后粘贴" />
-          <el-upload :show-file-list="false" :http-request="uploadCover" accept="image/*">
-            <el-button size="small" class="mt-2">上传封面</el-button>
+          <el-input v-model="form.coverUrl" placeholder="图片 URL" />
+          <el-upload :show-file-list="false" :http-request="uploadCover" accept="image/*" class="mt-8">
+            <el-button size="small">上传封面</el-button>
           </el-upload>
         </el-form-item>
         <el-form-item label="内容">
@@ -54,6 +71,8 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import PageHeader from '@/components/common/PageHeader.vue';
+import DataTableCard from '@/components/common/DataTableCard.vue';
 import request from '@/utils/request';
 
 type Article = {
@@ -65,14 +84,13 @@ type Article = {
   category: string;
   published: boolean;
   isPinned: boolean;
-  sort: number;
 };
 
 const loading = ref(false);
 const saving = ref(false);
 const items = ref<Article[]>([]);
 const dialogVisible = ref(false);
-const form = reactive<Partial<Article>>({ category: 'tip', published: true, isPinned: false, sort: 0 });
+const form = reactive<Partial<Article>>({ category: 'tip', published: true, isPinned: false });
 
 async function load() {
   loading.value = true;
@@ -123,6 +141,7 @@ onMounted(load);
 </script>
 
 <style scoped>
-.toolbar { margin-bottom: 16px; }
-.mt-2 { margin-top: 8px; }
+.mt-8 {
+  margin-top: 8px;
+}
 </style>

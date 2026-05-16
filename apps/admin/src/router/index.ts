@@ -23,6 +23,8 @@ const router = createRouter({
         { path: 'life-spaces', component: () => import('@/views/life-spaces/LifeSpacesView.vue') },
         { path: 'growth/badges', component: () => import('@/views/growth/BadgesView.vue') },
         { path: 'growth/challenges', component: () => import('@/views/growth/ChallengesView.vue') },
+        { path: 'banners', component: () => import('@/views/placeholders/ComingSoonView.vue') },
+        { path: 'admins', component: () => import('@/views/placeholders/ComingSoonView.vue') },
         { path: 'settings', component: () => import('@/views/settings/SettingsView.vue') },
         { path: 'logs', component: () => import('@/views/logs/OperationLogsView.vue') },
       ],

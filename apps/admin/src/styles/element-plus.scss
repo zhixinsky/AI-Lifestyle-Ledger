@@ -1,0 +1,56 @@
+:root {
+  --el-color-primary: #2eb8a0;
+  --el-color-primary-light-3: #6ecdb8;
+  --el-color-primary-light-5: #97dbc9;
+  --el-color-primary-light-7: #c0eadb;
+  --el-color-primary-light-8: #d5f2e8;
+  --el-color-primary-light-9: #e9fbf6;
+  --el-color-primary-dark-2: #129b7f;
+  --el-border-radius-base: 10px;
+  --el-border-radius-small: 8px;
+  --el-font-size-base: 14px;
+  --el-text-color-primary: #101828;
+  --el-text-color-regular: #475467;
+  --el-text-color-secondary: #98a2b3;
+  --el-border-color: #eef0f4;
+  --el-border-color-light: #f2f4f7;
+  --el-bg-color: #ffffff;
+  --el-fill-color-light: #f6f8fb;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--moona-primary);
+  --el-button-border-color: var(--moona-primary);
+  --el-button-hover-bg-color: var(--moona-primary-hover);
+  --el-button-hover-border-color: var(--moona-primary-hover);
+}
+
+.el-button {
+  border-radius: var(--moona-radius-sm);
+}
+
+.el-input__wrapper,
+.el-select__wrapper,
+.el-textarea__inner {
+  border-radius: var(--moona-radius-sm) !important;
+}
+
+.el-table {
+  --el-table-header-bg-color: #f9fafb;
+  --el-table-header-text-color: #475467;
+  font-size: var(--moona-font-body);
+}
+
+.el-dialog {
+  border-radius: var(--moona-radius-md) !important;
+}
+
+.el-pagination {
+  --el-pagination-hover-color: var(--moona-primary);
+}
+
+.el-tag--success {
+  --el-tag-bg-color: #e9fbf6;
+  --el-tag-border-color: #c7f0e6;
+  --el-tag-text-color: #129b7f;
+}

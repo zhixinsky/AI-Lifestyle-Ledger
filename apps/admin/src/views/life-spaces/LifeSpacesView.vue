@@ -1,34 +1,48 @@
 <template>
-  <div>
-    <div class="page-card mb-4">
-      <h3>空间类型配置</h3>
-      <el-table :data="templates" stripe v-loading="loading">
-        <el-table-column prop="name" label="名称" />
-        <el-table-column prop="type" label="类型" width="120" />
-        <el-table-column prop="icon" label="图标" width="80" />
-        <el-table-column prop="enabled" label="启用" width="80">
-          <template #default="{ row }">{{ row.enabled ? '是' : '否' }}</template>
-        </el-table-column>
-        <el-table-column label="操作" width="100">
-          <template #default="{ row }">
-            <el-button link @click="edit(row)">编辑</el-button>
+  <div class="page-shell">
+    <PageHeader title="生活空间管理" subtitle="空间模板配置与用户创建统计" />
+
+    <el-row :gutter="16">
+      <el-col :xs="24" :lg="14">
+        <DataTableCard :show-empty="!loading && templates.length === 0" empty-title="暂无模板" :filter-show-actions="false">
+          <template v-if="templates.length">
+            <el-table v-loading="loading" :data="templates">
+              <el-table-column prop="name" label="名称" />
+              <el-table-column prop="type" label="类型" width="120" />
+              <el-table-column prop="enabled" label="启用" width="80">
+                <template #default="{ row }">
+                  <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '是' : '否' }}</el-tag>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="100">
+                <template #default="{ row }">
+                  <el-button link type="primary" @click="edit(row)">编辑</el-button>
+                </template>
+              </el-table-column>
+            </el-table>
           </template>
-        </el-table-column>
-      </el-table>
-    </div>
-    <div class="page-card">
-      <h3>用户创建统计</h3>
-      <el-table :data="stats">
-        <el-table-column prop="type" label="类型" />
-        <el-table-column prop="count" label="数量" />
-      </el-table>
-    </div>
+        </DataTableCard>
+      </el-col>
+      <el-col :xs="24" :lg="10">
+        <DataTableCard :show-empty="stats.length === 0" empty-title="暂无统计" :filter-show-actions="false">
+          <template v-if="stats.length">
+            <div class="table-section-title">用户创建统计</div>
+            <el-table :data="stats">
+              <el-table-column prop="type" label="类型" />
+              <el-table-column prop="count" label="数量" align="right" />
+            </el-table>
+          </template>
+        </DataTableCard>
+      </el-col>
+    </el-row>
   </div>
 </template>
 
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import PageHeader from '@/components/common/PageHeader.vue';
+import DataTableCard from '@/components/common/DataTableCard.vue';
 import request from '@/utils/request';
 
 const loading = ref(false);
@@ -55,4 +69,10 @@ async function edit(row: Record<string, unknown>) {
 onMounted(load);
 </script>
 
-<style scoped>.mb-4 { margin-bottom: 16px; } h3 { margin: 0 0 12px; }</style>
+<style scoped>
+.table-section-title {
+  padding: 16px 20px 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+</style>
