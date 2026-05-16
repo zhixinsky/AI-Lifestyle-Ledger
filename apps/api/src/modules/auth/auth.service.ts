@@ -69,6 +69,7 @@ export class AuthService {
     const user = await this.prisma.user.upsert({
       where: { phone: dto.phone },
       update: {
+        lastLoginAt: new Date(),
         identities: {
           upsert: {
             where: { provider_identifier: { provider: 'phone', identifier: dto.phone } },
@@ -81,6 +82,7 @@ export class AuthService {
         phone: dto.phone,
         nickname: '',
         streakDays: 0,
+        lastLoginAt: new Date(),
         identities: {
           create: {
             provider: 'phone',
@@ -204,7 +206,11 @@ export class AuthService {
         });
       }
 
-      return this.buildResult(user);
+      const refreshed = await this.prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: new Date() },
+      });
+      return this.buildResult(refreshed);
     } catch (error: any) {
       this.logger.error(`wxLogin error: ${error?.message}`, error?.stack);
       throw error;

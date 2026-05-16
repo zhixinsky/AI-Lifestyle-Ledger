@@ -24,7 +24,7 @@ const router = createRouter({
         { path: 'growth/badges', component: () => import('@/views/growth/BadgesView.vue') },
         { path: 'growth/challenges', component: () => import('@/views/growth/ChallengesView.vue') },
         { path: 'banners', component: () => import('@/views/placeholders/ComingSoonView.vue') },
-        { path: 'admins', component: () => import('@/views/placeholders/ComingSoonView.vue') },
+        { path: 'admins', component: () => import('@/views/admins/AdminsView.vue') },
         { path: 'settings', component: () => import('@/views/settings/SettingsView.vue') },
         { path: 'logs', component: () => import('@/views/logs/OperationLogsView.vue') },
       ],

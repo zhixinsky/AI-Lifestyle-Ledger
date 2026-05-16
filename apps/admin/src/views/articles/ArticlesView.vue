@@ -11,7 +11,20 @@
       empty-title="还没有文章"
       empty-description="发布第一篇文章，丰富发现页内容。"
       empty-emoji="📝"
+      @search="load"
+      @reset="resetFilter"
     >
+      <template #filter>
+        <el-form :inline="true">
+          <el-form-item label="分类">
+            <el-select v-model="categoryFilter" clearable placeholder="全部" style="width: 120px">
+              <el-option label="技巧" value="tip" />
+              <el-option label="知识" value="knowledge" />
+              <el-option label="挑战" value="challenge" />
+            </el-select>
+          </el-form-item>
+        </el-form>
+      </template>
       <template v-if="items.length">
         <el-table v-loading="loading" :data="items">
           <el-table-column prop="title" label="标题" min-width="200" />
@@ -24,8 +37,9 @@
             </template>
           </el-table-column>
           <el-table-column prop="viewCount" label="阅读" width="80" align="right" />
-          <el-table-column label="操作" width="160" fixed="right">
+          <el-table-column label="操作" width="200" fixed="right">
             <template #default="{ row }">
+              <el-button link type="primary" @click="openPreview(row)">预览</el-button>
               <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
               <el-button link type="danger" @click="remove(row.id)">删除</el-button>
             </template>
@@ -56,6 +70,7 @@
         </el-form-item>
         <el-form-item label="内容">
           <el-input v-model="form.content" type="textarea" :rows="12" placeholder="支持 Markdown" />
+          <el-button class="mt-8" size="small" @click="openPreview(form as Article)">预览 Markdown</el-button>
         </el-form-item>
         <el-form-item label="发布"><el-switch v-model="form.published" /></el-form-item>
         <el-form-item label="置顶"><el-switch v-model="form.isPinned" /></el-form-item>
@@ -65,11 +80,16 @@
         <el-button type="primary" :loading="saving" @click="save">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="previewVisible" title="文章预览" width="720px">
+      <div class="article-preview" v-html="previewHtml" />
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
+import { marked } from 'marked';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import PageHeader from '@/components/common/PageHeader.vue';
 import DataTableCard from '@/components/common/DataTableCard.vue';
@@ -90,12 +110,29 @@ const loading = ref(false);
 const saving = ref(false);
 const items = ref<Article[]>([]);
 const dialogVisible = ref(false);
+const previewVisible = ref(false);
+const previewContent = ref('');
+const categoryFilter = ref('');
 const form = reactive<Partial<Article>>({ category: 'tip', published: true, isPinned: false });
+
+const previewHtml = computed(() => marked.parse(previewContent.value || '') as string);
+
+function resetFilter() {
+  categoryFilter.value = '';
+  load();
+}
+
+function openPreview(row: Article) {
+  previewContent.value = row.content || '';
+  previewVisible.value = true;
+}
 
 async function load() {
   loading.value = true;
   try {
-    const res = await request.get<{ items: Article[] }>('/admin/articles', { params: { pageSize: 100 } });
+    const params: Record<string, string | number> = { pageSize: 100 };
+    if (categoryFilter.value) params.category = categoryFilter.value;
+    const res = await request.get<{ items: Article[] }>('/admin/articles', { params });
     items.value = res.items;
   } finally {
     loading.value = false;
@@ -143,5 +180,16 @@ onMounted(load);
 <style scoped>
 .mt-8 {
   margin-top: 8px;
+}
+.article-preview {
+  max-height: 60vh;
+  overflow-y: auto;
+  line-height: 1.7;
+  padding: 8px 4px;
+}
+.article-preview :deep(h1),
+.article-preview :deep(h2),
+.article-preview :deep(h3) {
+  margin: 12px 0 8px;
 }
 </style>

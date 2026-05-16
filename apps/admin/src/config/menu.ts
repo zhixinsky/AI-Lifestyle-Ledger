@@ -52,6 +52,14 @@ export const menuGroups: MenuGroup[] = [
     ],
   },
   {
+    label: '成长与生活',
+    items: [
+      { path: '/life-spaces', title: '生活空间', icon: Key },
+      { path: '/growth/badges', title: '徽章管理', icon: Medal },
+      { path: '/growth/challenges', title: '挑战管理', icon: Tickets },
+    ],
+  },
+  {
     label: '系统管理',
     items: [
       { path: '/settings', title: '系统配置', icon: Setting },

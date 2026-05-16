@@ -161,10 +161,21 @@ export class AdminAiService {
   }
 
   async correctionStats() {
-    const groups = await this.prisma.aiCorrection.groupBy({
-      by: ['correctionType'],
-      _count: true,
-    });
-    return groups;
+    const [byType, topInputs] = await Promise.all([
+      this.prisma.aiCorrection.groupBy({
+        by: ['correctionType'],
+        _count: true,
+      }),
+      this.prisma.aiCorrection.groupBy({
+        by: ['originalText'],
+        _count: { _all: true },
+        orderBy: { _count: { originalText: 'desc' } },
+        take: 10,
+      }),
+    ]);
+    return {
+      byType: byType.map((g) => ({ type: g.correctionType, count: g._count })),
+      topInputs: topInputs.map((g) => ({ text: g.originalText, count: g._count._all })),
+    };
   }
 }

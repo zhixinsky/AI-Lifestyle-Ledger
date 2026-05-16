@@ -6,6 +6,19 @@
       </template>
     </PageHeader>
 
+    <el-row v-if="stats" :gutter="16" class="stats-row">
+      <el-col v-for="item in stats.byType" :key="item.type" :xs="12" :sm="8" :md="6">
+        <StatCard :label="typeLabel(item.type)" :value="item.count" />
+      </el-col>
+    </el-row>
+
+    <div v-if="stats?.topInputs?.length" class="moona-card top-inputs">
+      <h4>高频纠错输入 Top 10</h4>
+      <el-tag v-for="t in stats.topInputs" :key="t.text" class="top-inputs__tag" type="info">
+        {{ t.text }} ({{ t.count }})
+      </el-tag>
+    </div>
+
     <DataTableCard
       :show-empty="!loading && items.length === 0"
       empty-title="暂无纠错样本"
@@ -69,18 +82,41 @@
 import { onMounted, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import PageHeader from '@/components/common/PageHeader.vue';
+import StatCard from '@/components/common/StatCard.vue';
 import DataTableCard from '@/components/common/DataTableCard.vue';
 import request from '@/utils/request';
 
+type CorrectionStats = {
+  byType: Array<{ type: string; count: number }>;
+  topInputs: Array<{ text: string; count: number }>;
+};
+
+const stats = ref<CorrectionStats | null>(null);
 const loading = ref(false);
 const items = ref<Array<Record<string, unknown>>>([]);
 const correctionType = ref('');
 const compareVisible = ref(false);
 const current = ref<Record<string, unknown> | null>(null);
 
+const typeLabels: Record<string, string> = {
+  intent_error: '意图错误',
+  category_error: '分类错误',
+  amount_error: '金额错误',
+  space_error: '空间错误',
+  other: '其它',
+};
+
+function typeLabel(t: string) {
+  return typeLabels[t] || t;
+}
+
 function resetFilters() {
   correctionType.value = '';
   load();
+}
+
+async function loadStats() {
+  stats.value = await request.get('/admin/ai/corrections/stats');
 }
 
 async function load() {
@@ -115,10 +151,20 @@ async function exportData(format: 'jsonl' | 'csv') {
   a.click();
 }
 
-onMounted(load);
+onMounted(() => {
+  loadStats();
+  load();
+});
 </script>
 
 <style scoped lang="scss">
+.stats-row { margin-bottom: 16px; }
+.top-inputs {
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.top-inputs h4 { margin: 0 0 12px; font-size: 14px; }
+.top-inputs__tag { margin: 0 8px 8px 0; max-width: 100%; }
 .filter-form { display: contents; }
 .compare-panel {
   display: grid;

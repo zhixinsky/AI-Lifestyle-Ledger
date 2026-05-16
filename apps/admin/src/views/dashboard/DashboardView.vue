@@ -21,6 +21,18 @@
           <div ref="aiChartRef" class="chart-card__canvas" />
         </div>
       </el-col>
+      <el-col :xs="24" :lg="12">
+        <div class="moona-card chart-card">
+          <h3 class="chart-card__title">近 7 日记账笔数</h3>
+          <div ref="txChartRef" class="chart-card__canvas" />
+        </div>
+      </el-col>
+      <el-col :xs="24" :lg="12">
+        <div class="moona-card chart-card">
+          <h3 class="chart-card__title">近 7 日会员转化</h3>
+          <div ref="memberChartRef" class="chart-card__canvas" />
+        </div>
+      </el-col>
     </el-row>
 
     <DataTableCard
@@ -72,9 +84,13 @@ type Summary = {
 
 const loading = ref(true);
 const summary = ref<Summary | null>(null);
-const trends = ref<{ days: Array<{ date: string; newUsers: number; aiCalls: number }> } | null>(null);
+const trends = ref<{
+  days: Array<{ date: string; newUsers: number; aiCalls: number; transactions: number; newMembers: number }>;
+} | null>(null);
 const userChartRef = ref<HTMLDivElement>();
 const aiChartRef = ref<HTMLDivElement>();
+const txChartRef = ref<HTMLDivElement>();
+const memberChartRef = ref<HTMLDivElement>();
 
 const statCards = computed(() => {
   const s = summary.value;
@@ -129,6 +145,36 @@ function renderCharts() {
         type: 'bar',
         data: days.map((d) => d.aiCalls),
         itemStyle: { color: primary, borderRadius: [6, 6, 0, 0] },
+      }],
+    });
+  }
+  if (txChartRef.value) {
+    const chart = echarts.init(txChartRef.value);
+    chart.setOption({
+      grid: { left: 40, right: 16, top: 24, bottom: 28 },
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#EEF0F4' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F2F4F7' } } },
+      series: [{
+        type: 'line',
+        smooth: true,
+        data: days.map((d) => d.transactions),
+        lineStyle: { color: '#5B8FF9', width: 2 },
+        itemStyle: { color: '#5B8FF9' },
+      }],
+    });
+  }
+  if (memberChartRef.value) {
+    const chart = echarts.init(memberChartRef.value);
+    chart.setOption({
+      grid: { left: 40, right: 16, top: 24, bottom: 28 },
+      tooltip: { trigger: 'axis' },
+      xAxis: { type: 'category', data: dates, axisLine: { lineStyle: { color: '#EEF0F4' } } },
+      yAxis: { type: 'value', splitLine: { lineStyle: { color: '#F2F4F7' } } },
+      series: [{
+        type: 'bar',
+        data: days.map((d) => d.newMembers),
+        itemStyle: { color: '#F6BD16', borderRadius: [6, 6, 0, 0] },
       }],
     });
   }

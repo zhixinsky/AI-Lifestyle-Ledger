@@ -1,5 +1,10 @@
+<template>
+  <AnnouncementPopup />
+</template>
+
 <script setup lang="ts">
 import { onLaunch } from '@dcloudio/uni-app';
+import AnnouncementPopup from '@/components/AnnouncementPopup.vue';
 import { useLoginSheetStore } from '@/stores/login-sheet';
 import { useAiStore } from '@/stores/ai';
 import { useAuthStore } from '@/stores/auth';

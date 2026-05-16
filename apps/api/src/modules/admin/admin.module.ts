@@ -27,6 +27,8 @@ import { AdminSettingsService } from './settings/admin-settings.service';
 import { AdminLifeSpacesController } from './life-spaces/admin-life-spaces.controller';
 import { AdminLifeSpacesService } from './life-spaces/admin-life-spaces.service';
 import { AdminLogsController } from './logs/admin-logs.controller';
+import { AdminAdminsController } from './admins/admin-admins.controller';
+import { AdminAdminsService } from './admins/admin-admins.service';
 
 @Module({
   imports: [
@@ -53,6 +55,7 @@ import { AdminLogsController } from './logs/admin-logs.controller';
     AdminSettingsController,
     AdminLifeSpacesController,
     AdminLogsController,
+    AdminAdminsController,
   ],
   providers: [
     AdminAuthService,
@@ -69,6 +72,7 @@ import { AdminLogsController } from './logs/admin-logs.controller';
     AdminGrowthService,
     AdminSettingsService,
     AdminLifeSpacesService,
+    AdminAdminsService,
   ],
   exports: [AnnouncementsPublicService],
 })

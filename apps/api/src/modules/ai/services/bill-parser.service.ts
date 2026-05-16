@@ -33,7 +33,7 @@ export class BillParserService {
     }
 
     const aiResult = await this.aiChat.completeWithMeta([
-      { role: 'system', content: this.prompts.getBillParserPrompt() },
+      { role: 'system', content: await this.prompts.getBillParserPrompt() },
       { role: 'user', content: `当前时间：${currentTime}\n用户输入：${input}` }
     ]);
 
