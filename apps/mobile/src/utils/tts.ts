@@ -1,16 +1,59 @@
 import { ref } from 'vue';
 
 export const VOICE_REPLY_STORAGE_KEY = 'voiceReplyEnabled';
-const MAX_TTS_LENGTH = 80;
+
+/** 微信同声传译单次合成建议不超过约 100 字，超出需分段 */
+const WECHAT_TTS_CHUNK_SIZE = 100;
 
 export const isSpeaking = ref(false);
 
 let audioContext: UniApp.InnerAudioContext | null = null;
 let resolveCurrent: (() => void) | null = null;
+let speakSessionId = 0;
 
 function normalizeSpeakText(text: string) {
-  const compact = text.replace(/\s+/g, ' ').trim();
-  return compact.length > MAX_TTS_LENGTH ? `${compact.slice(0, MAX_TTS_LENGTH)}...` : compact;
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+/** 按标点优先切分，保证长回复能完整朗读 */
+export function splitTextForTts(text: string, maxLen = WECHAT_TTS_CHUNK_SIZE): string[] {
+  const compact = normalizeSpeakText(text);
+  if (!compact) return [];
+  if (compact.length <= maxLen) return [compact];
+
+  const chunks: string[] = [];
+  const parts = compact.split(/(?<=[。！？；.!?;])/);
+
+  let buf = '';
+  const flush = () => {
+    const piece = buf.trim();
+    if (piece) chunks.push(piece);
+    buf = '';
+  };
+
+  const pushHardSlices = (segment: string) => {
+    for (let i = 0; i < segment.length; i += maxLen) {
+      const slice = segment.slice(i, i + maxLen).trim();
+      if (slice) chunks.push(slice);
+    }
+  };
+
+  for (const part of parts) {
+    if (!part) continue;
+    const candidate = buf + part;
+    if (candidate.length <= maxLen) {
+      buf = candidate;
+      continue;
+    }
+    flush();
+    if (part.length <= maxLen) {
+      buf = part;
+    } else {
+      pushHardSlices(part);
+    }
+  }
+  flush();
+  return chunks.length ? chunks : [compact.slice(0, maxLen)];
 }
 
 export function readStorageFlag(key: string) {
@@ -94,10 +137,10 @@ function textToSpeechMp(text: string): Promise<string> {
         content: text,
         success: (res: { filename?: string }) => {
           if (res.filename) {
-            console.log('[TTS] textToSpeech success:', res.filename);
             resolve(res.filename);
+          } else {
+            reject(new Error('TTS missing filename'));
           }
-          else reject(new Error('TTS missing filename'));
         },
         fail: (err: unknown) => {
           console.error('[TTS] textToSpeech failed:', err);
@@ -116,8 +159,64 @@ function textToSpeechMp(text: string): Promise<string> {
   });
 }
 
-function speakWithWebApi(text: string): Promise<void> {
+function playAudioFileMp(filename: string, session: number): Promise<void> {
   return new Promise((resolve, reject) => {
+    if (session !== speakSessionId) {
+      resolve();
+      return;
+    }
+    const audio = recreateAudioContext();
+    const writableAudio = audio as UniApp.InnerAudioContext & {
+      volume?: number;
+      obeyMuteSwitch?: boolean;
+      autoplay?: boolean;
+    };
+    writableAudio.volume = 1;
+    writableAudio.obeyMuteSwitch = false;
+    writableAudio.autoplay = false;
+    audio.src = filename;
+    const done = () => resolve();
+    audio.onEnded(done);
+    audio.onStop(done);
+    audio.onError((err) => {
+      console.error('[TTS] audio play failed:', err);
+      reject(err instanceof Error ? err : new Error('语音播放失败'));
+    });
+    setTimeout(() => {
+      if (session !== speakSessionId) {
+        resolve();
+        return;
+      }
+      audio.play();
+    }, 60);
+  });
+}
+
+async function speakChunkMp(chunk: string, session: number) {
+  if (session !== speakSessionId || !chunk) return;
+  const filename = await textToSpeechMp(chunk);
+  if (session !== speakSessionId) return;
+  await playAudioFileMp(filename, session);
+}
+
+async function speakChunksMp(chunks: string[], session: number) {
+  configureMiniProgramAudio();
+  for (let i = 0; i < chunks.length; i += 1) {
+    if (session !== speakSessionId) return;
+    await speakChunkMp(chunks[i], session);
+    if (session !== speakSessionId) return;
+    if (i < chunks.length - 1) {
+      await new Promise<void>((r) => setTimeout(r, 80));
+    }
+  }
+}
+
+function speakWithWebApi(text: string, session: number): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (session !== speakSessionId) {
+      resolve();
+      return;
+    }
     if (typeof window === 'undefined' || !window.speechSynthesis || typeof SpeechSynthesisUtterance === 'undefined') {
       reject(new Error('Speech synthesis unavailable'));
       return;
@@ -125,11 +224,11 @@ function speakWithWebApi(text: string): Promise<void> {
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
     utterance.onend = () => {
-      finishSpeaking();
+      if (session === speakSessionId) finishSpeaking();
       resolve();
     };
     utterance.onerror = () => {
-      finishSpeaking();
+      if (session === speakSessionId) finishSpeaking();
       reject(new Error('Speech synthesis failed'));
     };
     resolveCurrent = resolve;
@@ -139,49 +238,48 @@ function speakWithWebApi(text: string): Promise<void> {
 }
 
 export async function speakText(text: string) {
-  const content = normalizeSpeakText(text);
-  if (!content) return;
+  const normalized = normalizeSpeakText(text);
+  if (!normalized) return;
 
-  stopSpeak();
+  speakSessionId += 1;
+  const session = speakSessionId;
+  stopSpeakInternal();
   isSpeaking.value = true;
 
   try {
     // #ifdef MP-WEIXIN
-    configureMiniProgramAudio();
-    const filename = await textToSpeechMp(content);
-    await new Promise<void>((resolve, reject) => {
-      const audio = recreateAudioContext();
-      const writableAudio = audio as UniApp.InnerAudioContext & { volume?: number; obeyMuteSwitch?: boolean; autoplay?: boolean };
-      writableAudio.volume = 1;
-      writableAudio.obeyMuteSwitch = false;
-      writableAudio.autoplay = false;
-      audio.src = filename;
-      resolveCurrent = resolve;
-      audio.onPlay(() => {
-        console.log('[TTS] audio play started');
-      });
-      audio.onEnded(() => finishSpeaking());
-      audio.onStop(() => finishSpeaking());
-      audio.onError((err) => {
-        console.error('[TTS] audio play failed:', err);
-        finishSpeaking();
-        reject(err instanceof Error ? err : new Error('语音播放失败'));
-      });
-      setTimeout(() => audio.play(), 80);
-    });
+    const chunks = splitTextForTts(normalized);
+    await speakChunksMp(chunks, session);
     // #endif
 
     // #ifndef MP-WEIXIN
-    await speakWithWebApi(content);
+    await speakWithWebApi(normalized, session);
     // #endif
   } catch (err) {
-    finishSpeaking();
+    if (session === speakSessionId) finishSpeaking();
     throw err;
+  } finally {
+    if (session === speakSessionId) {
+      finishSpeaking();
+    }
   }
 }
 
+function stopSpeakInternal() {
+  try {
+    audioContext?.stop();
+  } catch {
+    /* ignore */
+  }
+  // #ifndef MP-WEIXIN
+  if (typeof window !== 'undefined' && window.speechSynthesis) {
+    window.speechSynthesis.cancel();
+  }
+  // #endif
+}
+
 export function stopSpeak() {
-  if (!isSpeaking.value && !audioContext) return;
+  speakSessionId += 1;
   try {
     audioContext?.stop();
   } catch {
