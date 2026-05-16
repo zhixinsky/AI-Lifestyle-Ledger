@@ -12,6 +12,11 @@ enum TransactionType {
   income
 }
 
+enum UserStatus {
+  enabled
+  disabled
+}
+
 model User {
   id           String        @id @default(cuid())
   phone        String?       @unique
@@ -21,6 +26,8 @@ model User {
   nickname     String        @default("")
   avatarUrl    String?       @db.Text // 可为 cloud:// fileID 或外链，需长于默认 VARCHAR
   passwordHash String?
+  status       UserStatus    @default(enabled)
+  lastLoginAt  DateTime?
   streakDays   Int           @default(0)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -43,6 +50,8 @@ model User {
   memories         UserMemory[]
   identities       UserIdentity[]
   aiGreetingDailies AiGreetingDaily[]
+  aiCorrections        AiCorrection[]
+  announcementReads    UserAnnouncementRead[]
 
   /// 是否开启 AI米粒页「智能问候」（关闭后仅用本地默认文案）
   smartGreetingEnabled Boolean @default(true)
@@ -169,11 +178,19 @@ model AiLog {
   finalResult  Json?
   userModified Boolean  @default(false)
   confirmed    Boolean  @default(false)
+  intent       String?
+  status       String?  @default("success")
+  model        String?
+  durationMs   Int?
+  errorMessage String?  @db.Text
+  prompt       String?  @db.Text
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  corrections  AiCorrection[]
 
   @@index([userId, createdAt])
+  @@index([status, createdAt])
 }
 
 enum ReportType {
@@ -511,6 +528,170 @@ model Article {
   coverUrl  String?
   category  ArticleCategory @default(tip)
   published Boolean         @default(true)
+  isPinned  Boolean         @default(false)
+  sort      Int             @default(0)
+  viewCount Int             @default(0)
   createdAt DateTime        @default(now())
   updatedAt DateTime        @updatedAt
+}
+
+// ===== 运营管理后台 =====
+
+enum AdminRole {
+  super_admin
+  admin
+  operator
+}
+
+enum AdminUserStatus {
+  enabled
+  disabled
+}
+
+model AdminUser {
+  id           String          @id @default(cuid())
+  username     String          @unique
+  passwordHash String
+  nickname     String          @default("")
+  role         AdminRole       @default(admin)
+  status       AdminUserStatus @default(enabled)
+  lastLoginAt  DateTime?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  operationLogs AdminOperationLog[]
+}
+
+model AdminOperationLog {
+  id         String    @id @default(cuid())
+  adminId    String
+  action     String
+  module     String
+  targetId   String?
+  detailJson Json?
+  ip         String?
+  createdAt  DateTime  @default(now())
+  admin      AdminUser @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId, createdAt])
+  @@index([module, createdAt])
+}
+
+enum AiCorrectionType {
+  intent_error
+  category_error
+  amount_error
+  space_error
+  other
+}
+
+model AiCorrection {
+  id                    String           @id @default(cuid())
+  userId                String
+  aiLogId               String?
+  originalText          String           @db.Text
+  aiIntent              String?
+  aiResultJson          Json?
+  correctedIntent       String?
+  correctedResultJson   Json?
+  correctionType        AiCorrectionType   @default(other)
+  isAddedToPromptExamples Boolean        @default(false)
+  remark                String?
+  createdAt             DateTime         @default(now())
+  user                  User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiLog                 AiLog?           @relation(fields: [aiLogId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([correctionType, createdAt])
+}
+
+enum PromptExampleScene {
+  bill_parse
+  chat
+  insight
+  greeting
+}
+
+model PromptExample {
+  id           String             @id @default(cuid())
+  scene        PromptExampleScene @default(bill_parse)
+  inputText    String             @db.Text
+  expectedJson Json
+  enabled      Boolean            @default(true)
+  sort         Int                @default(0)
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+enum AnnouncementType {
+  popup
+  banner
+  notice
+}
+
+enum AnnouncementPosition {
+  global
+  home
+  ai
+  discover
+  profile
+}
+
+enum AnnouncementTarget {
+  all
+  free
+  member
+  specific
+}
+
+model Announcement {
+  id             String               @id @default(cuid())
+  title          String
+  content        String               @db.Text
+  type           AnnouncementType     @default(notice)
+  position       AnnouncementPosition @default(global)
+  target         AnnouncementTarget   @default(all)
+  targetUserIds  Json?
+  startAt        DateTime?
+  endAt          DateTime?
+  priority       Int                  @default(0)
+  published      Boolean              @default(false)
+  requireRead    Boolean              @default(false)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+  reads          UserAnnouncementRead[]
+}
+
+model UserAnnouncementRead {
+  id             String       @id @default(cuid())
+  userId         String
+  announcementId String
+  readAt         DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, announcementId])
+  @@index([announcementId])
+}
+
+model LifeSpaceTemplate {
+  id          String   @id @default(cuid())
+  type        BookType @unique
+  name        String
+  icon        String
+  color       String
+  description String   @db.Text
+  aiTone      String   @db.Text
+  enabled     Boolean  @default(true)
+  sort        Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model SystemConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  description String?
+  group       String   @default("general")
+  updatedAt   DateTime @updatedAt
 }

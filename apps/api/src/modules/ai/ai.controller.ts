@@ -1,5 +1,5 @@
-import { BadRequestException, Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
-import { TransactionType } from '@prisma/client';
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { AiCorrectionType, TransactionType } from '@prisma/client';
 import { CurrentUser, type AuthUser } from '../../common/current-user.decorator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BudgetsService } from '../budgets/budgets.service';
@@ -34,14 +34,19 @@ export class AiController {
 
   @Post('bills/parse')
   async parseBill(@CurrentUser() user: AuthUser, @Body() dto: ParseBillDto) {
+    const started = Date.now();
     const result = await this.billParser.parse(dto.input, dto.occurredAt);
     const enriched = await this.attachCategoryIds(result.transactions);
     const log = await this.prisma.aiLog.create({
       data: {
         userId: user.sub,
         rawInput: dto.input,
-        aiResponse: { transactions: enriched }
-      }
+        aiResponse: { transactions: enriched, intent: result.intent },
+        intent: result.intent,
+        status: result.busy || result.timeout ? 'failed' : 'success',
+        durationMs: Date.now() - started,
+        errorMessage: result.message,
+      },
     });
 
     return {
@@ -56,6 +61,9 @@ export class AiController {
 
   @Post('bills/:logId/confirm')
   async confirmBill(@CurrentUser() user: AuthUser, @Param('logId') logId: string, @Body() dto: ConfirmBillDto) {
+    const existingLog = await this.prisma.aiLog.findFirst({ where: { id: logId, userId: user.sub } });
+    if (!existingLog) throw new NotFoundException('AI 日志不存在');
+
     const lifeSpaceId = await this.resolveLifeSpaceId(user.sub, dto.lifeSpaceId);
     const enriched = await this.attachCategoryIds(dto.transactions.map((item) => ({
       ...item,
@@ -75,19 +83,53 @@ export class AiController {
       }));
     }
 
+    const aiTx = ((existingLog.aiResponse as { transactions?: unknown[] })?.transactions ?? []) as Array<Record<string, unknown>>;
+    const userModified = JSON.stringify(dto.transactions) !== JSON.stringify(aiTx);
     await this.prisma.aiLog.update({
       where: { id: logId },
       data: {
-        finalResult: { transactions: enriched },
-        userModified: JSON.stringify(dto.transactions) !== JSON.stringify(enriched),
-        confirmed: true
-      }
+        finalResult: { transactions: enriched, lifeSpaceId },
+        userModified,
+        confirmed: true,
+      },
     });
+
+    if (userModified) {
+      const correctionType = this.detectCorrectionType(existingLog, dto, aiTx, enriched);
+      await this.prisma.aiCorrection.create({
+        data: {
+          userId: user.sub,
+          aiLogId: logId,
+          originalText: existingLog.rawInput,
+          aiIntent: existingLog.intent ?? undefined,
+          aiResultJson: existingLog.aiResponse ?? undefined,
+          correctedIntent: 'bill',
+          correctedResultJson: { transactions: enriched, lifeSpaceId },
+          correctionType,
+        },
+      });
+    }
 
     return {
       success: true,
-      transactions: saved
+      transactions: saved,
     };
+  }
+
+  private detectCorrectionType(
+    log: { intent: string | null },
+    dto: ConfirmBillDto,
+    aiTx: Array<Record<string, unknown>>,
+    finalTx: Array<Record<string, unknown>>,
+  ): AiCorrectionType {
+    if (log.intent && log.intent !== 'bill' && log.intent !== 'not_bill') return AiCorrectionType.intent_error;
+    const aiFirst = aiTx[0];
+    const userFirst = dto.transactions[0];
+    const finalFirst = finalTx[0];
+    if (aiFirst && userFirst && Number(aiFirst.amount) !== Number(userFirst.amount)) return AiCorrectionType.amount_error;
+    if (aiFirst && finalFirst && String(aiFirst.category) !== String(finalFirst.category)) return AiCorrectionType.category_error;
+    if (dto.lifeSpaceId) return AiCorrectionType.space_error;
+    return AiCorrectionType.other;
   }
 
   /* ========== Phase 3: AI 财务分析 ========== */

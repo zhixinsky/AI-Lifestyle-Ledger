@@ -9,3 +9,9 @@ uploads/
 .vue-global-types/
 *.tsbuildinfo
 *.txt
+# vue-tsc 在 admin 下生成的旁路产物
+apps/admin/**/*.vue.js
+apps/admin/src/main.js
+apps/admin/src/router/index.js
+apps/admin/src/stores/*.js
+apps/admin/src/utils/*.js

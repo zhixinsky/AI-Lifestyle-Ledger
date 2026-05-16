@@ -1,0 +1,71 @@
+:root {
+  --moona-bg: #f4f7fb;
+  --moona-card: #ffffff;
+  --moona-primary: #5b8def;
+  --moona-accent: #7ee0d2;
+  --moona-text: #1f2937;
+  --moona-muted: #6b7280;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: var(--moona-bg);
+  color: var(--moona-text);
+}
+
+.page-card {
+  background: var(--moona-card);
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 8px 30px rgba(91, 141, 239, 0.08);
+}
+
+.stat-card {
+  border-radius: 16px;
+  padding: 18px 20px;
+  background: linear-gradient(135deg, #ffffff 0%, #f0f6ff 100%);
+  border: 1px solid rgba(91, 141, 239, 0.12);
+}
+
+.stat-card__label {
+  font-size: 13px;
+  color: var(--moona-muted);
+}
+
+.stat-card__value {
+  margin-top: 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--moona-primary);
+}
+
+.compare-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.compare-panel__side {
+  border-radius: 12px;
+  padding: 16px;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+}
+
+.compare-panel__side--ai {
+  border-color: rgba(239, 68, 68, 0.25);
+  background: #fff7f7;
+}
+
+.compare-panel__side--user {
+  border-color: rgba(16, 185, 129, 0.25);
+  background: #f0fdf8;
+}

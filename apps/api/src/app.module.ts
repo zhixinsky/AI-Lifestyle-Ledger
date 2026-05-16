@@ -21,6 +21,8 @@ import { SmsModule } from './modules/sms/sms.module';
 import { AccountModule } from './modules/account/account.module';
 import { LifeSpacesModule } from './modules/life-spaces/life-spaces.module';
 import { AiGreetingsModule } from './modules/ai-greetings/ai-greetings.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { AnnouncementsModule } from './modules/announcements/announcements.module';
 import { ServeStaticModule } from '@nestjs/serve-static';
 import { join } from 'path';
 
@@ -31,6 +33,11 @@ import { join } from 'path';
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'admin-dist'),
+      serveRoot: '/admin',
+      exclude: ['/api*', '/uploads*'],
     }),
     PrismaModule,
     SmsModule,
@@ -52,6 +59,8 @@ import { join } from 'path';
     AccountModule,
     LifeSpacesModule,
     AiGreetingsModule,
+    AdminModule,
+    AnnouncementsModule,
   ]
 })
 export class AppModule {}
